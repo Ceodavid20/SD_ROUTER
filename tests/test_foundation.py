@@ -135,6 +135,7 @@ def test_all_required_storage_files_are_initialized(app):
         "router_communication.json",
         "router_communication_v2.json",
         "router_traffic_v2.json",
+        "router_enrollment.json",
         "automation_settings.json",
         "activity_logs.json",
     }

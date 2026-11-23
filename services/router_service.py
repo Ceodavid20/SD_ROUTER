@@ -77,6 +77,11 @@ class RouterService:
             "interface_name", "ospf_target_id", "snmp_version",
             "snmp_credential_ref", "currency", "credential_ref", "last_checked_at",
             "last_error", "detected_model", "detected_routeros_version",
+            "management_interface", "deployment_kind", "integration_status",
+            "traffic_origin", "enrolled_at",
+            "enrolled_at", "traffic_origin",
+            "management_interface", "traffic_source_ip", "deployment_kind",
+            "integration_status",
         )
         result = {key: router.get(key) if isinstance(router.get(key), str) else ""
                   for key in text_fields}
@@ -105,6 +110,8 @@ class RouterService:
             else None
         )
         result["monitoring_enabled"] = router.get("monitoring_enabled") is True
+        interval = router.get("monitoring_interval_seconds")
+        result["monitoring_interval_seconds"] = interval if type(interval) is int and 1 <= interval <= 86400 else None
         for key in ("capacity_mbps", "cost_per_gb"):
             value = router.get(key)
             try:
@@ -213,6 +220,48 @@ class RouterService:
         self.storage.append_activity("routers", f"Router {record['router_id']} registered for read-only setup.")
         return record
 
+    def register_monitoring_router(
+        self, router_id: str, name: str, management_ip: str,
+        outbound_interface: str, management_interface: str, carrier: str,
+        *, chr_lab: bool = False, bind_source: bool = False, api_port: int = 8729,
+    ) -> dict[str, Any]:
+        """Explicit, idempotent local registration; no provisioning or router I/O."""
+        carrier = _string({"carrier": carrier}, "carrier", required=True, limit=64)
+        if type(chr_lab) is not bool or type(bind_source) is not bool:
+            raise RouterValidationError("Lab and source-binding settings must be booleans.")
+        try:
+            validate_interface(outbound_interface)
+            validate_interface(management_interface)
+        except ProtocolError as exc:
+            raise RouterValidationError("Enter exact outbound and management interfaces.") from exc
+        record = self._validated({
+            "router_id": router_id, "name": name, "ip_address": management_ip,
+            "interface_name": outbound_interface, "api_port": str(api_port),
+            "api_tls": True, "ssh_port": "22",
+        })
+        record.update(carrier=carrier, router_role="carrier",
+                      management_interface=management_interface,
+                      deployment_kind="chr_lab" if chr_lab else "router",
+                      integration_status="awaiting_router_setup")
+        if bind_source:
+            record["traffic_source_ip"] = record["ip_address"]
+
+        def register(routers):
+            current = next((r for r in routers if r["router_id"] == router_id), None)
+            if current is not None:
+                if (current.get("ip_address") != record["ip_address"]
+                        or current.get("interface_name") != outbound_interface
+                        or current.get("carrier") != carrier):
+                    raise RouterValidationError("Existing router settings differ; review them before registration.")
+                return routers
+            if any(r.get("ip_address") == record["ip_address"] for r in routers):
+                raise RouterValidationError("This management address is already registered to another router.")
+            return [*routers, record]
+
+        rows = self.storage.update_json("routers.json", register)
+        self.storage.append_activity("routers", f"Router {router_id} registered for separate TX monitoring; no router configuration changed.")
+        return self._public(next(r for r in rows if r["router_id"] == router_id))
+
     def edit_router(self, router_id: str, form: Mapping[str, Any]) -> dict[str, Any]:
         existing = next(
             (
@@ -249,6 +298,12 @@ class RouterService:
                 # and instruction history added by communication services.
                 updated = {**current, **record}
                 updated["monitoring_enabled"] = current.get("monitoring_enabled") is True
+                source_changed = ("traffic_source_ip" in current
+                                  and updated.get("ip_address") != current.get("ip_address"))
+                if source_changed:
+                    if not updated.get("ip_address"):
+                        raise RouterValidationError("A source-bound router requires a management address.")
+                    updated["traffic_source_ip"] = updated["ip_address"]
                 # The private setup command owns managed references. An older
                 # browser form must not clear or roll back a newly saved login.
                 # Read the current reference inside the storage transaction so
@@ -270,7 +325,8 @@ class RouterService:
                     updated["controller_auth_enabled"] = False
                     updated["controller_auth_key_ids"] = []
                 if (updated.get("interface_name") != current.get("interface_name")
-                        or updated.get("controller_auth_ref") != current.get("controller_auth_ref")):
+                        or updated.get("controller_auth_ref") != current.get("controller_auth_ref")
+                        or source_changed):
                     updated["monitoring_generation"] = str(uuid4())
                 routers[index] = updated
                 return routers

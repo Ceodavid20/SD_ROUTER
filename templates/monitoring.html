@@ -5,25 +5,35 @@
 {% block content %}
   {{ heading('Traffic monitoring', 'Outbound bandwidth by router and interface.') }}
   <p>TX telemetry endpoint: <code>{{ connection.traffic_endpoint_url or connection.traffic_path }}</code>. Readings come from registered routers on their configured outbound interface.</p>
+  <form method="get" class="surface panel section-gap">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-6"><label class="form-label" for="history-router">Router history</label><select class="form-select" id="history-router" name="router_id"><option value="">All routers</option>{% for router in routers %}<option value="{{ router.router_id }}" {% if selected_router == router.router_id %}selected{% endif %}>{{ router.name }} ({{ router.router_id }})</option>{% endfor %}</select></div>
+      <div class="col-md-3"><label class="form-label" for="rate-unit">Display unit</label><select class="form-select" id="rate-unit" name="unit">{% for choice in ['Mbps', 'Kbps'] %}<option value="{{ choice }}" {% if unit == choice %}selected{% endif %}>{{ choice }}</option>{% endfor %}</select></div>
+      <div class="col-md-3"><button class="btn btn-outline-primary" type="submit">Apply view</button></div>
+    </div>
+  </form>
   <section class="surface panel" aria-labelledby="history-title">
     <div class="panel-heading">
       <h2 id="history-title">Outbound monitoring</h2>
       <span class="category-pill">{{ status.monitoring | replace('_', ' ') | capitalize }}</span>
     </div>
     <p>Monitoring stays disabled until you enable it for each router. Select one outbound interface in <a href="{{ url_for('pages.routers') }}">Router details</a> first. Enabling monitoring allows readings from an approved collector; it does not install one on the router.</p>
-    <p class="text-secondary">Only outbound TX is collected. Rates are shown in Kbps (1 Mbps = 1,000 Kbps). Two increasing sample times are needed to calculate bandwidth. A counter reset or a long gap requires a fresh baseline. Routing changes are off.</p>
+    <p class="text-secondary">Only outbound TX is collected. Rates are shown in {{ unit }} (1 Mbps = 1,000 Kbps). Two increasing sample times are needed to calculate bandwidth. A counter reset or a long gap requires a fresh baseline. Routing changes are off.</p>
     {% set labels = {'disabled': 'Disabled', 'not_configured': 'Interface not configured', 'authentication_required': 'Authentication required', 'awaiting': 'Awaiting first sample', 'baseline': 'Awaiting second sample', 'measured': 'Receiving', 'counter_reset': 'Counter reset; awaiting next sample', 'gap_reset': 'Gap; awaiting next sample', 'stale': 'Stale'} %}
     <div class="table-responsive">
       <table class="table align-middle mb-0">
-        <thead><tr><th scope="col">Router / outbound interface</th><th scope="col">Monitoring</th><th scope="col">Last sample (UTC)</th><th scope="col">Current outbound (Kbps)</th><th scope="col">Collection</th></tr></thead>
+        <thead><tr><th scope="col">Router / outbound interface</th><th scope="col">Monitoring</th><th scope="col">Last sample (UTC)</th><th scope="col">Current outbound ({{ unit }})</th><th scope="col">Average TX ({{ unit }})</th><th scope="col">Utilization</th><th scope="col">Collection</th></tr></thead>
         <tbody>
           {% for router in routers %}
             {% set traffic = router.traffic_monitoring %}
+            {% set average = live_preview.analysis | selectattr('router_id', 'equalto', router.router_id) | first %}
             <tr>
-              <th scope="row">{{ router.name }}<small class="table-secondary-line">{{ traffic.interface or 'Interface not configured' }}</small></th>
+              <th scope="row">{{ router.name }}<small class="table-secondary-line">{{ router.router_id }} · {{ traffic.interface or 'Interface not configured' }}</small>{% if router.deployment_kind == 'chr_lab' %}<small class="table-secondary-line">CHR lab · measured RouterOS TX</small>{% endif %}</th>
               <td><span class="category-pill">{{ labels[traffic.state] }}</span></td>
               <td>{{ traffic.last_sample_at or 'None received' }}</td>
-              <td>{{ bandwidth_value(traffic.tx_mbps, 'Kbps') }}</td>
+              <td>{{ bandwidth_value(traffic.tx_mbps, unit) }}</td>
+              <td>{{ bandwidth_value(average.average_mbps if average else none, unit) }}{% if average %}<small class="table-secondary-line">{{ average.sample_count }} / {{ average.window_size }} readings</small>{% endif %}</td>
+              <td>{% if average and average.utilization_percent is not none %}{{ '%.2f' | format(average.utilization_percent) }}%{% else %}Unknown capacity{% endif %}</td>
               <td>
                 <form method="post" action="{{ url_for('monitoring_management.configure_monitoring', router_id=router.router_id) }}">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -33,7 +43,7 @@
               </td>
             </tr>
           {% else %}
-            <tr><td class="table-empty" colspan="5">No routers configured.</td></tr>
+            <tr><td class="table-empty" colspan="7">No routers configured.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -43,10 +53,10 @@
     <div class="panel-heading"><h2 id="measurements-title">Recent measurements</h2></div>
     <div class="table-responsive">
       <table class="table align-middle mb-0">
-        <thead><tr><th scope="col">Time (UTC)</th><th scope="col">Router / interface</th><th scope="col">Outbound (Kbps)</th></tr></thead>
+        <thead><tr><th scope="col">Time (UTC)</th><th scope="col">Router / interface</th><th scope="col">Outbound ({{ unit }})</th></tr></thead>
         <tbody>
           {% for reading in readings %}
-            <tr><td><time datetime="{{ reading.timestamp }}">{{ reading.timestamp }}</time></td><td>{{ reading.router_id }}<small class="table-secondary-line">{{ reading.interface }}</small></td><td>{{ bandwidth_value(reading.tx_mbps, 'Kbps') }}</td></tr>
+            <tr><td><time datetime="{{ reading.timestamp }}">{{ reading.timestamp }}</time></td><td>{{ reading.router_id }}<small class="table-secondary-line">{{ reading.interface }}</small></td><td>{{ bandwidth_value(reading.tx_mbps, unit) }}</td></tr>
           {% else %}
             <tr><td class="table-empty" colspan="3">No readings recorded.</td></tr>
           {% endfor %}

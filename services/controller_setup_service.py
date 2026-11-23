@@ -184,6 +184,7 @@ def create_controller_tls(
     hostname: str, output_dir: str | Path, *, listen_address: str = '127.0.0.1',
     port: int = 18443, backend_port: int = 8001, allowed_sources: list[str] | None = None,
     additional_hosts: list[str] | None = None,
+    allow_enrollment: bool = False,
 ) -> dict:
     """Generate a private CA/server certificate and isolated Apache config.
 
@@ -192,6 +193,8 @@ def create_controller_tls(
     installed by this function.
     """
     hosts = [hostname, *(additional_hosts or [])]
+    if type(allow_enrollment) is not bool:
+        raise ValueError("Enrollment exposure must be explicitly enabled or disabled.")
     sans = []
     for host in hosts:
         if not isinstance(host, str) or not re.fullmatch(r'[A-Za-z0-9:.\-]{1,253}', host):
@@ -276,7 +279,7 @@ def create_controller_tls(
         f'ProxyPass "/api/controller/" "http://127.0.0.1:{backend_port}/api/controller/" connectiontimeout=3 timeout=10',
         f'ProxyPassReverse "/api/controller/" "http://127.0.0.1:{backend_port}/api/controller/"',
         '<Location "/">', 'Require all denied', '</Location>',
-        '<LocationMatch "^/api/controller/(v1/poll|v2/(poll|ack|traffic))$">',
+        '<LocationMatch "^/api/controller/(v1/poll|v2/(poll|ack|traffic' + ('|enroll' if allow_enrollment else '') + '))$">',
         'Require ip ' + ' '.join(networks), 'LimitRequestBody 8192', '</LocationMatch>',
         '</VirtualHost>', '',
     ])

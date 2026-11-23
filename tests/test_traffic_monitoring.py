@@ -42,6 +42,7 @@ def config(tmp_path):
         "DATA_DIR": tmp_path / "data", "OUTPUT_DIR": tmp_path / "output",
         "ROUTER_RATE_LIMIT_ATTEMPTS": 100, "ROUTER_RATE_LIMIT_WINDOW_SECONDS": 60,
         "ROUTER_REQUEST_MAX_AGE_SECONDS": 120, "ROUTER_CLOCK_SKEW_SECONDS": 30,
+        "TRAFFIC_DISPLAY_UNIT": "Kbps",
     }
 
 

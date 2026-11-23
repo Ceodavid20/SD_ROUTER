@@ -15,6 +15,7 @@ import re
 from typing import Any
 
 from services.json_storage import StorageService
+from services.api_credentials_service import APICredentialError, controller_secret
 from services.router_protocol import (
     KEY_ID, ProtocolError, parse_poll_request, parse_utc_timestamp, sign_request,
 )
@@ -76,7 +77,10 @@ class RouterAuthService:
             or len(key_ids) != len(set(key_ids)) or key_id not in key_ids
         ):
             raise AuthenticationError()
-        secret = os.environ.get(f"{reference}_{key_id}_SECRET", "")
+        try:
+            secret = controller_secret(router, key_id, self.config)
+        except (APICredentialError, OSError, KeyError) as exc:
+            raise AuthenticationError() from exc
         if not 32 <= len(secret) <= 4096:
             raise AuthenticationError()
         try:

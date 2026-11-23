@@ -1,8 +1,22 @@
 {% extends "base.html" %}
 {% from "_components.html" import heading %}
 {% block title %}Optimization{% endblock %}
+{% block head_extra %}<meta http-equiv="refresh" content="15">{% endblock %}
 {% block content %}
   {{ heading('Optimization', 'Compare allocations within confirmed path capacities. Routing changes stay off.') }}
+  <section class="surface panel section-gap" aria-labelledby="live-advice-title">
+    <div class="panel-heading"><h2 id="live-advice-title">Current monitoring recommendations</h2><span class="category-pill">Dry Run</span></div>
+    {% for recommendation in live_preview.recommendations %}
+      <article class="section-gap">
+        <h3>{{ recommendation.router_id }} · {{ recommendation.status | capitalize }}</h3>
+        <p><strong>{{ recommendation.recommended_action }}</strong></p>
+        <p>{{ recommendation.reason }}</p>
+        <p class="form-text">Current TX: {{ recommendation.current_mbps if recommendation.current_mbps is not none else 'Unavailable' }} Mbps. Average TX: {{ recommendation.average_mbps if recommendation.average_mbps is not none else 'Awaiting a complete window' }} Mbps. Capacity: {{ recommendation.capacity_mbps if recommendation.capacity_mbps is not none else 'Unknown' }}. API check: {{ recommendation.api_connection_status }}.</p>
+        <p>Expected benefit (estimate): {{ recommendation.expected_benefit.description }}{% if recommendation.expected_benefit.resulting_utilization_percent is not none %} Estimated resulting utilization: {{ '%.2f' | format(recommendation.expected_benefit.resulting_utilization_percent) }}%.{% endif %}</p>
+        <p>Execution status: <strong>{{ recommendation.execution_status }}</strong>. Routing changes remain off.</p>
+      </article>
+    {% else %}<p>Enroll a carrier router to begin monitoring its conditions.</p>{% endfor %}
+  </section>
   <section class="surface panel" aria-labelledby="allocation-title">
     <div class="panel-heading">
       <div><h2 id="allocation-title">Dry-run traffic allocation</h2><p>Demand stays within its aggregation router's path group. Standby paths receive no recommended allocation.</p></div>

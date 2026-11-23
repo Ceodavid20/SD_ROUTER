@@ -1,6 +1,6 @@
 """Browser routes. All persistent state is read through JSON storage."""
 
-from flask import Blueprint, current_app, render_template
+from flask import Blueprint, abort, current_app, render_template, request
 
 from services.status_service import read_status
 from services.router_service import RouterService
@@ -29,6 +29,8 @@ def dashboard() -> str:
     return _render(
         "dashboard",
         activity_limit=5,
+        routers=routers,
+        live_preview=WorkflowService(storage, current_app.config).preview(),
         router_counts={
             "registered": len(routers),
             "connected": connected,
@@ -56,11 +58,19 @@ def router_connection() -> str:
 @pages.get("/monitoring")
 def monitoring() -> str:
     storage = current_app.extensions["json_storage"]
+    routers = RouterService(storage, current_app.config).list_routers()
+    selected_router = request.args.get("router_id", "")
+    if selected_router and not any(r["router_id"] == selected_router for r in routers):
+        abort(404)
+    unit = request.args.get("unit", current_app.config.get("TRAFFIC_DISPLAY_UNIT", "Mbps"))
+    if unit not in ("Mbps", "Kbps"):
+        abort(400)
     # A fixed projection prevents unknown legacy history fields reaching HTML.
     readings = [{key: row[key] for key in ("timestamp", "router_id", "interface", "tx_mbps")}
-                for row in reversed(storage.list_traffic(limit=100))]
+                for row in reversed(storage.list_traffic(limit=100, router_id=selected_router or None))]
     return _render(
-        "monitoring", routers=RouterService(storage, current_app.config).list_routers(),
+        "monitoring", routers=routers, selected_router=selected_router, unit=unit,
+        live_preview=WorkflowService(storage, current_app.config).preview(),
         readings=readings, connection=connection_details(current_app.config),
     )
 
@@ -84,9 +94,8 @@ def mathematics() -> str:
 
 @pages.get("/optimization")
 def optimization() -> str:
-    return _render("optimization", calculation=WorkflowService(
-        current_app.extensions["json_storage"], current_app.config,
-    ).read_latest())
+    service = WorkflowService(current_app.extensions["json_storage"], current_app.config)
+    return _render("optimization", calculation=service.read_latest(), live_preview=service.preview())
 
 
 @pages.get("/json-output")

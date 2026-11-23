@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
+from ipaddress import ip_address
 from typing import Any
 from uuid import uuid4
 
@@ -19,11 +20,15 @@ from services.traffic_state import TRAFFIC_DOCUMENT
 _AUTHORIZATION_FIELDS = (
     "controller_auth_enabled", "controller_auth_ref", "controller_auth_key_ids",
     "monitoring_enabled", "interface_name", "monitoring_generation",
+    "traffic_source_ip",
 )
 
 
-def stale_after_seconds(settings: Mapping[str, Any]) -> int:
-    return max(180, 3 * settings["monitoring_interval_seconds"])
+def stale_after_seconds(settings: Mapping[str, Any], router: Mapping[str, Any] | None = None) -> int:
+    interval = router.get("monitoring_interval_seconds") if router else None
+    if type(interval) is not int or not 1 <= interval <= 86400:
+        interval = settings["monitoring_interval_seconds"]
+    return max(180, 3 * interval)
 
 
 def read_traffic_status(
@@ -41,12 +46,12 @@ def project_traffic_status(state, settings, config, routers, *, now=None):
     now = now or datetime.now(UTC)
     if now.utcoffset() is None:
         raise ValueError("Traffic status requires a timezone-aware clock.")
-    stale_after = stale_after_seconds(settings)
     skew = config.get("ROUTER_CLOCK_SKEW_SECONDS", 30)
     if type(skew) is not int or not 0 <= skew <= 86400:
         skew = 30
     summaries = {}
     for router in routers:
+        stale_after = stale_after_seconds(settings, router)
         interface = router.get("interface_name")
         try:
             validate_interface(interface)
@@ -74,10 +79,14 @@ def project_traffic_status(state, settings, config, routers, *, now=None):
             status = record["sample_state"]
         summaries[router["router_id"]] = {
             "enabled": enabled, "state": status, "interface": interface,
+            "connection_state": "connected" if status in ("baseline", "measured", "counter_reset", "gap_reset") else status,
+            "data_source": "routeros_counter" if same_series else "awaiting_router_data",
             "last_sample_at": utc_text(datetime.fromtimestamp(record["timestamp"], UTC)) if same_series else None,
             "last_received_at": record["last_received_at"] if same_series else None,
             "tx_mbps": record["tx_mbps"] if status == "measured" else None,
             "stale_after_seconds": stale_after,
+            "connection_state": "connected" if status in ("baseline", "measured", "counter_reset", "gap_reset") else status,
+            "measurement_origin": "routeros_tx_counter" if same_series else "unavailable",
         }
     return summaries
 
@@ -122,6 +131,19 @@ class TrafficService:
                                 409, "authorization_changed")
             if current.get("monitoring_enabled") is not True:
                 raise PollError("Traffic monitoring is disabled for this router.", 403, "monitoring_disabled")
+            # Explicit source binding prevents a cloned router retaining an
+            # old HMAC identity from replacing that router's TX baseline.
+            # Existing deployments without a binding keep their contract.
+            if "traffic_source_ip" in current:
+                try:
+                    permitted = ip_address(current["traffic_source_ip"])
+                    actual = ip_address(source)
+                except (ValueError, TypeError) as exc:
+                    raise PollError("Router traffic source configuration is invalid.",
+                                    403, "monitoring_configuration") from exc
+                if actual != permitted:
+                    raise PollError("Traffic source is not authorized for this router.",
+                                    403, "source_mismatch")
             interface = current.get("interface_name")
             generation = current.get("monitoring_generation")
             try:
@@ -148,7 +170,7 @@ class TrafficService:
                     raise PollError("Traffic timestamps must increase.", 409, "out_of_order_sample")
                 if payload["tx_octets"] < previous["tx_octets"]:
                     sample_state = "counter_reset"
-                elif interval > stale_after_seconds(settings):
+                elif interval > stale_after_seconds(settings, current):
                     sample_state = "gap_reset"
                 else:
                     rate = (payload["tx_octets"] - previous["tx_octets"]) * 8 / interval / 1_000_000

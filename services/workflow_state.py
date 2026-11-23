@@ -93,16 +93,22 @@ def validate_workflow_result(row):
                 )):
                     raise ValidationError("An unavailable recommendation cannot contain allocations.")
         if row["status"] == "ready":
+            financial = row["current_cost_per_hour"] is not None
             if (not row["groups"] or not row["allocations"] or row["issues"]
-                    or row["current_cost_per_hour"] is None or row["recommended_cost_per_hour"] is None
-                    or not isinstance(row["currency"], str) or not re.fullmatch(r"[A-Z]{3}", row["currency"])):
+                    or (row["objective"] == "minimize_cost" and not financial)
+                    or (financial and (row["recommended_cost_per_hour"] is None
+                        or not isinstance(row["currency"], str) or not re.fullmatch(r"[A-Z]{3}", row["currency"])))
+                    or (not financial and (row["recommended_cost_per_hour"] is not None
+                        or row["estimated_savings_per_hour"] is not None))):
                 raise ValidationError("Incomplete ready recommendation.")
             for allocation in row["allocations"]:
                 if (allocation["current_mbps"] is None or allocation["recommended_mbps"] is None
                         or allocation["allowed_mbps"] is None or allocation["capacity_mbps"] is None
                         or not 0 <= allocation["recommended_mbps"] <= allocation["allowed_mbps"] + 1e-7
                         or allocation["allowed_mbps"] > allocation["capacity_mbps"] + 1e-7
-                        or allocation["currency"] != row["currency"]):
+                        or (financial and allocation["currency"] != row["currency"])
+                        or (not financial and (allocation["current_cost_per_hour"] is not None
+                            or allocation["recommended_cost_per_hour"] is not None))):
                     raise ValidationError("Recommendation violates a path constraint.")
                 if allocation["route_role"] == "standby" and allocation["recommended_mbps"] != 0:
                     raise ValidationError("A standby path cannot receive an allocation.")

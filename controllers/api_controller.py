@@ -2,7 +2,7 @@
 
 import hmac
 
-from flask import Blueprint, Response, current_app, jsonify, request
+from flask import Blueprint, Response, abort, current_app, jsonify, request
 
 from services.json_storage import StorageError
 from services.router_service import RouterService
@@ -42,6 +42,23 @@ def current_workflow() -> Response:
     except StorageError:
         current_app.logger.error("Unable to read calculation storage.")
         return jsonify(error="Calculation storage is unavailable."), 503
+
+
+@api.get("/monitoring")
+def live_monitoring() -> Response:
+    storage = current_app.extensions["json_storage"]
+    routers = RouterService(storage, current_app.config).list_routers()
+    selected = request.args.get("router_id") or None
+    if selected and not any(r["router_id"] == selected for r in routers):
+        abort(404)
+    preview = WorkflowService(storage, current_app.config).preview()
+    history = [{k:row[k] for k in ("router_id", "interface", "timestamp", "tx_mbps")}
+               for row in storage.list_traffic(limit=100, router_id=selected)]
+    return jsonify(mode="dry_run", action="none", routing_changes_enabled=False,
+        routers=[r for r in routers if not selected or r["router_id"] == selected],
+        analysis=[r for r in preview["analysis"] if not selected or r["router_id"] == selected],
+        recommendations=[r for r in preview["recommendations"] if not selected or r["router_id"] == selected],
+        history=history)
 
 
 @router_config.get("/router-config/<router_id>")

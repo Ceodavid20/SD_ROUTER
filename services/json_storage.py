@@ -12,6 +12,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import UTC, datetime
 import json
+import hashlib
 import math
 import os
 from pathlib import Path
@@ -81,6 +82,7 @@ class StorageService:
 
     DEFAULTS = {
         "routers.json": [],
+        "router_enrollment.json": {"schema_version": 1, "grants": {}, "rate_limits": {}, "pending": None},
         "routing_paths.json": {},
         "router_communication.json": {
             "schema_version": 1, "routers": {}, "seen_requests": [], "rate_limits": {},
@@ -156,6 +158,7 @@ class StorageService:
 
                         fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
                     try:
+                        self._recover_enrollment_unlocked()
                         yield
                     finally:
                         if os.name == "nt":
@@ -416,15 +419,31 @@ class StorageService:
             self._flush_pending_traffic_unlocked(state)
             return deepcopy(state)
 
-    def list_traffic(self, limit: int = 100) -> list[dict[str, Any]]:
+    def list_traffic(self, limit: int = 100, *, router_id: str | None = None) -> list[dict[str, Any]]:
         """Read recent segments with bounded memory, returning append order."""
         self._limit(limit)
+        if router_id is not None:
+            _text(router_id, "Router ID", 128)
         with self._locked():
             manifest = self._read_unlocked("traffic_history.json")
             result: list[dict[str, Any]] = []
             for entry in reversed(manifest["segments"]):
                 with self._segment_path(entry["file"]).open("rb") as stream:
-                    lines = deque(stream, maxlen=limit - len(result))
+                    if router_id is None:
+                        lines = deque(stream, maxlen=limit - len(result))
+                    else:
+                        lines = deque(maxlen=limit - len(result))
+                        for line in stream:
+                            if not line.endswith(b"\n"):
+                                raise StorageError("Traffic segment has an incomplete final record.")
+                            try:
+                                item = json.loads(line, parse_constant=self._invalid_constant,
+                                                  object_pairs_hook=self._unique_object)
+                            except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+                                raise StorageError("Traffic segment contains invalid JSON.") from exc
+                            self._validate_traffic(item)
+                            if item["router_id"] == router_id:
+                                lines.append(line)
                 values = []
                 for line in lines:
                     if not line.endswith(b"\n"):
@@ -458,6 +477,58 @@ class StorageService:
         """Read consistent inputs/results without collecting or writing anything."""
         with self._locked():
             return self._workflow_inputs_unlocked(), self._read_unlocked("optimization_results.json")
+
+    def read_monitoring_snapshot(self) -> tuple[dict[str, Any], dict[str, list], list[dict[str, Any]]]:
+        """Read current per-router windows without collecting or publishing data."""
+        with self._locked():
+            inputs = self._workflow_inputs_unlocked()
+            windows = self._traffic_windows_unlocked(
+                inputs["router_traffic_v2.json"], inputs["automation_settings.json"]["averaging_window"] + 1,
+            )
+            return inputs, windows, self._read_unlocked("optimization_results.json")
+
+    @staticmethod
+    def _registry_digest(row):
+        return hashlib.sha256(_encode(row)).hexdigest() if row is not None else None
+
+    def _recover_enrollment_unlocked(self) -> None:
+        """Finish a committed one-use claim before any other storage operation."""
+        name = "router_enrollment.json"
+        if not self._path(name).exists():
+            return
+        state = self._read_unlocked(name)
+        pending = state["pending"]
+        if pending is None:
+            return
+        routers = self._read_unlocked("routers.json")
+        target = pending["router"]
+        current = next((r for r in routers if r["router_id"] == target["router_id"]), None)
+        if current != target:
+            if self._registry_digest(current) != pending["previous_router_digest"]:
+                raise StorageError("Router registry conflicts with a committed enrollment; review the private records.")
+            routers = [r for r in routers if r["router_id"] != target["router_id"]] + [target]
+            self._write_unlocked("routers.json", routers)
+        state["pending"] = None
+        self._write_unlocked(name, state)
+
+    def consume_enrollment(self, prepare: Callable) -> Any:
+        """Serialize grant validation, secret binding and recoverable registration.
+
+        The callback writes credentials privately before returning the new
+        registry record. The journal stores only its references. A committed
+        grant remains consumed even if the registry write is interrupted.
+        """
+        with self._locked():
+            state = self._read_unlocked("router_enrollment.json")
+            routers = self._read_unlocked("routers.json")
+            grant_id, router, response = prepare(state, routers)
+            current = next((r for r in routers if r["router_id"] == router["router_id"]), None)
+            self._validate("routers.json", [router])
+            state["pending"] = {"grant_id": grant_id, "router": router,
+                                "previous_router_digest": self._registry_digest(current)}
+            self._write_unlocked("router_enrollment.json", state)
+            self._recover_enrollment_unlocked()
+            return response
 
     def _traffic_windows_unlocked(self, state: dict[str, Any], count: int) -> dict[str, list]:
         """Find the latest readings in each current counter series.
@@ -640,6 +711,10 @@ class StorageService:
             from services.routeros_poll_service import validate_routeros_state
 
             validate_routeros_state(value)
+        elif name == "router_enrollment.json":
+            from services.enrollment_state import validate_enrollment_state
+
+            validate_enrollment_state(value)
         elif name == "router_traffic_v2.json":
             from services.traffic_state import validate_traffic_state
 

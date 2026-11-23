@@ -24,9 +24,15 @@ def api_credentials(router, config):
         return "", ""
     if router.get("api_credentials_source") != "private_env":
         return os.environ.get(reference + "_USERNAME", ""), os.environ.get(reference + "_PASSWORD", "")
+    values = private_environment(config["API_CREDENTIALS_ENV_FILE"])
+    return values.get(reference + "_USERNAME") or "", values.get(reference + "_PASSWORD") or ""
+
+
+def private_environment(filename):
+    """Read an owner-only credential snapshot without exposing its contents."""
     # Managed references deliberately read the atomically replaced private
     # file on demand, so configuring credentials needs no server restart.
-    path = Path(config["API_CREDENTIALS_ENV_FILE"])
+    path = Path(filename)
     try:
         if path.is_symlink():
             raise APICredentialError("The private API credentials file must not be a symbolic link.")
@@ -40,7 +46,14 @@ def api_credentials(router, config):
             values = dotenv_values(stream=StringIO(stream.read()), interpolate=False)
     except (OSError, UnicodeError) as exc:
         raise APICredentialError("Private API credentials are unavailable. Run the local credential setup command.") from exc
-    return values.get(reference + "_USERNAME") or "", values.get(reference + "_PASSWORD") or ""
+    return values
+
+
+def controller_secret(router, key_id, config):
+    name = f'{router["controller_auth_ref"]}_{key_id}_SECRET'
+    if router.get("controller_credentials_source") == "private_env":
+        return private_environment(config["CONTROLLER_CREDENTIALS_ENV_FILE"]).get(name) or ""
+    return os.environ.get(name, "")
 
 
 def registered_api_target(storage, router_id):

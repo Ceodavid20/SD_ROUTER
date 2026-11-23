@@ -89,6 +89,20 @@ def change_router(storage, router_id, **changes):
         {**row, **changes} if row["router_id"] == router_id else row for row in rows])
 
 
+def test_utilization_balancing_does_not_require_invented_carrier_prices(setup):
+    populate(setup)
+    app, storage, workflow = setup
+    for router_id in ("SIM-MTN", "SIM-GLO"):
+        change_router(storage, router_id, cost_per_gb=None, currency="")
+    workflow.save_settings({"optimization_objective":"balance_utilization", "averaging_window":"3", "monitoring_interval_seconds":"10"})
+    result = workflow.calculate(now=NOW)
+    assert result["status"] == "ready"
+    assert result["current_cost_per_hour"] is None and result["recommended_cost_per_hour"] is None
+    assert result["estimated_savings_per_hour"] is None
+    assert sum(row["recommended_mbps"] for row in result["allocations"]) == pytest.approx(100)
+    assert result["action"] == "none" and result["routing_changes_enabled"] is False
+
+
 def test_analysis_computes_full_window_previous_average_change_share_and_cost(setup):
     populate(setup)
     result = setup[2].calculate(now=NOW)

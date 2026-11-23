@@ -12,6 +12,7 @@ from werkzeug.exceptions import HTTPException
 from config import load_config
 from controllers.router_poll_controller import router_poll
 from controllers.traffic_controller import router_traffic
+from controllers.enrollment_controller import router_enrollment
 from services.json_storage import StorageError, StorageService
 from services.router_poll_service import PollError
 from services.router_protocol import MAX_REQUEST_BYTES, ProtocolError
@@ -51,6 +52,7 @@ def create_device_app(test_config: Mapping[str, Any] | None = None) -> Flask:
     app.extensions["json_storage"] = storage
     app.register_blueprint(router_poll)
     app.register_blueprint(router_traffic)
+    app.register_blueprint(router_enrollment)
 
     @app.before_request
     def require_protected_transport():

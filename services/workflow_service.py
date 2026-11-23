@@ -21,6 +21,8 @@ _ROUTER_INPUTS = (
     "router_id", "name", "interface_name", "monitoring_enabled", "monitoring_generation",
     "capacity_mbps", "cost_per_gb", "currency", "controller_auth_enabled",
     "controller_auth_ref", "controller_auth_key_ids",
+    "connection_status", "traffic_source_ip", "monitoring_interval_seconds",
+    "traffic_source_ip", "connection_status",
 )
 
 
@@ -123,8 +125,8 @@ def allocate_parallel_paths(paths: list[dict], objective: str) -> list[float] | 
     """
     if objective not in OBJECTIVES:
         raise WorkflowError("Select a dry-run optimization objective.")
-    if any(not _numeric(path.get(key)) for path in paths
-           for key in ("current_mbps", "allowed_mbps", "cost_per_gb")):
+    required = ("current_mbps", "allowed_mbps", "cost_per_gb") if objective == "minimize_cost" else ("current_mbps", "allowed_mbps")
+    if any(not _numeric(path.get(key)) for path in paths for key in required):
         raise WorkflowError("Allocation inputs must be finite and nonnegative.")
     demand = math.fsum(path["current_mbps"] for path in paths)
     available = math.fsum(path["allowed_mbps"] for path in paths)
@@ -196,10 +198,12 @@ def evaluate(inputs, windows, results, config, now):
         if path["route_role"] == "not_set":
             issue("role_required", f"Path {path_id}: select its primary, alternate or standby role.")
         price, currency = carrier.get("cost_per_gb"), _currency(carrier.get("currency"))
-        if not _numeric(price) or currency is None:
+        if objective == "minimize_cost" and (not _numeric(price) or currency is None):
             issue("price_required", f"Path {path_id}: enter the carrier router's confirmed price per decimal GB and currency.")
-        else:
+        if _numeric(price) and currency is not None:
             currencies.add(currency)
+        if carrier.get("connection_status") in ("blocked", "disconnected"):
+            issue("connection_unavailable", f"Path {path_id}: the carrier router's secure API connection needs verification.")
         capacity = path["path_capacity_bps"] / 1_000_000
         for endpoint in (monitor, carrier):
             configured_capacity = endpoint.get("capacity_mbps")
@@ -223,7 +227,7 @@ def evaluate(inputs, windows, results, config, now):
             "cost_per_gb": price if _numeric(price) else None, "currency": currency,
             "current_cost_per_hour": row["cost_per_hour"], "recommended_cost_per_hour": None,
         })
-    if len(currencies) > 1:
+    if objective == "minimize_cost" and len(currencies) > 1:
         issue("currency_mismatch", "Use one confirmed currency for all compared paths; currency conversion is not performed.")
     status = "blocked" if issues else "ready"
     grouped = defaultdict(list)
@@ -241,7 +245,7 @@ def evaluate(inputs, windows, results, config, now):
                 if targets is not None:
                     row["recommended_mbps"] = targets[index]
                     row["change_mbps"] = targets[index] - row["current_mbps"]
-                    row["recommended_cost_per_hour"] = _cost(targets[index], row["cost_per_gb"])
+                    row["recommended_cost_per_hour"] = _cost(targets[index], row["cost_per_gb"]) if row["cost_per_gb"] is not None and row["currency"] else None
             if targets is None:
                 status = "infeasible"
                 issue("insufficient_capacity", f"Aggregation router {aggregation_id}: demand exceeds the permitted capacity of eligible paths.")
@@ -263,7 +267,10 @@ def evaluate(inputs, windows, results, config, now):
         allocations and len(allocations) == len(active) and len(currencies) == 1
         and all(row["current_cost_per_hour"] is not None for row in allocations)
     ) else None
-    recommended_cost = math.fsum(row["recommended_cost_per_hour"] for row in allocations) if status == "ready" else None
+    if current_cost is None:
+        for row in allocations:
+            row["current_cost_per_hour"] = row["recommended_cost_per_hour"] = None
+    recommended_cost = math.fsum(row["recommended_cost_per_hour"] for row in allocations) if status == "ready" and current_cost is not None else None
     source_id = source_fingerprint(inputs)
     evaluation_id = _digest({"source": source_id, "status": status,
                              "analysis_states": [row["state"] for row in analysis], "hold_until": hold_until})
@@ -291,6 +298,60 @@ class WorkflowService:
             lambda inputs, windows, results: evaluate(inputs, windows, results, self.config, current),
         )
 
+    def preview(self, *, now: datetime | None = None) -> dict:
+        """Current analysis and advisory conditions; no device I/O or JSON writes."""
+        current = now or datetime.now(UTC)
+        if current.utcoffset() is None:
+            raise WorkflowError("A timezone-aware calculation time is required.")
+        inputs, windows, results = self.storage.read_monitoring_snapshot()
+        preview = evaluate(inputs, windows, results, self.config, current)
+        inventory = {row["router_id"]: row for row in inputs["routers.json"]}
+        recommendations = []
+        for row in preview["analysis"]:
+            router = inventory[row["router_id"]]
+            if router.get("router_role") != "carrier" and not router.get("carrier"):
+                continue
+            allocation = next((p for p in preview["allocations"] if p["monitor_router_id"] == row["router_id"]), None)
+            reasons = []
+            if row["capacity_mbps"] is None:
+                reasons.append("WAN capacity is unknown; configure a confirmed capacity before estimating utilization.")
+            alternatives = [p for p in preview["allocations"] if allocation
+                            and p["aggregation_router_id"] == allocation["aggregation_router_id"]
+                            and p["carrier_router_id"] != allocation["carrier_router_id"]]
+            if not alternatives:
+                reasons.append("Traffic-switching eligibility between these links has not been confirmed in Routing paths.")
+            if row["state"] != "ready":
+                reasons.append(f"A fresh averaging window is required ({row['sample_count']}/{row['window_size']} readings; {row['state'].replace('_', ' ')}).")
+            ready = preview["status"] == "ready" and not reasons and allocation is not None
+            change = allocation["change_mbps"] if ready else None
+            if change is None:
+                action = "Continue monitoring; no traffic shift proposed."
+                reasons.extend(item["message"] for item in preview["issues"] if item["message"] not in reasons)
+            elif abs(change) < 1e-9:
+                action = "Maintain the current eligible outbound allocation."
+            elif change > 0:
+                action = "Consider increasing eligible outbound allocation within the confirmed path group."
+            else:
+                action = "Consider shifting eligible outbound traffic to another confirmed path."
+            recommendations.append({
+                "router_id": row["router_id"], "interface": row["interface"],
+                "status": "ready" if ready else "blocked", "mode": "dry_run",
+                "execution_status": "Dry Run", "action": "none",
+                "recommended_action": action,
+                "reason": " ".join(reasons) if reasons else "The configured objective was evaluated against fresh TX measurements and confirmed path limits.",
+                "current_mbps": row["current_mbps"], "average_mbps": row["average_mbps"],
+                "capacity_mbps": row["capacity_mbps"], "utilization_percent": row["utilization_percent"],
+                "api_connection_status": router.get("connection_status", "untested"),
+                "monitoring_state": row["state"], "change_mbps": change,
+                "expected_benefit": {
+                    "is_estimate": True,
+                    "description": "Estimated capacity allocation only; no routing has been executed." if ready else "Unavailable until capacity, measurements and switching eligibility are confirmed.",
+                    "resulting_utilization_percent": allocation["recommended_mbps"] / row["capacity_mbps"] * 100 if ready else None,
+                },
+            })
+        preview["recommendations"] = recommendations
+        return preview
+
     def read_latest(self, *, now: datetime | None = None) -> dict | None:
         inputs, results = self.storage.read_workflow_snapshot()
         latest = next((row for row in reversed(results) if row.get("workflow_version") == 1), None)
@@ -300,15 +361,17 @@ class WorkflowService:
         current = now or datetime.now(UTC)
         if current.utcoffset() is None:
             raise WorkflowError("A timezone-aware calculation time is required.")
-        stale_after = stale_after_seconds(inputs["automation_settings.json"])
-        times = [parse_utc_timestamp(row["sampled_at"]) for row in latest["analysis"]
+        inventory = {row["router_id"]: row for row in inputs["routers.json"]}
+        times = [(row["router_id"], parse_utc_timestamp(row["sampled_at"])) for row in latest["analysis"]
                  if row["router_id"] in {path["monitor_router_id"] for path in latest["allocations"]}
                  and row["sampled_at"]]
         skew = self.config.get("ROUTER_CLOCK_SKEW_SECONDS", 30)
         if type(skew) is not int or not 0 <= skew <= 86400:
             skew = 30
         latest["is_current"] = (latest["source_fingerprint"] == source_fingerprint(inputs)
-                                and bool(times) and all(-skew <= (current - at).total_seconds() <= stale_after for at in times))
+                                and bool(times) and all(-skew <= (current - at).total_seconds()
+                                    <= stale_after_seconds(inputs["automation_settings.json"], inventory.get(router_id))
+                                    for router_id, at in times))
         return latest
 
     def save_settings(self, form: Mapping[str, Any]) -> None:

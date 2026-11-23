@@ -11,6 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 from services.json_storage import StorageService, ValidationError
+from services.api_credentials_service import APICredentialError, controller_secret
 from services.router_poll_service import PollError, RouterPollService
 from services.router_protocol import KEY_ID, ROUTER_ID, ProtocolError, parse_utc_timestamp
 from services.routeros_protocol import (
@@ -140,7 +141,10 @@ class RouterOSPollService:
             or len(set(key_ids)) != len(key_ids) or key_id not in key_ids
         ):
             self._authentication_failed()
-        secret = os.environ.get(f"{reference}_{key_id}_SECRET", "")
+        try:
+            secret = controller_secret(router, key_id, self.config)
+        except (APICredentialError, OSError, KeyError):
+            self._authentication_failed()
         if not 32 <= len(secret) <= 4096:
             self._authentication_failed()
         try:
