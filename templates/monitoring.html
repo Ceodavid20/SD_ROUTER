@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% block title %}Traffic monitoring{% endblock %}
+{% block content %}
+  {{ heading('Traffic monitoring', 'Outbound bandwidth by router and interface.') }}
+  <section class="surface panel" aria-labelledby="history-title">
+    <div class="panel-heading">
+      <h2 id="history-title">Outbound bandwidth history (Mbps)</h2>
+      <span class="category-pill">{{ status.monitoring | replace('_', ' ') | capitalize }}</span>
+    </div>
+    <div class="chart-empty chart-empty--tall">
+      <span class="empty-mark nav-icon--monitoring" aria-hidden="true"></span>
+      <strong>No readings yet</strong>
+      <p>Traffic collection has not started.</p>
+    </div>
+  </section>
+  <section class="surface panel section-gap" aria-labelledby="measurements-title">
+    <div class="panel-heading"><h2 id="measurements-title">Recent measurements</h2></div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead><tr><th scope="col">Time (UTC)</th><th scope="col">Router / interface</th><th scope="col">Outbound (Mbps)</th><th scope="col">Moving average (Mbps)</th></tr></thead>
+        <tbody><tr><td class="table-empty" colspan="4">No readings recorded.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "_components.html" import activity_table %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <div class="page-heading page-heading--with-action">
+    <div>
+      <h1>Dashboard</h1>
+      <p>Routers, outbound traffic and service status.</p>
+    </div>
+    <a class="btn btn-primary controller-button" href="{{ url_for('pages.router_connection') }}">Add router</a>
+  </div>
+
+  <section class="overview-banner" aria-labelledby="overview-title">
+    <div>
+      <h2 id="overview-title">Network overview</h2>
+      {% if router_counts.authenticated %}
+        <p>{{ router_counts.authenticated }} of {{ router_counts.registered }} routers have recent authenticated controller check-ins.</p>
+      {% elif status.controller_polling.awaiting or status.controller_polling.stale %}
+        <p>Waiting for current authenticated router check-ins.</p>
+      {% else %}
+        <p>Set up router communication to begin authenticated check-ins.</p>
+      {% endif %}
+    </div>
+    <div class="overview-status">
+      <span>Routers</span>
+      <strong>{{ router_counts.registered }}</strong>
+    </div>
+  </section>
+
+  <div class="row g-3 metric-row" aria-label="Network overview">
+    <div class="col-6 col-xl-3">
+      <div class="surface metric-card">
+        <div class="metric-label">Routers</div>
+        <div class="metric-value">{{ router_counts.registered }}</div>
+        <p>Saved in this controller</p>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="surface metric-card">
+        <div class="metric-label">Controller polling</div>
+        <div class="metric-value">{{ router_counts.authenticated }}</div>
+        <p>Recent authenticated check-ins</p>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="surface metric-card">
+        <div class="metric-label">No recent check-in</div>
+        <div class="metric-value">{{ router_counts.no_recent_checkin }}</div>
+        <p>Awaiting, stale or not enabled</p>
+      </div>
+    </div>
+    <div class="col-6 col-xl-3">
+      <div class="surface metric-card">
+        <div class="metric-label">Outbound bandwidth</div>
+        <div class="metric-value"><span aria-label="Unavailable">—</span> <small>Mbps</small></div>
+        <p>Collection not started</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 dashboard-panels">
+    <div class="col-lg-7">
+      <section class="surface panel h-100" aria-labelledby="traffic-title">
+        <div class="panel-heading">
+          <div>
+          <h2 id="traffic-title">Outbound traffic</h2>
+          <p>Network total</p>
+          </div>
+          <a class="panel-link" href="{{ url_for('pages.monitoring') }}">Traffic monitoring <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="chart-empty">
+          <span class="empty-mark nav-icon--monitoring" aria-hidden="true"></span>
+          <strong>No traffic readings</strong>
+          <p>Readings will appear here after traffic collection is set up.</p>
+        </div>
+      </section>
+    </div>
+    <div class="col-lg-5">
+      <section class="surface panel h-100" aria-labelledby="services-title">
+        <div class="panel-heading"><h2 id="services-title">Service status</h2></div>
+        <dl class="status-list">
+          <div><dt>Optional API diagnostics</dt><dd>{{ router_counts.connected }} / {{ router_counts.registered }} passed</dd></div>
+          <div><dt>Traffic collection</dt><dd>{{ status.monitoring | replace('_', ' ') | capitalize }}</dd></div>
+          <div><dt>Optimization</dt><dd>{{ status.optimization | replace('_', ' ') | capitalize }}</dd></div>
+          <div><dt>Automation</dt><dd>{{ status.automation | capitalize }}</dd></div>
+          <div><dt>Last result</dt><dd>None</dd></div>
+        </dl>
+      </section>
+    </div>
+  </div>
+
+  <section class="surface panel activity-panel" aria-labelledby="activity-title">
+    <div class="panel-heading">
+      <h2 id="activity-title">Recent activity</h2>
+      <a class="panel-link" href="{{ url_for('pages.logs') }}">View all <span aria-hidden="true">↗</span></a>
+    </div>
+    {% if activity %}
+      {{ activity_table(activity) }}
+    {% else %}
+      <p class="mb-0 text-secondary">No recent activity.</p>
+    {% endif %}
+  </section>
+{% endblock %}

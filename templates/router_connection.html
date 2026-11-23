@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+
+{% block title %}Router connection{% endblock %}
+
+{% block content %}
+  {{ heading('Router connection', 'The router contacts this controller to authenticate and request its configuration.') }}
+
+  <section class="surface panel" aria-labelledby="endpoint-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="endpoint-title">Controller endpoint</h2>
+        <p>Use this address in the router polling client.</p>
+      </div>
+      <span class="category-pill">{{ 'Local test endpoint' if connection.scope == 'local' else ('Configured endpoint' if connection.scope == 'configured' else 'Not configured') }}</span>
+    </div>
+
+    {% if connection.endpoint_url %}
+      <label class="form-label" for="controller-polling-endpoint">Controller polling endpoint</label>
+      <input class="form-control" id="controller-polling-endpoint" type="url" value="{{ connection.endpoint_url }}" readonly aria-describedby="endpoint-help" spellcheck="false">
+      {% if connection.scope == 'local' %}
+        <p class="form-text" id="endpoint-help">This loopback address works only on the controller computer. A physical router cannot reach it. Network access and verified HTTPS still need to be configured.</p>
+      {% else %}
+        <p class="form-text" id="endpoint-help">This is the configured address. Its network reachability and HTTPS setup have not been verified by this page.</p>
+      {% endif %}
+    {% else %}
+      <p class="mb-0">Set <code>CONTROLLER_BASE_URL</code> to the approved controller origin before configuring a device.</p>
+    {% endif %}
+
+    {% if connection.configuration_error %}
+      <p class="text-danger section-gap" role="status">{{ connection.configuration_error }}</p>
+    {% endif %}
+
+    <dl class="status-list section-gap">
+      <div><dt>Request method</dt><dd><code>{{ connection.method }}</code></dd></div>
+      <div><dt>Request path</dt><dd><code>{{ connection.poll_path }}</code></dd></div>
+      <div><dt>Receipt path</dt><dd><code>{{ connection.ack_path }}</code></dd></div>
+      <div><dt>Protocol</dt><dd>RouterOS {{ connection.protocol_version }}</dd></div>
+      <div><dt>Authentication</dt><dd>Per-router {{ connection.authentication }} signature over verified HTTPS</dd></div>
+      <div><dt>Polling interval</dt><dd>{{ connection.poll_interval }} seconds</dd></div>
+      <div><dt>Current response</dt><dd>Dry run — no routing action</dd></div>
+    </dl>
+    <p class="form-text mb-0">The endpoint accepts authenticated POST requests. Opening it in a browser does not register or connect a router.</p>
+  </section>
+
+  <section class="surface panel section-gap" aria-labelledby="connection-steps-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="connection-steps-title">Connect a router</h2>
+        <p>Manual router registration is disabled in the website.</p>
+      </div>
+    </div>
+    <ol class="mb-0">
+      <li class="mb-3">Configure an approved controller address that the router can reach, with verified HTTPS for network use.</li>
+      <li class="mb-3">Provision the router identity and its own authentication key outside the browser. The controller accepts only authorized registered identities.</li>
+      <li class="mb-3">Transfer the private RouterOS client and public CA certificate through the approved management channel. Verify the certificate fingerprint and the router clock, then run the client once.</li>
+      <li>Check the router list for an authenticated check-in and a recorded response receipt. A receipt confirms communication; the current client issues no routing changes.</li>
+    </ol>
+  </section>
+
+  <a class="btn btn-outline-secondary section-gap" href="{{ url_for('pages.routers') }}">Back to routers</a>
+{% endblock %}

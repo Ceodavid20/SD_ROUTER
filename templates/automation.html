@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% block title %}Automation{% endblock %}
+{% block content %}
+  {{ heading('Automation', 'Routing changes and operating schedule.') }}
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <section class="surface panel h-100" aria-labelledby="automation-title">
+        <div class="panel-heading">
+          <h2 id="automation-title">Status</h2>
+          <span class="category-pill">{{ status.automation | capitalize }}</span>
+        </div>
+        <dl class="status-list">
+          <div><dt>Routing changes</dt><dd>{{ 'Enabled' if status.routing_changes_enabled else 'Disabled' }}</dd></div>
+          <div><dt>Current routes changed by controller</dt><dd>No</dd></div>
+        </dl>
+      </section>
+    </div>
+    <div class="col-lg-6">
+      <section class="surface panel h-100" aria-labelledby="schedule-title">
+        <div class="panel-heading">
+          <h2 id="schedule-title">Schedule</h2>
+        </div>
+        <dl class="status-list">
+          <div><dt>Start</dt><dd>Not set</dd></div>
+          <div><dt>Stop</dt><dd>Not set</dd></div>
+          <div><dt>Next change</dt><dd>None</dd></div>
+        </dl>
+      </section>
+    </div>
+  </div>
+{% endblock %}

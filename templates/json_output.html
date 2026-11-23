@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% block title %}Router output{% endblock %}
+{% block content %}
+  {{ heading('Router output', 'Configuration commands prepared for routers.') }}
+  <section class="surface panel" aria-labelledby="commands-title">
+    <div class="panel-heading">
+      <h2 id="commands-title">Commands</h2>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead><tr><th scope="col">Router</th><th scope="col">Command ID</th><th scope="col">Generated (UTC)</th><th scope="col">Status</th></tr></thead>
+        <tbody><tr><td class="table-empty" colspan="4">No commands available.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="surface panel section-gap" aria-labelledby="endpoint-title">
+    <div class="panel-heading"><h2 id="endpoint-title">Router endpoint</h2></div>
+    <p class="text-secondary mb-0"><code>GET /router-config/&lt;router_id&gt;</code> returns a command when one is available. Routing changes are off.</p>
+  </section>
+{% endblock %}

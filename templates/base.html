@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %} | SDR Controller</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <a class="brand" href="{{ url_for('pages.dashboard') }}">
+          <span class="app-mark" aria-hidden="true"><span></span></span>
+          <span>SDR Controller<small>{{ status.company_name }}</small></span>
+        </a>
+        <button type="button" class="nav-toggle" aria-controls="main-navigation" aria-expanded="false" hidden>Menu</button>
+      </div>
+      {% set nav_groups = [
+        ('Network', [
+          ('Dashboard', 'dashboard'),
+          ('Routers', 'routers'),
+          ('Routing paths', 'routing_paths'),
+          ('Traffic monitoring', 'monitoring'),
+          ('Traffic analysis', 'mathematics'),
+          ('Optimization', 'optimization')
+        ]),
+        ('System', [
+          ('Router output', 'json_output'),
+          ('Automation', 'automation'),
+          ('Settings', 'settings'),
+          ('Activity', 'logs')
+        ])
+      ] %}
+      <nav id="main-navigation" class="main-nav" aria-label="Main navigation">
+        {% for group, items in nav_groups %}
+          <div class="nav-group">
+            <div class="nav-label">{{ group }}</div>
+            {% for label, name in items %}
+              {% set endpoint = 'pages.' ~ name %}
+              {% set active = request.endpoint == endpoint or (name == 'routers' and request.endpoint == 'pages.router_connection') %}
+              <a href="{{ url_for(endpoint) }}"
+                 class="nav-item{% if active %} is-active{% endif %}"
+                 {% if active %}aria-current="page"{% endif %}>
+                <span class="nav-icon nav-icon--{{ name }}" aria-hidden="true"></span>{{ label }}
+              </a>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </nav>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <span class="workspace-label">{{ status.company_name }}</span>
+        <div class="workspace-actions">
+          <span class="mode-pill mode-pill--locked"><span class="status-dot" aria-hidden="true"></span>Routing changes off</span>
+          {% if config.AUTH_ENABLED and session.get('admin_user') %}
+            <form method="post" action="{{ url_for('auth.logout') }}" class="signout-form">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-sm btn-outline-secondary">Sign out</button>
+            </form>
+          {% endif %}
+        </div>
+      </header>
+      <main id="main-content" class="page-content" tabindex="-1">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+          <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'info' }}" role="status">{{ message }}</div>
+        {% endfor %}
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+  {{ heading('Settings', 'Current collection and routing settings.') }}
+  <section class="surface panel" aria-labelledby="settings-title">
+    <div class="panel-heading">
+      <h2 id="settings-title">Controller defaults</h2>
+      <span class="category-pill">Read only</span>
+    </div>
+    <dl class="status-list">
+      <div><dt>Organization</dt><dd>{{ status.company_name }}</dd></div>
+      <div><dt>Storage</dt><dd>{{ status.storage | capitalize }}</dd></div>
+      <div><dt>Monitoring interval</dt><dd>{{ status.monitoring_interval_seconds }} seconds</dd></div>
+      <div><dt>Averaging window</dt><dd>{{ status.averaging_window }} valid readings</dd></div>
+    </dl>
+  </section>
+  <section class="surface panel section-gap" aria-labelledby="integrations-title">
+    <div class="panel-heading"><h2 id="integrations-title">Integrations</h2></div>
+    <dl class="status-list">
+      <div><dt>Router connections</dt><dd>Set on each router</dd></div>
+      <div><dt>Traffic collection</dt><dd>Not started</dd></div>
+      <div><dt>Cost and traffic-share formulas</dt><dd>Not set</dd></div>
+      <div><dt>Routing changes</dt><dd>Off</dd></div>
+    </dl>
+  </section>
+{% endblock %}

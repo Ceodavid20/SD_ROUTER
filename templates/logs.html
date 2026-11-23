@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_components.html" import activity_table, heading %}
+{% block title %}Activity{% endblock %}
+{% block content %}
+  {{ heading('Activity', 'Recent router and controller events.') }}
+  <section class="surface panel" aria-labelledby="events-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="events-title">Events</h2>
+        <p>Times shown in UTC.</p>
+      </div>
+    </div>
+    {% if activity %}
+      {{ activity_table(activity) }}
+    {% else %}
+      <p class="mb-0 text-secondary">No recent activity.</p>
+    {% endif %}
+  </section>
+{% endblock %}

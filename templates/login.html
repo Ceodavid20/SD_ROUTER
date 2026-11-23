@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administrator access | SDR Controller</title>
+  <link rel="icon" href="{{ url_for('static', filename='images/favicon.png') }}" type="image/png">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page">
+  <main class="surface login-card">
+    <p class="eyebrow">SDR Controller</p>
+    {% if setup_required %}
+      <h1>Administrator setup required</h1>
+      <p class="text-secondary">Configure the administrator account in the controller's terminal before signing in.</p>
+      <pre class="setup-command"><code>.venv/bin/python manage.py configure-admin</code></pre>
+      <p class="form-text mb-0">The command prompts for a password locally. Keep your credentials out of router records and activity logs, then restart the controller.</p>
+    {% else %}
+      <h1>Sign in</h1>
+      <p class="text-secondary">Administrator access to company network operations.</p>
+      {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+      <form method="post" action="{{ url_for('auth.login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="mb-3">
+          <label class="form-label" for="username">Username</label>
+          <input class="form-control" id="username" name="username" autocomplete="username" required maxlength="128" autofocus>
+        </div>
+        <div class="mb-4">
+          <label class="form-label" for="password">Password</label>
+          <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="btn btn-primary w-100" type="submit">Sign in</button>
+      </form>
+      <p class="form-text mb-0 section-gap">Routing changes are disabled.</p>
+    {% endif %}
+  </main>
+</body>
+</html>

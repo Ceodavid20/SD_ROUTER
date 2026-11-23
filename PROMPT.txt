@@ -1,0 +1,931 @@
+# PROJECT: SOFTWARE-DEFINED ROUTER (SDR) WITH INTELLIGENT NETWORK TRAFFIC AND FINANCIAL COST OPTIMIZATION
+
+Act as a senior Python developer, network engineer, MikroTik RouterOS specialist, and software architect.
+
+I am developing a Software-Defined Router (SDR) controller as part of my telecommunications engineering internship.
+
+Your responsibility is to help me design and build a complete, modular, secure, and functional application from scratch.
+
+I am still learning, so use beginner-friendly explanations, maintain clean code, and explain important implementation decisions.
+
+Do not build a simple demonstration dashboard and call it complete. Build a proper multi-page application with independent modules, backend services, a database, monitoring, mathematical processing, optimization, JSON communication, and MikroTik integration.
+
+Develop the application incrementally, testing each major component before moving to the next.
+
+---
+
+# 1. PROJECT OBJECTIVE
+
+Build a Python-based Software-Defined Router controller that monitors multiple MikroTik routers, collects their outbound traffic statistics through SNMP, processes the measurements mathematically, determines an optimized traffic distribution based on financial cost and router capacity, and generates JSON configuration instructions.
+
+The generated JSON must be exposed through a dedicated HTTP endpoint/page that can be read by the MikroTik router or an appropriate router-side script.
+
+The router-side mechanism must interpret the JSON and apply the required routing configuration.
+
+The application must also provide a web dashboard for monitoring, analysis, configuration, and control.
+
+The main objective is:
+
+MINIMIZE TOTAL FINANCIAL COST WHILE RESPECTING ROUTER CAPACITY AND NETWORK CONSTRAINTS.
+
+---
+
+# 2. TECHNOLOGY STACK
+
+Use the following technologies:
+
+Backend:
+- Python 3
+- Flask
+- PySNMP for SNMP communication
+- APScheduler for scheduled monitoring
+- NumPy and SciPy for mathematical calculations and optimization where appropriate
+- Requests for HTTP communication
+
+Frontend:
+- HTML5
+- CSS3
+- JavaScript
+- Bootstrap 5
+- Chart.js for graphs
+
+Database:
+- SQLite initially
+- SQLAlchemy as the ORM
+
+Testing:
+- Pytest
+
+Communication:
+- SNMP for monitoring
+- HTTP/JSON endpoint for configuration output
+- MikroTik RouterOS API or REST API where appropriate
+
+Do not introduce React, Node.js, Firebase, or PostgreSQL unless there is a compelling technical reason and I approve it.
+
+---
+
+# 3. APPLICATION ARCHITECTURE
+
+Build a modular, multi-page Flask application.
+
+Do not put the entire application on one webpage.
+
+Use separate pages for:
+
+1. Dashboard
+2. Router Management
+3. Traffic Monitoring
+4. Mathematical Analysis
+5. Optimization
+6. JSON Output
+7. Automation Control
+8. Settings
+9. Activity Logs
+
+Use a clean, modern telecommunications/network operations dashboard design.
+
+The interface should be professional, responsive, and easy to understand.
+
+---
+
+# 4. ROUTER MANAGEMENT
+
+Create a router management module.
+
+The administrator should be able to register and manage multiple MikroTik routers.
+
+Each router record should support:
+
+- Router name/ID
+- Router IP address
+- Router model
+- RouterOS version
+- Username
+- Authentication configuration
+- SNMP version
+- SNMP credentials/community
+- API address and port
+- Interface name
+- SNMP interface index
+- Interface bandwidth capacity
+- Financial cost per traffic unit
+- Default routing cost
+- Current routing cost
+- Routing protocol
+- Router connection status
+- Monitoring status
+
+Provide functionality to:
+
+- Add routers
+- Edit router information
+- Delete routers
+- Test router connectivity
+- Test SNMP access
+- Test API access
+- Enable or disable monitoring
+
+Security requirements:
+
+- Never expose router passwords in frontend pages.
+- Do not hardcode credentials.
+- Store sensitive credentials securely.
+- Use environment variables for application secrets.
+- Validate all IP addresses and configuration inputs.
+- Use restricted router accounts with minimum necessary permissions.
+
+Do not assume every router has the same interface names, capacities, or configuration.
+
+---
+
+# 5. SNMP MONITORING ENGINE
+
+This is a critical component.
+
+The application must use SNMP to collect interface traffic information from registered MikroTik routers.
+
+IMPORTANT:
+
+WE ONLY WANT TO MONITOR TX (TRANSMITTED/OUTBOUND TRAFFIC).
+
+DO NOT INCLUDE RX IN THE CURRENT MATHEMATICAL MODEL, DATABASE METRICS, GRAPHS, OR OPTIMIZATION ENGINE.
+
+The application should read the appropriate SNMP interface counters, preferably 64-bit outbound octet counters where supported.
+
+Use the correct SNMP OIDs for the selected interface.
+
+The monitoring process must:
+
+1. Connect to each registered router.
+2. Identify the configured interface.
+3. Read the current TX octet counter.
+4. Record the timestamp.
+5. Compare it with the previous counter reading.
+6. Calculate the amount of transmitted data.
+7. Calculate TX bandwidth in Mbps.
+8. Save the measurement.
+9. Repeat after one minute.
+
+Use this bandwidth formula:
+
+TX Mbps = ((Current TX Octets - Previous TX Octets) * 8) / (Elapsed Seconds * 1,000,000)
+
+Do not assume the interval is always exactly 60 seconds. Calculate using actual elapsed time.
+
+Handle:
+- SNMP timeouts
+- Router disconnections
+- Interface resets
+- Counter resets
+- Counter wraparound
+- Missing previous readings
+- Invalid interface indexes
+- SNMP authentication errors
+
+Do not generate fake measurements in production mode.
+
+Provide a simulation mode for development and testing.
+
+The monitoring service must work independently of the web request lifecycle.
+
+Use a scheduler or background service to run the monitoring cycle every 60 seconds.
+
+Avoid starting multiple duplicate schedulers when Flask reloads or runs multiple workers.
+
+---
+
+# 6. MATHEMATICAL PROCESSING ENGINE
+
+Create an independent mathematics service.
+
+It must implement the following processing stages:
+
+A. READ
+
+Collect the TX measurements obtained from SNMP.
+
+B. MULTIPLY
+
+Provide a configurable multiplication operation.
+
+The exact multiplication formula has not yet been confirmed by the network supervisor.
+
+Do not invent a permanent formula.
+
+Design the module so the formula can be changed easily after confirmation.
+
+One possible working hypothesis is:
+
+Traffic Financial Cost = Traffic Volume × Financial Cost per Unit
+
+Clearly label this as a provisional assumption.
+
+Ensure that measurement units are consistent. If traffic is measured in Mbps but the price is per MB, perform the appropriate time and unit conversion.
+
+C. NORMALIZE
+
+Implement a configurable normalization service.
+
+One possible working formula is:
+
+N_i = BW_i / SUM(BW_i)
+
+Where:
+- N_i is the normalized value for router i.
+- BW_i is its TX bandwidth.
+- SUM(BW_i) is the total TX bandwidth across monitored routers.
+
+The normalized results should be proportions between 0 and 1 when the total is positive.
+
+Handle zero total bandwidth safely.
+
+The exact normalization formula must remain configurable until confirmed by the supervisor.
+
+D. AVERAGE (AV)
+
+Calculate the five-minute moving average using the most recent five one-minute TX bandwidth readings.
+
+Formula:
+
+AV = (BW1 + BW2 + BW3 + BW4 + BW5) / 5
+
+Calculate the average independently for each monitored router/interface.
+
+Use a rolling window.
+
+For example:
+- Minute 1: collect reading 1.
+- Minute 2: collect reading 2.
+- Minute 3: collect reading 3.
+- Minute 4: collect reading 4.
+- Minute 5: calculate the first average.
+- Minute 6: discard the oldest reading, add the latest reading, and recalculate.
+
+Do not calculate a complete five-reading average until five valid readings are available.
+
+E. PREVIOUS AVERAGE (PAV)
+
+Store the previous calculated five-minute average.
+
+When a new AV becomes available:
+
+- Retrieve the previously stored AV.
+- Assign it to PAV.
+- Store the new AV for the next comparison.
+
+Handle the initial state where no PAV exists.
+
+F. PERCENTAGE CHANGE (DELTA %)
+
+Implement:
+
+DELTA % = ((AV - PAV) / PAV) * 100
+
+Interpretation:
+- Positive result: traffic increased.
+- Negative result: traffic decreased.
+- Zero: traffic remained unchanged.
+
+Handle PAV = 0 without division errors.
+
+G. WRITE
+
+Store processed results in the database.
+
+Prepare the appropriate JSON configuration output after the optimization engine has generated a valid decision.
+
+Keep the mathematical processing engine separate from the SNMP service, optimization engine, and router communication service.
+
+IMPORTANT:
+
+The mathematical operations must be configurable because the supervisor's exact multiplication and normalization formulas have not yet been confirmed.
+
+Do not silently substitute your own interpretation.
+
+---
+
+# 7. FINANCIAL OPTIMIZATION ENGINE
+
+Create a separate optimization module.
+
+The primary objective is to minimize the total financial cost of transmitted traffic.
+
+Use this initial mathematical model:
+
+Minimize:
+
+Z = SUM(c_i * x_i)
+
+Subject to:
+
+SUM(x_i) = D
+
+0 <= x_i <= C_i
+
+Where:
+
+- Z = Total financial cost.
+- c_i = Financial cost per unit of traffic through router i.
+- x_i = Traffic allocated to router i.
+- D = Total outbound traffic demand to distribute.
+- C_i = Maximum available capacity of router i.
+
+Use a linear programming solver such as SciPy's linprog where appropriate.
+
+The optimization engine must:
+
+1. Read current TX traffic.
+2. Read each router's available capacity.
+3. Read each router's financial unit cost.
+4. Determine total traffic demand.
+5. Calculate the lowest-cost feasible allocation.
+6. Respect router capacity limits.
+7. Return the recommended traffic allocation.
+8. Calculate the expected financial cost.
+9. Explain why the allocation was selected.
+
+IMPORTANT DESIGN CONSIDERATIONS:
+
+- Do not confuse routing cost/metric with financial cost.
+- They are different values.
+- Do not assume changing an OSPF metric produces an exact traffic percentage.
+- Routing protocols may not distribute traffic according to the mathematical allocation.
+- Consider ECMP, policy-based routing, and other appropriate mechanisms only after checking the actual network topology and routing protocol.
+- Do not make automatic routing changes until the configuration method is confirmed and tested.
+
+The optimization engine should be able to work with simulated data before being connected to real routers.
+
+---
+
+# 8. JSON OUTPUT SERVICE
+
+THIS IS ONE OF THE MOST IMPORTANT REQUIREMENTS.
+
+The application's output must be JSON.
+
+Create a dedicated HTTP endpoint that returns raw JSON without a normal dashboard layout, HTML decorations, or unnecessary webpage content.
+
+For example:
+
+GET /router-config/R1
+
+The endpoint should return an appropriate JSON response.
+
+An illustrative structure:
+
+{
+  "router_id": "R1",
+  "timestamp": "2026-11-18T12:00:00",
+  "mode": "automatic",
+  "action": "update_routing_configuration",
+  "configuration": {
+    "routing_cost": 5
+  }
+}
+
+This example is only a starting structure.
+
+Design a versioned and documented JSON schema.
+
+The JSON should support:
+
+- Router identification
+- Configuration action
+- Interface or routing target where required
+- New routing configuration
+- Current configuration version
+- Timestamp
+- Unique command ID
+- Optimization decision reference
+
+Do not include passwords or SNMP credentials in the JSON.
+
+The JSON output should be generated from actual optimization results, not hardcoded sample values.
+
+Provide endpoints such as:
+
+GET /router-config/<router_id>
+
+GET /api/routers
+
+GET /api/monitoring/latest
+
+GET /api/optimization/latest
+
+GET /api/system/status
+
+Provide a dedicated JSON-only page or endpoint for the router to read.
+
+The router must not need to read the normal dashboard HTML.
+
+---
+
+# 9. MIKROTIK JSON INTEGRATION
+
+The MikroTik router is expected to read the JSON output and perform the required task.
+
+Design a separate MikroTik integration component.
+
+Investigate the available RouterOS capabilities based on the actual RouterOS version.
+
+Do not assume that MikroTik automatically executes JSON returned by an HTTP endpoint.
+
+Implement an appropriate router-side integration mechanism, such as a RouterOS script that:
+
+1. Requests the JSON endpoint.
+2. Reads the response.
+3. Parses the JSON.
+4. Validates the router identity and command.
+5. Checks whether the command is new.
+6. Applies the approved routing configuration.
+7. Records the result or returns an acknowledgement where supported.
+
+If RouterOS cannot conveniently parse the required JSON structure, explain the limitation and propose a compatible alternative.
+
+Do not invent unsupported RouterOS commands.
+
+Do not assume a REST API or scripting feature is available until RouterOS version and configuration are checked.
+
+Provide a safe integration test mode.
+
+Do not allow an unverified command to alter a live routing table.
+
+Include:
+- Authentication
+- HTTPS where possible
+- Request timeouts
+- Error handling
+- Command validation
+- Duplicate command protection
+- Configuration backup
+- Audit logging
+- Rollback strategy
+
+The controller should be able to identify whether a command was generated, retrieved, applied, rejected, or failed.
+
+---
+
+# 10. TIME ON / TIME OFF AUTOMATION
+
+Implement a control mechanism.
+
+TIME ON:
+
+- Enable automatic routing optimization.
+- Allow the optimization engine to generate routing configuration updates.
+- Allow approved changes to be sent to MikroTik.
+- Continue the one-minute monitoring cycle.
+
+TIME OFF:
+
+- Stop automatic routing configuration changes.
+- Restore the saved default routing costs when required.
+- Continue monitoring and recording TX traffic unless explicitly disabled by an administrator.
+- Do not delete historical data.
+
+Provide:
+- Manual ON/OFF switch.
+- Configurable start time.
+- Configurable stop time.
+- Current automation status.
+- Next scheduled transition.
+- Activity logs.
+
+Make sure the system cannot accidentally restore incorrect default values.
+
+Save the original routing configuration before the first automatic modification.
+
+Implement restoration as a controlled operation with verification.
+
+---
+
+# 11. DATABASE DESIGN
+
+Use SQLite initially.
+
+Create database models for:
+
+1. Routers
+2. Router interfaces
+3. TX measurements
+4. Five-minute averages
+5. Previous averages
+6. Normalized values
+7. Financial costs
+8. Optimization results
+9. JSON commands
+10. Routing configuration history
+11. Automation schedules
+12. Activity logs
+
+Use timestamps for all monitoring and configuration records.
+
+Create database migrations or a reliable schema initialization process.
+
+Avoid storing duplicate records unnecessarily.
+
+---
+
+# 12. DASHBOARD AND FRONTEND
+
+Build a professional multi-page dashboard.
+
+PAGE 1: DASHBOARD
+
+Show:
+- Total registered routers
+- Connected routers
+- Disconnected routers
+- Aggregate outbound bandwidth
+- Current optimization status
+- Automation status
+- Latest optimization result
+- Recent activity
+
+PAGE 2: ROUTER MANAGEMENT
+
+Show:
+- Router list
+- Router IP
+- Router model
+- Interface
+- Capacity
+- Financial unit cost
+- Connection status
+
+Allow adding, editing, testing, and removing routers.
+
+PAGE 3: TRAFFIC MONITORING
+
+Show:
+- Individual router TX bandwidth
+- Aggregate TX bandwidth
+- Historical TX graphs
+- One-minute readings
+- Five-minute averages
+- Router comparison
+
+Do not display RX charts or RX statistics.
+
+PAGE 4: MATHEMATICAL ANALYSIS
+
+Show:
+- Raw TX measurements
+- Multiplication results
+- Normalized values
+- AV
+- PAV
+- Percentage change
+
+Make it possible to inspect the calculation history.
+
+PAGE 5: OPTIMIZATION
+
+Show:
+- Router capacity
+- Current TX traffic
+- Financial unit cost
+- Recommended allocation
+- Expected total financial cost
+- Optimization status
+
+Show the difference between current and recommended allocation.
+
+PAGE 6: JSON OUTPUT
+
+Show:
+- Current JSON response
+- Router identifier
+- Command identifier
+- Generated timestamp
+- Configuration status
+
+Allow an administrator to inspect and copy the JSON.
+
+The actual machine-readable endpoint must still return raw JSON.
+
+PAGE 7: AUTOMATION CONTROL
+
+Show:
+- Time ON
+- Time OFF
+- Automation status
+- Manual activation/deactivation
+- Default-cost restoration status
+
+PAGE 8: SETTINGS
+
+Allow configuration of:
+- Monitoring interval
+- Averaging window
+- SNMP settings
+- Router API settings
+- Optimization settings
+- JSON endpoint settings
+
+PAGE 9: ACTIVITY LOGS
+
+Show:
+- Monitoring events
+- SNMP failures
+- Optimization decisions
+- JSON commands
+- Configuration changes
+- Restoration events
+
+Use Chart.js for the graphs.
+
+All frontend data must come from actual backend API endpoints or database records.
+
+---
+
+# 13. PROJECT FOLDER STRUCTURE
+
+Use a clean structure similar to:
+
+sdr-controller/
+│
+├── app.py
+├── config.py
+├── requirements.txt
+├── .env.example
+├── README.md
+│
+├── controllers/
+│   ├── router_controller.py
+│   ├── monitoring_controller.py
+│   ├── optimization_controller.py
+│   ├── json_controller.py
+│   └── automation_controller.py
+│
+├── services/
+│   ├── snmp_service.py
+│   ├── bandwidth_service.py
+│   ├── mathematics_service.py
+│   ├── normalization_service.py
+│   ├── averaging_service.py
+│   ├── optimization_service.py
+│   ├── json_service.py
+│   ├── mikrotik_service.py
+│   └── scheduler_service.py
+│
+├── models/
+│   ├── router.py
+│   ├── interface.py
+│   ├── traffic.py
+│   ├── optimization.py
+│   ├── routing_history.py
+│   └── activity_log.py
+│
+├── database/
+│   └── db.py
+│
+├── templates/
+│   ├── base.html
+│   ├── dashboard.html
+│   ├── routers.html
+│   ├── monitoring.html
+│   ├── mathematics.html
+│   ├── optimization.html
+│   ├── json_output.html
+│   ├── automation.html
+│   ├── settings.html
+│   └── logs.html
+│
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   ├── dashboard.js
+│   │   ├── monitoring.js
+│   │   ├── optimization.js
+│   │   └── charts.js
+│   └── images/
+│
+├── mikrotik/
+│   ├── README.md
+│   └── router_script.rsc
+│
+├── tests/
+│   ├── test_bandwidth.py
+│   ├── test_snmp.py
+│   ├── test_mathematics.py
+│   ├── test_optimization.py
+│   ├── test_json.py
+│   └── test_automation.py
+│
+└── instance/
+    └── sdr.db
+
+You may improve this structure when necessary, but maintain separation of responsibilities.
+
+---
+
+# 14. DEVELOPMENT APPROACH
+
+Do not attempt to implement everything in one massive code generation step.
+
+Build the project in phases.
+
+PHASE 1: FOUNDATION
+
+- Create the project directory.
+- Create the Python virtual environment.
+- Install dependencies.
+- Set up Flask.
+- Set up SQLite and SQLAlchemy.
+- Create the multi-page frontend.
+- Verify that all pages load.
+
+PHASE 2: ROUTER MANAGEMENT
+
+- Create router database models.
+- Implement adding and editing routers.
+- Add interface configuration.
+- Add SNMP configuration.
+- Implement connectivity testing.
+- Start with simulated routers.
+
+PHASE 3: TX MONITORING
+
+- Implement SNMP monitoring.
+- Read TX counters.
+- Calculate bandwidth from counter differences.
+- Run the one-minute scheduler.
+- Store measurements.
+- Handle connection failures.
+
+PHASE 4: MATHEMATICAL ENGINE
+
+Implement and test:
+
+- READ
+- MULTIPLY
+- NORMALIZE
+- AV
+- PAV
+- DELTA %
+
+Keep uncertain formulas configurable.
+
+PHASE 5: OPTIMIZATION ENGINE
+
+- Implement the financial cost model.
+- Apply capacity constraints.
+- Calculate the recommended allocation.
+- Test with simulated router data.
+- Compare current and optimized costs.
+
+PHASE 6: JSON OUTPUT
+
+- Create the JSON schema.
+- Generate JSON from actual optimization results.
+- Expose the JSON endpoint.
+- Validate output.
+- Add command IDs and status tracking.
+
+PHASE 7: MIKROTIK INTEGRATION
+
+- Check RouterOS version.
+- Establish the supported communication method.
+- Build the router-side JSON retrieval mechanism.
+- Implement safe configuration updates.
+- Verify configuration changes.
+- Test rollback and restoration.
+
+PHASE 8: AUTOMATION
+
+- Implement Time ON/OFF.
+- Implement scheduled control.
+- Implement default-cost restoration.
+- Add safeguards.
+
+PHASE 9: FINAL TESTING
+
+- Test every module independently.
+- Test the complete one-minute processing cycle.
+- Test disconnected routers.
+- Test missing measurements.
+- Test optimization constraints.
+- Test JSON responses.
+- Test MikroTik integration.
+- Test Time ON/OFF.
+- Test restoration.
+
+---
+
+# 15. TESTING AND SAFETY REQUIREMENTS
+
+The application must not change a live router configuration without explicit authorization.
+
+Initially, implement SIMULATION MODE as the default.
+
+Simulation mode must:
+- Use generated router measurements.
+- Run the mathematical engine.
+- Produce optimization results.
+- Generate JSON.
+- Never change real router configurations.
+
+Create a separate LIVE MODE that requires administrator activation.
+
+Before applying any routing change:
+- Validate the command.
+- Check the target router.
+- Confirm the configuration is supported.
+- Save the previous configuration.
+- Log the proposed change.
+- Apply the change.
+- Verify the result.
+- Roll back if necessary.
+
+Do not expose router credentials in logs or API responses.
+
+Do not allow malformed JSON to execute commands.
+
+---
+
+# 16. CODING STANDARDS
+
+Follow these rules throughout development:
+
+1. Write clean, modular Python code.
+2. Use functions and classes where appropriate.
+3. Avoid putting all application logic in app.py.
+4. Use environment variables for secrets.
+5. Add proper exception handling.
+6. Add logging.
+7. Use type hints where useful.
+8. Write comments for complex calculations.
+9. Avoid duplicated code.
+10. Write automated tests.
+11. Keep frontend and backend responsibilities separate.
+12. Do not hardcode router measurements or optimization results.
+13. Do not claim a router is connected unless a real connectivity test succeeds.
+14. Do not invent MikroTik API commands.
+15. Do not silently assume unconfirmed mathematical formulas.
+
+When a technical detail is unknown, create a configurable placeholder and clearly document what must be confirmed.
+
+---
+
+# 17. FIRST TASK: START BUILDING THE PROJECT
+
+Start with PHASE 1.
+
+Before writing code:
+
+1. Inspect the existing VS Code workspace.
+2. Tell me whether it is empty or contains existing files.
+3. Create the proposed project structure.
+4. Set up the Flask application.
+5. Configure SQLite.
+6. Create the multi-page frontend.
+7. Create a professional dashboard layout.
+8. Create the requirements.txt file.
+9. Create the .env.example file.
+10. Create a detailed README with setup and execution instructions.
+
+After completing Phase 1:
+
+- Run the application.
+- Test that all pages load.
+- Fix any errors.
+- Show me the folder structure.
+- Explain how to activate the virtual environment and start the server.
+
+Do not move to Phase 2 until Phase 1 works.
+
+---
+
+# 18. HOW I WANT YOU TO WORK WITH ME
+
+I am a beginner in some of these technologies, so guide me step by step.
+
+I do not want you to dump thousands of lines of code without explaining anything.
+
+For every phase:
+
+1. Explain what we are building.
+2. Explain why it is necessary.
+3. Implement the code.
+4. Explain the important files.
+5. Run the relevant tests.
+6. Fix errors before proceeding.
+7. Tell me what has been completed.
+8. Tell me what comes next.
+
+If a command must be executed in the VS Code terminal, show me the exact command.
+
+If you modify a file, tell me its path.
+
+If an error occurs, diagnose and fix it instead of ignoring it.
+
+Do not skip phases.
+
+Do not replace a real implementation with a static visual mockup.
+
+The final goal is a working, modular Software-Defined Router controller that can monitor MikroTik outbound traffic, optimize financial traffic allocation, expose JSON configuration instructions, and safely coordinate routing changes.
+
+BEGIN WITH PHASE 1 ONLY.

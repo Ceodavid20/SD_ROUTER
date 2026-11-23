@@ -1,0 +1,11 @@
+# Flask application and local configuration
+Flask==3.1.3
+waitress==3.0.2
+python-dotenv==1.2.4
+
+# Monitoring, scheduling, optimization, and router integration dependencies
+PySNMP==7.1.33
+APScheduler==3.11.3
+numpy==2.5.5
+scipy==1.18.1
+requests==2.34.2

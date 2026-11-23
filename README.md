@@ -1,0 +1,114 @@
+# Lagos–Abuja SDR Controller
+
+The controller stores router and operational settings in JSON files. Its intended optimization scope is outbound traffic on the MTN and Glo Lagos–Abuja trunks. Aggregation handoffs and operating limits are entered by the operator.
+
+The controller implements authenticated, router-initiated polling and signed response receipts. The native RouterOS 7.21.4 client uses verified HTTPS and protocol v2. It returns a versioned **no-action** JSON response. Live routing changes, automatic traffic calculations, and optimization are not implemented.
+
+## Start the application
+
+Use Python 3.12–3.15. From the project folder in the VS Code terminal:
+
+```sh
+source .venv/bin/activate
+python serve.py
+```
+
+Open <http://127.0.0.1:8000/>. Sign-in is paused for local development. Router forms retain CSRF validation. The server binds to localhost. Press **Ctrl+C** in its terminal to stop it.
+
+To create the virtual environment and install dependencies for a new checkout:
+
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+cp -n .env.example .env
+python serve.py
+```
+
+Administrator sign-in can be re-enabled later by running `python manage.py configure-admin`, setting `SDR_AUTH_ENABLED=true` in the local `.env`, and restarting.
+
+## Test router-to-Flask communication locally
+
+In the project terminal, run:
+
+```sh
+.venv/bin/python scripts/simulate_router.py
+```
+
+This creates a temporary simulated router and an ephemeral authentication key, then exercises the Flask polling endpoint in process. It validates the response and confirms that replayed requests and invalid signatures are rejected. It makes no network requests, contacts no actual router, and leaves operational inventory, `.env`, and router output unchanged.
+
+Expected output starts with `LOCAL SIMULATION` and ends with a `PASS` summary. The response contains `action: "none"`, an empty configuration, and `reason: "optimization_unavailable"`. A successful simulation proves this local communication stage; it does not prove real RouterOS interoperability or an applied routing change.
+
+To start the separate device listener in another project terminal:
+
+```sh
+.venv/bin/python serve_devices.py
+```
+
+It defaults to `127.0.0.1:8001`. The browser application remains on `127.0.0.1:8000`. The device application exposes only its polling and receipt routes. Its backend binds to loopback. An approved device-only TLS proxy provides the router-facing HTTPS address, with source restrictions and explicit local proxy trust. The company has not assigned that reachable address yet.
+
+`CONTROLLER_HOST`, `CONTROLLER_PORT`, `CONTROLLER_BASE_URL`, and the polling settings are environment configuration. The sketch's address and port are not applied. Keep `SIMULATION_MODE=true` and `LIVE_ROUTING_ENABLED=false` during development. Setting live routing to true raises a startup error because this stage has no live execution capability.
+
+Follow [RouterOS connection setup](docs/routeros-setup.md) for private provisioning, verified HTTPS, and the first router exchange. The [v2 contract](docs/routeros-v2-protocol.md) documents the native protocol; [Router polling v1](docs/router-pull.md) retains the Python compatibility contract. [Native test notes](docs/routeros-native-notes.md) separate real RouterOS results from Python tests.
+
+## Current focus
+
+The initial inventory contains six identity-only records: MTN Lagos, MTN Abuja, Glo Lagos, Glo Abuja, Lagos Aggregation Router 1 and Lagos Aggregation Router 2. Their IP addresses, device details, ports, credentials and interface names remain unset until entered. Existing operator-entered records are preserved.
+
+The **Add router** button opens **Router connection** at `/routers/connect`. It shows the configured device polling endpoint, request method, authentication requirements, and setup status. Manual browser registration and the old `POST /routers/add` route are removed. Opening this page does not register or authenticate a device.
+
+Authorized identities are provisioned outside the browser. A registry record does not require a management IP or successful RouterOS API diagnostic. Existing records remain editable. Controller polling has its own authentication reference, enablement, and active key IDs; editing a reference cannot provision secrets or enable authentication. API diagnostic credentials and SNMP credentials remain separate references.
+
+The optional RouterOS API diagnostic requires a management IP, API port, TLS/network settings, and its API credential reference. It logs in and reads basic resources only. Its failure does not prevent a valid router from authenticating to the device polling endpoint.
+
+Open **Routing paths** to create the links used by your network. Select the aggregation router and carrier router from the inventory, then enter their interfaces, the confirmed path capacity and any applicable limits. Paths can be edited or removed. No connections or congestion thresholds are assumed.
+
+The supplied network PDF is a reference for entering these settings. The application does not embed a topology image or derive executable router changes from the drawing. Saving routers or paths changes local settings only; it does not contact a device or alter its configuration.
+
+The controller is being prepared to monitor outbound TX on the configured paths from the Lagos aggregation routers to MTN and Glo. It will not count every router interface. No SNMP readings are recorded yet. Enter each carrier's actual financial price and billing unit after confirming them. Numeric OSPF costs and the mapping from optimization results to those costs remain unset.
+
+Passwords, controller authentication secrets, and SNMP keys do not belong in registry JSON or HTML forms. Use separate environment references. `python manage.py provision-router --help` describes local private client provisioning for an existing identity. It generates a new key, writes a private RouterOS bundle, and preserves existing settings under a file lock. It never contacts or installs anything on a router. The local simulator continues to use temporary test credentials only.
+
+Plaintext API connections are blocked by default. API port 8728 is unencrypted; do not enable it unless the network team approves the protected management path. Prefer certificate-verified API-SSL.
+
+Traffic collection, mathematical processing, financial optimization, executable RouterOS command generation, application acknowledgements, and rollback are not yet implemented. Protocol v2 records response receipts only. No traffic readings or recommendations are fabricated. The polling response remains no-action even if an old proposal exists in storage. No existing optimization formulas were replaced: an executable optimization engine is absent from this project copy.
+
+New storage starts in simulation mode. Existing saved automation modes are preserved rather than changed at startup. Regardless of a legacy mode label, routing changes and automation remain off. Device `SIMULATION_MODE` controls transport allowances for the local communication test; it does not enable routing execution.
+
+## JSON storage
+
+No database is used. The JSON storage service validates documents, locks concurrent access, writes files atomically, and keeps prior versions as `.json.bak`.
+
+```text
+data/
+├── routers.json
+├── routing_paths.json
+├── router_communication.json
+├── router_communication_v2.json
+├── traffic_history.json
+├── traffic_segments/
+├── averages.json
+├── optimization_results.json
+├── routing_costs.json
+├── automation_settings.json
+└── activity_logs.json
+output/
+└── router_config.json
+```
+
+Traffic readings use append-only dated JSON Lines segments that roll over at 8 MiB; the controller does not rewrite the growing traffic history each cycle. Other JSON documents have a 16 MiB size limit.
+
+`router_communication.json` stores v1 check-ins/replay records and the shared source rate-limit buckets. `router_communication_v2.json` stores native v2 check-ins, replay records, issued response references and received-response metadata. Accepted request IDs are consumed atomically with the check-in update. Do not delete or restore these documents casually while polling is active, because they contain replay history.
+
+Use persistent local disk, not a shared network filesystem. Stop the controller before restoring a backup or repairing a partially written traffic record. Back up `data/` and `output/` together while stopped; keep `.env` separate as a secret.
+
+## Tests
+
+```sh
+python -m pytest -q
+python -m pip check
+```
+
+Tests use temporary JSON storage and mocked router requests. They do not need company credentials or contact real routers.
+
+Router authentication and polling tests cover signatures, per-router authorization, expiry, replay after restart, concurrent duplicate requests, source rate limits, JSON validation, isolated device routes, transport restrictions, no-action responses and signed receipts. Setup tests exercise credential rotation/revocation, concurrent secret-file updates, real certificate generation and strict TLS verification. See [native validation notes](docs/routeros-native-notes.md) for checks executed on RouterOS 7.21.4 itself. Company network reachability must be verified separately after an address is assigned.

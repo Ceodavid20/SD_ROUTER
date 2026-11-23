@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% macro router_fields(router, prefix) %}
+  <div class="row g-3 router-fields">
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-name">Router name</label>
+      <input class="form-control" id="{{ prefix }}-name" name="name" value="{{ router.get('name', '') }}" required maxlength="128" autocomplete="off">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-address">Management IP address</label>
+      <input class="form-control" id="{{ prefix }}-address" name="ip_address" value="{{ router.get('ip_address', '') }}" maxlength="45" aria-describedby="{{ prefix }}-address-help" autocomplete="off">
+      <div id="{{ prefix }}-address-help" class="form-text">Optional for controller polling. Needed for direct management checks.</div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-model">Model</label>
+        <input class="form-control" id="{{ prefix }}-model" name="model" value="{{ router.get('model', '') }}" maxlength="128">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-version">RouterOS version</label>
+        <input class="form-control" id="{{ prefix }}-version" name="routeros_version" value="{{ router.get('routeros_version', '') }}" maxlength="64">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-interface">Outbound interface</label>
+      <input class="form-control" id="{{ prefix }}-interface" name="interface_name" value="{{ router.get('interface_name', '') }}" maxlength="128" aria-describedby="{{ prefix }}-interface-help">
+      <div id="{{ prefix }}-interface-help" class="form-text">Enter the interface that carries outbound traffic.</div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-ospf-target">RouterOS OSPF target ID</label>
+      <input class="form-control" id="{{ prefix }}-ospf-target" name="ospf_target_id" value="{{ router.get('ospf_target_id') or '' }}" maxlength="128" aria-describedby="{{ prefix }}-ospf-help">
+      <div id="{{ prefix }}-ospf-help" class="form-text">Enter only after the router’s OSPF configuration has been checked.</div>
+    </div>
+      <div class="col-md-6">
+        <label class="form-label" for="{{ prefix }}-ifindex">SNMP interface index</label>
+        <input class="form-control" id="{{ prefix }}-ifindex" name="snmp_ifindex" value="{{ router.get('snmp_ifindex') if router.get('snmp_ifindex') is not none else '' }}" type="number" min="1" step="1">
+      </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-snmp-version">SNMP version</label>
+      <select class="form-select" id="{{ prefix }}-snmp-version" name="snmp_version">
+        <option value="" {% if not router.get('snmp_version') %}selected{% endif %}>Not set</option>
+        {% for version in ('v3', 'v2c', 'v1') %}
+          <option value="{{ version }}" {% if router.get('snmp_version') == version %}selected{% endif %}>{{ version }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-snmp-credentials">SNMP credential reference</label>
+      <input class="form-control" id="{{ prefix }}-snmp-credentials" name="snmp_credential_ref" value="{{ router.get('snmp_credential_ref') or '' }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="SNMP_MTN_LAGOS" autocomplete="off">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="{{ prefix }}-api-port">API port</label>
+      <input class="form-control" id="{{ prefix }}-api-port" name="api_port" value="{{ router.get('api_port') if router.get('api_port') is not none else '' }}" type="number" min="1" max="65535">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="{{ prefix }}-ssh-port">SSH port</label>
+      <input class="form-control" id="{{ prefix }}-ssh-port" name="ssh_port" value="{{ router.get('ssh_port') if router.get('ssh_port') is not none else '' }}" type="number" min="1" max="65535">
+    </div>
+    <div class="col-md-4 router-tls-field">
+      <div class="form-check">
+        <input class="form-check-input" id="{{ prefix }}-api-tls" name="api_tls" type="checkbox" value="1" {% if router.get('api_tls', false) %}checked{% endif %}>
+        <label class="form-check-label" for="{{ prefix }}-api-tls">Use API-SSL (verify certificate)</label>
+      </div>
+    </div>
+    <div class="col-12">
+      <label class="form-label" for="{{ prefix }}-controller-auth">Controller authentication reference</label>
+      <input class="form-control" id="{{ prefix }}-controller-auth" name="controller_auth_ref" value="{{ router.get('controller_auth_ref', '') }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="CONTROLLER_R1" aria-describedby="{{ prefix }}-controller-auth-help" autocomplete="off">
+      <div id="{{ prefix }}-controller-auth-help" class="form-text">Reference only. Controller secrets are configured outside this form. Saving a reference does not enable authentication.</div>
+    </div>
+    <div class="col-12">
+      <label class="form-label" for="{{ prefix }}-credentials">API diagnostic credential reference</label>
+      <input class="form-control" id="{{ prefix }}-credentials" name="credential_ref" value="{{ router.get('credential_ref', '') }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="ROUTER_R1" aria-describedby="{{ prefix }}-credential-help" autocomplete="off">
+      <div id="{{ prefix }}-credential-help" class="form-text">For <code>ROUTER_R1</code>, set <code>ROUTER_R1_USERNAME</code> and <code>ROUTER_R1_PASSWORD</code> in the local <code>.env</code> file.</div>
+    </div>
+  </div>
+{% endmacro %}
+{% block title %}Routers{% endblock %}
+{% block content %}
+  {{ heading('Routers', 'Router identities, interface details and optional API diagnostics.') }}
+  <section class="surface panel" aria-labelledby="inventory-title">
+    <div class="panel-heading">
+      <h2 id="inventory-title">Router inventory</h2>
+      <a class="panel-link" href="{{ url_for('pages.router_connection') }}">Add router</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead><tr><th scope="col">Router</th><th scope="col">Carrier</th><th scope="col">Management IP</th><th scope="col">Model / RouterOS</th><th scope="col">Outbound interface</th><th scope="col">SNMP index</th><th scope="col">Controller polling</th><th scope="col">Optional API diagnostic</th></tr></thead>
+        <tbody>
+          {% for router in routers %}
+            <tr>
+              <th scope="row"><a href="#router-{{ router.router_id }}">{{ router.name }}</a><small class="table-secondary-line">{{ router.router_id }}</small></th>
+              <td>{{ router.carrier or 'Not set' }}{% if router.endpoint %}<small class="table-secondary-line">{{ router.endpoint }}</small>{% endif %}</td>
+              <td>{{ router.ip_address }}</td>
+              <td>{{ router.model or 'Not provided' }}<small class="table-secondary-line">{{ router.routeros_version or 'Not provided' }}</small></td>
+              <td>{{ router.interface_name or 'Not configured' }}</td>
+              <td>{{ router.snmp_ifindex if router.snmp_ifindex is not none else 'Not configured' }}</td>
+              <td><span class="category-pill">{{ router.controller_polling.state | capitalize }}</span>{% if router.controller_polling.last_authenticated_at %}<small class="table-secondary-line">{{ router.controller_polling.last_authenticated_at }}</small>{% endif %}</td>
+              <td><span class="category-pill">{{ router.connection_status | replace('_', ' ') | capitalize }}</span></td>
+            </tr>
+          {% else %}
+            <tr><td class="table-empty" colspan="8">No routers added yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% for router in routers %}
+    <details class="surface panel section-gap router-details" id="router-{{ router.router_id }}">
+      <summary>{{ router.name }} <span class="text-secondary">· Router details</span></summary>
+      <dl class="status-list section-gap">
+        {% set polling = router.controller_polling %}
+        <div><dt>Controller polling</dt><dd>{{ polling.state | capitalize }}</dd></div>
+        <div><dt>Last authenticated check-in (UTC)</dt><dd>{{ polling.last_authenticated_at or 'None received' }}</dd></div>
+        <div><dt>Controller protocol</dt><dd>{{ polling.protocol_version or 'No check-in yet' }}</dd></div>
+        <div><dt>Last response issued (UTC)</dt><dd>{{ polling.last_response_issued_at or 'None issued' }}</dd></div>
+        {% if polling.last_response_id %}<div><dt>Last issued response ID</dt><dd>{{ polling.last_response_id }}</dd></div>{% endif %}
+        <div><dt>Latest response receipt</dt><dd>{% if polling.receipt_state == 'received' %}Receipt confirmed{% elif polling.receipt_state == 'previous_response' %}Previous response received; latest receipt pending{% elif polling.receipt_state == 'not_supported' %}Not supported by protocol 1.0{% elif polling.receipt_state == 'awaiting' %}Awaiting receipt{% else %}No response issued{% endif %}</dd></div>
+        <div><dt>Last receipt acknowledged (UTC)</dt><dd>{{ polling.last_received_at or 'None recorded' }}</dd></div>
+        {% if polling.last_received_response_id %}<div><dt>Last acknowledged response ID</dt><dd>{{ polling.last_received_response_id }}</dd></div>{% endif %}
+        <div><dt>Last optional API check</dt><dd>{{ router.last_checked_at or 'Not tested' }}</dd></div>
+        <div><dt>API diagnostic result</dt><dd>{{ router.last_error or (router.connection_status | replace('_', ' ') | capitalize) }}</dd></div>
+        <div><dt>Controller authentication</dt><dd>{{ 'Enabled in registry' if router.controller_auth_enabled else 'Not enabled' }}</dd></div>
+        {% if router.get('detected_model') %}<div><dt>Detected model</dt><dd>{{ router.detected_model }}</dd></div>{% endif %}
+        {% if router.get('detected_routeros_version') %}<div><dt>Detected RouterOS version</dt><dd>{{ router.detected_routeros_version }}</dd></div>{% endif %}
+      </dl>
+      <p class="form-text">A check-in becomes stale after {{ polling.stale_after_seconds }} seconds. A receipt confirms delivery only. Routing changes are off.</p>
+      <form method="post" action="{{ url_for('router_management.test_api', router_id=router.router_id) }}" class="section-gap">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-outline-primary" type="submit">Run optional API diagnostic</button>
+        <span class="form-text test-help">Reads router details only. Its result is separate from controller polling.</span>
+      </form>
+      <form method="post" action="{{ url_for('router_management.edit_router', router_id=router.router_id) }}" class="section-gap">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ router_fields(router, 'edit-' ~ router.router_id) }}
+        <button class="btn btn-primary section-gap" type="submit">Save changes</button>
+      </form>
+      <form method="post" action="{{ url_for('router_management.delete_router', router_id=router.router_id) }}" class="router-delete-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-check">
+          <input class="form-check-input" id="delete-{{ router.router_id }}" type="checkbox" required>
+          <label class="form-check-label" for="delete-{{ router.router_id }}">Remove this router and its settings.</label>
+        </div>
+        <button class="btn btn-outline-danger btn-sm" type="submit">Remove router</button>
+      </form>
+    </details>
+  {% endfor %}
+{% endblock %}

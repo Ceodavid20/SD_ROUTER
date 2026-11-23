@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% block title %}Traffic analysis{% endblock %}
+{% block content %}
+  {{ heading('Traffic analysis', 'Readings, traffic costs and moving averages.') }}
+  <section class="surface panel" aria-labelledby="analysis-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="analysis-title">Calculation history</h2>
+        <p>Cost and traffic-share formulas have not been set.</p>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead><tr><th scope="col">Time (UTC)</th><th scope="col">Router / interface</th><th scope="col">Outbound Mbps</th><th scope="col">Traffic cost</th><th scope="col">Traffic share</th><th scope="col">Average</th><th scope="col">Previous average</th><th scope="col">Change (%)</th></tr></thead>
+        <tbody><tr><td class="table-empty" colspan="8">No calculations recorded.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <div class="row g-3 section-gap">
+    <div class="col-md-6">
+      <div class="surface panel h-100">
+        <h2>Moving average</h2>
+        <p class="text-secondary mb-0">Mean of the latest {{ status.averaging_window }} valid outbound readings per interface.</p>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="surface panel h-100">
+        <h2>Previous average</h2>
+        <p class="text-secondary mb-0">Used to calculate percentage change.</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

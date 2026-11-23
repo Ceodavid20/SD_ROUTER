@@ -1,0 +1,25 @@
+{% macro heading(title, description) %}
+  <div class="page-heading">
+    <h1>{{ title }}</h1>
+    <p>{{ description }}</p>
+  </div>
+{% endmacro %}
+
+{% macro activity_table(events) %}
+  <div class="table-responsive">
+    <table class="table activity-table align-middle mb-0">
+      <thead>
+        <tr><th scope="col">Event</th><th scope="col">Category</th><th scope="col">Time (UTC)</th></tr>
+      </thead>
+      <tbody>
+        {% for event in events %}
+          <tr>
+            <td>{{ event.message }}</td>
+            <td><span class="category-pill">{{ event.category | replace('_', ' ') | capitalize }}</span></td>
+            <td><time datetime="{{ event.timestamp }}">{{ event.timestamp | replace('T', ' ') | replace('Z', '') }}</time></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endmacro %}

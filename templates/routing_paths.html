@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+
+{% macro path_fields(path, prefix) %}
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-aggregation">Aggregation router</label>
+      <select class="form-select" id="{{ prefix }}-aggregation" name="aggregation_router_id" required>
+        <option value="">Select a router</option>
+        {% for router in routers %}
+          <option value="{{ router.router_id }}" {% if path.get('aggregation_router_id') == router.router_id %}selected{% endif %}>{{ router.name or router.router_id }} ({{ router.router_id }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-carrier-router">Carrier router</label>
+      <select class="form-select" id="{{ prefix }}-carrier-router" name="carrier_router_id" required>
+        <option value="">Select a router</option>
+        {% for router in routers %}
+          <option value="{{ router.router_id }}" {% if path.get('carrier_router_id') == router.router_id %}selected{% endif %}>{{ router.name or router.router_id }} ({{ router.router_id }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-carrier">Carrier</label>
+      <select class="form-select" id="{{ prefix }}-carrier" name="carrier" required>
+        <option value="">Select a carrier</option>
+        <option value="MTN" {% if path.get('carrier') == 'MTN' %}selected{% endif %}>MTN</option>
+        <option value="GLO" {% if path.get('carrier') == 'GLO' %}selected{% endif %}>Glo</option>
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-capacity">Path capacity (bits per second)</label>
+      <input class="form-control" id="{{ prefix }}-capacity" name="path_capacity_bps" value="{{ path.get('path_capacity_bps') if path.get('path_capacity_bps') is not none else '' }}" type="number" min="1" step="1" inputmode="numeric" aria-describedby="{{ prefix }}-capacity-help">
+      <div class="form-text" id="{{ prefix }}-capacity-help">Enter the confirmed capacity as a whole number, such as 1000000000 for 1 Gbit/s.</div>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-aggregation-interface">Aggregation router interface</label>
+      <input class="form-control" id="{{ prefix }}-aggregation-interface" name="aggregation_interface" value="{{ path.get('aggregation_interface') or '' }}" maxlength="128" autocomplete="off" placeholder="For example, ether1">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-carrier-interface">Carrier router interface</label>
+      <input class="form-control" id="{{ prefix }}-carrier-interface" name="carrier_interface" value="{{ path.get('carrier_interface') or '' }}" maxlength="128" autocomplete="off" placeholder="For example, sfp-sfpplus1">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-role">Route role</label>
+      <select class="form-select" id="{{ prefix }}-role" name="route_role" required>
+        {% for value, label in [('not_set', 'Not set'), ('primary', 'Primary'), ('alternate', 'Alternate'), ('standby', 'Standby')] %}
+          <option value="{{ value }}" {% if path.get('route_role', 'not_set') == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-relationship">Path status</label>
+      <select class="form-select" id="{{ prefix }}-relationship" name="relationship_status" required>
+        {% for value, label in [('pending_confirmation', 'Pending confirmation'), ('operator_selected', 'Confirmed by operator'), ('disabled', 'Disabled')] %}
+          <option value="{{ value }}" {% if path.get('relationship_status', 'pending_confirmation') == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+{% endmacro %}
+
+{% block title %}Routing paths{% endblock %}
+
+{% block content %}
+  {{ heading('Routing paths', 'Set the paths between the Lagos aggregation routers and the MTN and Glo routers.') }}
+
+  <section class="surface panel" aria-labelledby="paths-overview-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="paths-overview-title">Configured paths</h2>
+        <p>Enter the router interfaces and link capacities confirmed for your network.</p>
+      </div>
+      <a class="panel-link" href="#add-path">Add path</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th scope="col">Path</th>
+            <th scope="col">Carrier</th>
+            <th scope="col">Role</th>
+            <th scope="col">Relationship</th>
+            <th scope="col">Interfaces</th>
+            <th scope="col">Capacity</th>
+            <th scope="col">Settings</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for path in paths %}
+            <tr>
+              <th scope="row"><a href="#{{ path.path_id }}">{{ path.display_name }}</a><small class="table-secondary-line">{{ path.path_id }}</small></th>
+              <td>{{ path.carrier }}</td>
+              <td>{{ path.route_role | replace('_', ' ') | capitalize }}</td>
+              <td>{{ 'Confirmed by operator' if path.relationship_status == 'operator_selected' else path.relationship_status | replace('_', ' ') | capitalize }}</td>
+              <td>
+                {{ path.aggregation_interface or 'Not set' }}
+                <small class="table-secondary-line">{{ path.carrier_interface or 'Not set' }}</small>
+              </td>
+              <td>{% if path.path_capacity_bps %}{{ '{:,}'.format(path.path_capacity_bps) }} bps{% else %}Not set{% endif %}</td>
+              <td><span class="category-pill">{{ path.configuration_status | replace('_', ' ') | capitalize }}</span></td>
+            </tr>
+          {% else %}
+            <tr><td class="table-empty" colspan="7">No routing paths are configured.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {% for path in paths %}
+    <details class="surface panel section-gap router-details" id="{{ path.path_id }}">
+      <summary>{{ path.display_name }} <span class="text-secondary">· {{ path.path_id }}</span></summary>
+      <form method="post" action="{{ url_for('routing_paths.save_path', path_id=path.path_id) }}" class="section-gap">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {{ path_fields(path, path.path_id) }}
+        <button class="btn btn-primary section-gap" type="submit">Save path</button>
+      </form>
+      <form method="post" action="{{ url_for('routing_paths.delete_path', path_id=path.path_id) }}" class="router-delete-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-check">
+          <input class="form-check-input" id="{{ path.path_id }}-delete" type="checkbox" required>
+          <label class="form-check-label" for="{{ path.path_id }}-delete">Remove this path and its settings.</label>
+        </div>
+        <button class="btn btn-outline-danger btn-sm" type="submit">Remove path</button>
+      </form>
+    </details>
+  {% endfor %}
+
+  <section class="surface panel section-gap" id="add-path" aria-labelledby="add-path-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="add-path-title">Add path</h2>
+        <p>Select the routers at each end of the path and enter its settings.</p>
+      </div>
+    </div>
+    {% if routers | length < 2 %}
+      <p class="form-text">Add the aggregation and carrier routers in <a href="{{ url_for('pages.routers') }}">Routers</a> before adding a path.</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('routing_paths.add_path') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {{ path_fields({}, 'add-path') }}
+      <button class="btn btn-primary section-gap" type="submit" {% if routers | length < 2 %}disabled{% endif %}>Add path</button>
+    </form>
+  </section>
+
+  <section class="surface panel section-gap" aria-labelledby="congestion-limits-title">
+    <div class="panel-heading">
+      <div>
+        <h2 id="congestion-limits-title">Congestion limits</h2>
+        <p>Choose a utilization threshold and the minimum time before another route decision.</p>
+      </div>
+      <span class="category-pill">{{ path_config.congestion_policy.status | replace('_', ' ') | capitalize }}</span>
+    </div>
+    <form method="post" action="{{ url_for('routing_paths.save_policy') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label" for="utilization-limit">Utilization limit (%)</label>
+          <input class="form-control" id="utilization-limit" name="utilization_limit_percent" value="{{ path_config.congestion_policy.utilization_limit_percent if path_config.congestion_policy.utilization_limit_percent is not none else '' }}" type="number" min="0.01" max="100" step="0.01" inputmode="decimal">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="hold-down">Minimum hold-down (seconds)</label>
+          <input class="form-control" id="hold-down" name="minimum_hold_down_seconds" value="{{ path_config.congestion_policy.minimum_hold_down_seconds if path_config.congestion_policy.minimum_hold_down_seconds is not none else '' }}" type="number" min="0" step="1" inputmode="numeric">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label" for="overload-policy">When a link is over its limit</label>
+          <select class="form-select" id="overload-policy" name="overload_policy">
+            <option value="not_set" {% if path_config.congestion_policy.overload_policy is none %}selected{% endif %}>Not set</option>
+            <option value="prefer_lower_utilization" {% if path_config.congestion_policy.overload_policy == 'prefer_lower_utilization' %}selected{% endif %}>Prefer the lower-utilization path</option>
+            <option value="manual_only" {% if path_config.congestion_policy.overload_policy == 'manual_only' %}selected{% endif %}>Require an operator decision</option>
+          </select>
+        </div>
+      </div>
+      <p class="form-text section-gap">Saved settings do not change router configuration.</p>
+      <button class="btn btn-primary" type="submit">Save limits</button>
+    </form>
+  </section>
+{% endblock %}

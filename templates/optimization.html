@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% block title %}Optimization{% endblock %}
+{% block content %}
+  {{ heading('Optimization', 'Compare traffic costs and available link capacity.') }}
+  <section class="surface panel" aria-labelledby="allocation-title">
+    <div class="panel-heading">
+      <h2 id="allocation-title">Traffic allocation</h2>
+      <span class="category-pill">{{ status.optimization | replace('_', ' ') | capitalize }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead><tr><th scope="col">Router</th><th scope="col">Capacity (Mbps)</th><th scope="col">Current outbound (Mbps)</th><th scope="col">Cost per unit</th><th scope="col">Recommended (Mbps)</th><th scope="col">Change (Mbps)</th></tr></thead>
+        <tbody><tr><td class="table-empty" colspan="6">No optimization decisions yet.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+  <section class="surface panel section-gap" aria-labelledby="cost-title">
+    <div class="panel-heading"><h2 id="cost-title">Expected total financial cost</h2></div>
+    <p class="text-secondary mb-0">No cost calculation is available yet.</p>
+  </section>
+{% endblock %}
