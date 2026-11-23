@@ -14,10 +14,7 @@ from services.router_service import RouterService
 
 TEST_PASSWORD = "test-only-company-admin-password"
 TEST_PASSWORD_HASH = generate_password_hash(TEST_PASSWORD)
-SEEDED_ROUTER_IDS = {
-    "MTN-LAGOS", "MTN-ABUJA", "GLO-LAGOS", "GLO-ABUJA",
-    "LAGOS-AGG-1", "LAGOS-AGG-2",
-}
+DEFAULT_ROUTER_IDS = set()
 
 
 def configured_app(storage_dirs):
@@ -148,7 +145,7 @@ def test_all_required_storage_files_are_initialized(app):
     assert {
         router["router_id"]
         for router in app.extensions["json_storage"].read_json("routers.json")
-    } == SEEDED_ROUTER_IDS
+    } == DEFAULT_ROUTER_IDS
 
 
 def test_status_returns_json_with_safe_storage_defaults(client):
@@ -160,8 +157,8 @@ def test_status_returns_json_with_safe_storage_defaults(client):
         "mode": "simulation",
         "data_source": "router",
         "controller_access": "read_only",
-        "readiness": "verification_required",
-        "router_count": 6,
+        "readiness": "not_configured",
+        "router_count": 0,
         "storage": "ready",
         "monitoring": "not_started",
         "optimization": "not_started",
@@ -351,14 +348,14 @@ def test_router_inventory_forms_persist_real_settings_without_contacting_device(
     router = next(item for item in storage.read_json("routers.json") if item["router_id"] == "R1")
     assert router["connection_status"] == "untested"
     status = client.get("/api/system/status").get_json()
-    assert status["router_count"] == 7
+    assert status["router_count"] == 1
     assert status["readiness"] == "verification_required"
     form["name"] = "Updated company router"
     assert client.post("/routers/R1/edit", data=form).status_code == 302
     router = next(item for item in storage.read_json("routers.json") if item["router_id"] == "R1")
     assert router["name"] == "Updated company router"
     assert client.post("/routers/R1/delete", data={"csrf_token": form["csrf_token"]}).status_code == 302
-    assert {router["router_id"] for router in storage.read_json("routers.json")} == SEEDED_ROUTER_IDS
+    assert {router["router_id"] for router in storage.read_json("routers.json")} == DEFAULT_ROUTER_IDS
     assert any(event["category"] == "routers" for event in storage.list_activity())
 
 

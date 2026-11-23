@@ -5,6 +5,15 @@
   </div>
 {% endmacro %}
 
+{% macro bandwidth_value(mbps, unit='Mbps') -%}
+  {%- if mbps is none -%}
+    —
+  {%- else -%}
+    {%- set value = mbps * 1000 if unit == 'Kbps' else mbps -%}
+    {{- '%.3g' | format(value) if 0 < value < 0.001 else '%.3f' | format(value) -}}
+  {%- endif -%}
+{%- endmacro %}
+
 {% macro activity_table(events) %}
   <div class="table-responsive">
     <table class="table activity-table align-middle mb-0">

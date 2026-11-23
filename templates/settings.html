@@ -15,12 +15,38 @@
       <div><dt>Averaging window</dt><dd>{{ status.averaging_window }} valid readings</dd></div>
     </dl>
   </section>
+  <section class="surface panel section-gap" aria-labelledby="calculation-settings-title">
+    <div class="panel-heading"><h2 id="calculation-settings-title">Local analysis and recommendations</h2></div>
+    <form method="post" action="{{ url_for('workflow.save_settings') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="objective">Recommendation objective</label>
+          <select class="form-select" id="objective" name="optimization_objective" required>
+            {% for value, label in [('not_configured', 'Choose an objective'), ('minimize_cost', 'Minimize estimated financial cost'), ('balance_utilization', 'Balance utilization across eligible paths')] %}
+              <option value="{{ value }}" {% if status.optimization_objective == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="averaging-window">Readings per average</label>
+          <input class="form-control" id="averaging-window" name="averaging_window" type="number" min="1" max="86400" step="1" value="{{ status.averaging_window }}" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="sample-interval">Expected sample interval (seconds)</label>
+          <input class="form-control" id="sample-interval" name="monitoring_interval_seconds" type="number" min="1" max="86400" step="1" value="{{ status.monitoring_interval_seconds }}" required>
+        </div>
+      </div>
+      <p class="form-text">Calculations run when requested. Set path roles, utilization limits and hold-down time in Routing paths. Match the expected interval to the collector's approved schedule.</p>
+      <button class="btn btn-primary" type="submit">Save calculation settings</button>
+    </form>
+  </section>
   <section class="surface panel section-gap" aria-labelledby="integrations-title">
     <div class="panel-heading"><h2 id="integrations-title">Integrations</h2></div>
     <dl class="status-list">
       <div><dt>Router connections</dt><dd>Set on each router</dd></div>
       <div><dt>Traffic collection</dt><dd>{{ status.monitoring | replace('_', ' ') | capitalize }} · {{ status.traffic_monitoring.enabled }} routers enabled</dd></div>
-      <div><dt>Cost and traffic-share formulas</dt><dd>Not set</dd></div>
+      <div><dt>Analysis</dt><dd>Moving average, path traffic share and estimated cost per hour</dd></div>
       <div><dt>Routing changes</dt><dd>Off</dd></div>
     </dl>
   </section>

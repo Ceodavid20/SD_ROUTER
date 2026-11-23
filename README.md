@@ -2,7 +2,7 @@
 
 The controller stores router and operational settings in JSON files. Its intended optimization scope is outbound traffic on the MTN and Glo Lagos–Abuja trunks. Aggregation handoffs and operating limits are entered by the operator.
 
-The controller implements authenticated, router-initiated polling, signed response receipts, and opt-in outbound TX monitoring. The native RouterOS 7.21.4 polling client uses verified HTTPS and protocol v2. Polling still returns a versioned **no-action** JSON response. A separate traffic endpoint calculates Mbps from cumulative TX counters on one configured interface per router. Live routing changes and optimization are not implemented.
+The controller implements authenticated polling and receipts, opt-in outbound TX monitoring, moving-average analysis and local dry-run traffic allocation. The native RouterOS 7.21.4 polling client uses verified HTTPS and protocol v2. Polling still returns a versioned **no-action** JSON response. A separate traffic endpoint calculates Mbps from cumulative TX counters on one configured interface per router. Live routing changes remain disabled.
 
 ## Start the application
 
@@ -27,17 +27,9 @@ python serve.py
 
 Administrator sign-in can be re-enabled later by running `python manage.py configure-admin`, setting `SDR_AUTH_ENABLED=true` in the local `.env`, and restarting.
 
-## Test router-to-Flask communication locally
+## Router-to-controller communication
 
-In the project terminal, run:
-
-```sh
-.venv/bin/python scripts/simulate_router.py
-```
-
-This creates a temporary simulated router and an ephemeral authentication key, then exercises the Flask polling endpoint in process. It validates the response and confirms that replayed requests and invalid signatures are rejected. It makes no network requests, contacts no actual router, and leaves operational inventory, `.env`, and router output unchanged.
-
-Expected output starts with `LOCAL SIMULATION` and ends with a `PASS` summary. The response contains `action: "none"`, an empty configuration, and `reason: "optimization_unavailable"`. A successful simulation proves this local communication stage; it does not prove real RouterOS interoperability or an applied routing change.
+The application uses registered MikroTik routers and their authenticated RouterOS clients. Runtime simulators and the demo server have been removed. Automated tests keep their fixtures in temporary storage.
 
 To start the separate device listener in another project terminal:
 
@@ -45,15 +37,21 @@ To start the separate device listener in another project terminal:
 .venv/bin/python serve_devices.py
 ```
 
-It defaults to `127.0.0.1:8001`. The browser application remains on `127.0.0.1:8000`. The device application exposes only its polling, receipt and traffic routes. Its backend binds to loopback. An approved device-only TLS proxy provides the router-facing HTTPS address, with source restrictions and explicit local proxy trust. The company has not assigned that reachable address yet.
+It defaults to `127.0.0.1:8001`. The browser application remains on `127.0.0.1:8000`. The device application exposes only its polling, receipt and traffic routes. Its backend binds to loopback. An approved device-only TLS proxy provides the router-facing HTTPS address, with source restrictions and explicit local proxy trust. Use the approved origin already configured in the private environment file.
 
 `CONTROLLER_HOST`, `CONTROLLER_PORT`, `CONTROLLER_BASE_URL`, and the polling settings are environment configuration. The sketch's address and port are not applied. Keep `SIMULATION_MODE=true` and `LIVE_ROUTING_ENABLED=false` during development. Setting live routing to true raises a startup error because this stage has no live execution capability.
 
 Follow [RouterOS connection setup](docs/routeros-setup.md) for private provisioning, verified HTTPS, and the first router exchange. The [v2 contract](docs/routeros-v2-protocol.md) documents the native protocol; [Router polling v1](docs/router-pull.md) retains the Python compatibility contract. [Native test notes](docs/routeros-native-notes.md) separate real RouterOS results from Python tests.
 
+## Monitoring, analysis and recommendations
+
+The main application supports authenticated TX collection, moving averages, utilization/share calculations, estimated volume costs and constrained advisory allocations. It uses only saved router inventory and actual received readings. Missing measurements or settings remain unavailable.
+
+Enter confirmed carrier prices, explicitly select each path's TX measurement source, configure limits and choose an objective. Then calculate from a full fresh window. [Workflow documentation](docs/local-workflow.md) explains formulas, assumptions, setup and persistence.
+
 ## Current focus
 
-The initial inventory contains six identity-only records: MTN Lagos, MTN Abuja, Glo Lagos, Glo Abuja, Lagos Aggregation Router 1 and Lagos Aggregation Router 2. Their IP addresses, device details, ports, credentials and interface names remain unset until entered. Existing operator-entered records are preserved.
+Existing registered routers are preserved. New storage starts with an empty inventory: startup creates no example carrier or aggregation routers. The configured MikroTik for this workspace is `SDR-CHR-LAB-01`; its selected outbound monitoring interface is `ether1` (TX only).
 
 The **Add router** button opens **Router connection** at `/routers/connect`. It shows the configured device polling endpoint, request method, authentication requirements, and setup status. Manual browser registration and the old `POST /routers/add` route are removed. Opening this page does not register or authenticate a device.
 
@@ -61,19 +59,21 @@ Authorized identities are provisioned outside the browser. A registry record doe
 
 The optional RouterOS API diagnostic requires a management IP, API port, TLS/network settings, and its API credential reference. It logs in and reads basic resources only. Its failure does not prevent a valid router from authenticating to the device polling endpoint.
 
+For the existing MikroTik, run `.venv/bin/python manage.py configure-router-api --router-id SDR-CHR-LAB-01` in the project terminal to save its API login. Both username and password prompts are hidden. The command writes an owner-only `.env`, generates and saves the credential reference automatically, and does not contact or configure the router. Refresh **Routers** afterward; managed API credentials reload without a server restart. Saving router settings preserves the managed reference, including when the form was opened before credential setup or rotation. Use the same terminal command to change that login. No credentials are accepted as command-line arguments or returned in HTML/JSON/logs. The API port and API-SSL checkbox must match **WinBox → IP → Services**; selecting the checkbox does not enable TLS on RouterOS. The page lists missing local requirements together before enabling the optional diagnostic button.
+
 Open **Routing paths** to create the links used by your network. Select the aggregation router and carrier router from the inventory, then enter their interfaces, the confirmed path capacity and any applicable limits. Paths can be edited or removed. No connections or congestion thresholds are assumed.
 
 The supplied network PDF is a reference for entering these settings. The application does not embed a topology image or derive executable router changes from the drawing. Saving routers or paths changes local settings only; it does not contact a device or alter its configuration.
 
 Outbound monitoring accepts cumulative TX counters through the separate authenticated `POST /api/controller/v2/traffic` endpoint. Configure one outbound interface per router and explicitly enable it on **Traffic monitoring**. New routers remain disabled. The frontend displays current TX rates and existing measured history; first samples, resets and stale data are not shown as fabricated zero traffic. RX is never collected. See [traffic monitoring](docs/traffic-monitoring.md) for authentication, calculation, recovery and an optional disabled collector template. No SNMP collector or router-side installation is run by the application. Enter each carrier's actual financial price and billing unit after confirming them. Numeric OSPF costs and the mapping from optimization results to those costs remain unset.
 
-Passwords, controller authentication secrets, and SNMP keys do not belong in registry JSON or HTML forms. Use separate environment references. `python manage.py provision-router --help` describes local private client provisioning for an existing identity. It generates a new key, writes a private RouterOS bundle, and preserves existing settings under a file lock. It never contacts or installs anything on a router. The local simulator continues to use temporary test credentials only.
+Passwords, controller authentication secrets, and SNMP keys do not belong in registry JSON or HTML forms. Use separate environment references. `python manage.py provision-router --help` describes local private client provisioning for an existing identity. It generates a new key, writes a private RouterOS bundle, and preserves existing settings under a file lock. It never contacts or installs anything on a router.
 
 Plaintext API connections are blocked by default. API port 8728 is unencrypted; do not enable it unless the network team approves the protected management path. Prefer certificate-verified API-SSL.
 
-TX counter-delta calculation and measured traffic storage are implemented. Moving averages, financial optimization, executable RouterOS command generation, application acknowledgements, and rollback are not yet implemented. Protocol v2 ACKs record response receipts only. No traffic readings or recommendations are fabricated. The polling response remains no-action even if an old proposal exists in storage. No existing optimization formulas were replaced: an executable optimization engine is absent from this project copy.
+TX measurement, moving averages, utilization/share calculations, estimated volume costs and constrained local allocation are implemented. Recommendations are advisory dry-run snapshots. Executable RouterOS command generation, application acknowledgements and rollback remain unimplemented. Protocol v2 ACKs record response receipts only. Real calculations require confirmed operator settings and fresh readings. The application does not generate traffic, prices or recommendations from demonstration data. Polling stays no-action even when a local recommendation exists. The new documented allocation model does not replace an existing optimization engine.
 
-New storage starts in simulation mode. Existing saved automation modes are preserved rather than changed at startup. Regardless of a legacy mode label, routing changes and automation remain off. Device `SIMULATION_MODE` controls transport allowances for the local communication test; it does not enable routing execution.
+New storage starts in simulation mode. Existing saved automation modes are preserved rather than changed at startup. Regardless of a legacy mode label, routing changes and automation remain off. Device `SIMULATION_MODE` controls the existing loopback HTTP transport allowance; it does not create simulated routers, generate traffic or enable routing execution.
 
 ## JSON storage
 

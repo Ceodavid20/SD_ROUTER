@@ -619,7 +619,8 @@ def test_frontend_shows_live_tx_history_and_disabled_by_default_without_network(
         at = current - timedelta(seconds=ago)
         exchange(app, body=payload(timestamp=int(at.timestamp()), tx_octets=counter), now=at)
     page = client.get("/monitoring").get_data(as_text=True)
-    assert "Receiving" in page and "8.000" in page and "test-uplink" in page
+    assert "Receiving" in page and "8000.000" in page and "test-uplink" in page
+    assert "Current outbound (Kbps)" in page and "Outbound (Kbps)" in page
     assert "Disable monitoring" in page and "No readings recorded." not in page
     assert "synthetic-hidden-registry-value" not in page
     status = client.get("/api/system/status").get_json()
@@ -628,7 +629,37 @@ def test_frontend_shows_live_tx_history_and_disabled_by_default_without_network(
     assert client.get("/api/routers").get_json()["routers"][0]["traffic_monitoring"]["tx_mbps"] == 8
     registry(app, monitoring_enabled=False)
     assert client.get("/api/system/status").get_json()["outbound_mbps"] is None
-    assert "8.000" in client.get("/monitoring").get_data(as_text=True)  # preserved history
+    assert "8000.000" in client.get("/monitoring").get_data(as_text=True)  # preserved history
+
+
+@pytest.mark.parametrize("delta,displayed", [(1, "0.000133"), (1655, "0.221"), (7500, "1.000"), (0, "0.000")])
+def test_small_tx_rates_are_visible_in_current_reading_and_history(app, config, delta, displayed):
+    enable(app)
+    current = datetime.now(UTC).replace(microsecond=0)
+    for ago, counter in ((60, 1000), (0, 1000 + delta)):
+        at = current - timedelta(seconds=ago)
+        exchange(app, body=payload(timestamp=int(at.timestamp()), tx_octets=counter), now=at)
+    client = create_app({**config, "AUTH_ENABLED": False}).test_client()
+    page = client.get("/monitoring").get_data(as_text=True)
+    assert "Receiving" in page
+    assert page.count(f"<td>{displayed}</td>") == 2
+    assert f"{displayed} Kbps outbound" in client.get("/").get_data(as_text=True)
+    assert client.get("/api/system/status").get_json()["outbound_mbps"] == pytest.approx(delta * 8 / 60 / 1_000_000)
+
+
+def test_monitoring_refresh_does_not_collect_or_change_samples(app, config):
+    enable(app)
+    exchange(app)
+    before = {name: store(app).read_json(name) for name in (
+        "routers.json", "router_traffic_v2.json", "router_communication.json", "router_communication_v2.json",
+    )}
+    client = create_app({**config, "AUTH_ENABLED": False}).test_client()
+    for _ in range(2):
+        page = client.get("/monitoring").get_data(as_text=True)
+        assert '<meta http-equiv="refresh" content="15">' in page
+        assert "Updates automatically every 15 seconds" in page
+    assert '<meta http-equiv="refresh"' not in client.get("/routers").get_data(as_text=True)
+    assert {name: store(app).read_json(name) for name in before} == before
 
 
 def test_monitoring_action_requires_csrf_and_explicit_boolean_and_survives_restart(app, config):

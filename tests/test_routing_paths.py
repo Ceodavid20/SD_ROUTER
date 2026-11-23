@@ -14,9 +14,16 @@ from services.path_config_service import (
 from services.router_service import RouterService, RouterValidationError
 
 
+def path_inventory(storage):
+    storage.write_json("routers.json", [
+        {"router_id": "TEST-AGG-1", "name": "Test aggregation"},
+        {"router_id": "TEST-MTN", "name": "Test MTN", "carrier": "MTN"},
+    ])
+
+
 @pytest.fixture
 def app(tmp_path: Path):
-    return create_app({
+    application = create_app({
         "TESTING": True,
         "AUTH_ENABLED": False,
         "SECRET_KEY": None,
@@ -26,6 +33,8 @@ def app(tmp_path: Path):
         "DATA_DIR": tmp_path / "data",
         "OUTPUT_DIR": tmp_path / "output",
     })
+    path_inventory(application.extensions["json_storage"])
+    return application
 
 
 @pytest.fixture
@@ -37,6 +46,7 @@ def client(app):
 def store(tmp_path: Path) -> StorageService:
     storage = StorageService(tmp_path / "data", tmp_path / "output")
     storage.initialize()
+    path_inventory(storage)
     return storage
 
 
@@ -55,8 +65,8 @@ def test_default_paths_have_no_hardcoded_links_or_interfaces(store):
 def test_path_and_policy_settings_persist_after_restart_without_enabling_changes(store, tmp_path):
     service = PathConfigService(store)
     added = service.add_path({
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
         "aggregation_interface": "sfp-sfpplus1",
         "carrier_interface": "sfp-sfpplus2",
@@ -64,8 +74,8 @@ def test_path_and_policy_settings_persist_after_restart_without_enabling_changes
         "route_role": "primary",
     })
     saved_path = service.save_path(added["path_id"], {
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
         "aggregation_interface": "sfp-sfpplus3",
         "carrier_interface": "sfp-sfpplus4",
@@ -109,8 +119,8 @@ def test_path_and_policy_settings_persist_after_restart_without_enabling_changes
 def test_invalid_path_settings_leave_json_unchanged(store, form):
     before = deepcopy(store.read_json("routing_paths.json"))
     complete_form = {
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
         **form,
     }
@@ -122,8 +132,8 @@ def test_invalid_path_settings_leave_json_unchanged(store, form):
 
     service = PathConfigService(store)
     added = service.add_path({
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
     })
     before_edit = deepcopy(service.read())
@@ -156,24 +166,24 @@ def test_paths_accept_operator_registered_inventory_ids(store):
 def test_path_display_falls_back_to_id_for_invalid_legacy_router_name(store, stored_name):
     service = PathConfigService(store)
     service.add_path({
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
     })
     routers = store.read_json("routers.json")
     for router in routers:
-        if router["router_id"] == "LAGOS-AGG-1":
+        if router["router_id"] == "TEST-AGG-1":
             router["name"] = stored_name
     store.write_json("routers.json", routers)
 
-    assert service.list_paths()[0]["display_name"] == "LAGOS-AGG-1 → MTN Lagos"
+    assert service.list_paths()[0]["display_name"] == "TEST-AGG-1 → Test MTN"
 
 
 def test_duplicate_and_self_link_paths_leave_json_unchanged(store):
     service = PathConfigService(store)
     form = {
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
     }
     service.add_path(form)
@@ -184,7 +194,7 @@ def test_duplicate_and_self_link_paths_leave_json_unchanged(store):
     with pytest.raises(ValidationError):
         service.add_path({
             **form,
-            "carrier_router_id": "LAGOS-AGG-1",
+            "carrier_router_id": "TEST-AGG-1",
         })
 
     assert service.read() == before
@@ -193,8 +203,8 @@ def test_duplicate_and_self_link_paths_leave_json_unchanged(store):
 def test_parallel_links_between_the_same_routers_use_distinct_interfaces(store):
     service = PathConfigService(store)
     form = {
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
         "aggregation_interface": "ether1",
         "carrier_interface": "ether2",
@@ -218,8 +228,8 @@ def test_parallel_links_between_the_same_routers_use_distinct_interfaces(store):
 def test_path_can_be_deleted_without_changing_other_settings(store):
     service = PathConfigService(store)
     added = service.add_path({
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
     })
     service.delete_path(added["path_id"])
@@ -232,20 +242,20 @@ def test_path_can_be_deleted_without_changing_other_settings(store):
 def test_router_cannot_be_deleted_until_its_paths_are_removed(store):
     service = PathConfigService(store)
     path = service.add_path({
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
     })
     inventory_before = deepcopy(store.read_json("routers.json"))
     router_service = RouterService(store, {})
 
     with pytest.raises(RouterValidationError, match="routing paths"):
-        router_service.delete_router("MTN-LAGOS")
+        router_service.delete_router("TEST-MTN")
     assert store.read_json("routers.json") == inventory_before
 
     service.delete_path(path["path_id"])
-    router_service.delete_router("MTN-LAGOS")
-    assert all(router["router_id"] != "MTN-LAGOS" for router in store.read_json("routers.json"))
+    router_service.delete_router("TEST-MTN")
+    assert all(router["router_id"] != "TEST-MTN" for router in store.read_json("routers.json"))
 
 
 def test_invalid_policy_does_not_change_the_document(store):
@@ -289,8 +299,8 @@ def test_path_page_forms_are_csrf_protected_and_only_save_json(
     )
     before = app.extensions["json_storage"].read_json("routing_paths.json")
     form = {
-        "aggregation_router_id": "LAGOS-AGG-1",
-        "carrier_router_id": "MTN-LAGOS",
+        "aggregation_router_id": "TEST-AGG-1",
+        "carrier_router_id": "TEST-MTN",
         "carrier": "MTN",
         "aggregation_interface": "ether5",
         "carrier_interface": "sfp-sfpplus3",

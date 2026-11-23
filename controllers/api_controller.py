@@ -7,6 +7,7 @@ from flask import Blueprint, Response, current_app, jsonify, request
 from services.json_storage import StorageError
 from services.router_service import RouterService
 from services.status_service import read_status
+from services.workflow_service import WorkflowService
 
 
 api = Blueprint("api", __name__, url_prefix="/api")
@@ -30,6 +31,17 @@ def system_status() -> Response:
 
     response.cache_control.no_store = True
     return response
+
+
+@api.get("/workflow")
+def current_workflow() -> Response:
+    try:
+        return jsonify(calculation=WorkflowService(
+            current_app.extensions["json_storage"], current_app.config,
+        ).read_latest())
+    except StorageError:
+        current_app.logger.error("Unable to read calculation storage.")
+        return jsonify(error="Calculation storage is unavailable."), 503
 
 
 @router_config.get("/router-config/<router_id>")

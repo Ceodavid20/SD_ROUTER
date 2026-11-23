@@ -29,6 +29,18 @@
       <input class="form-control" id="{{ prefix }}-ospf-target" name="ospf_target_id" value="{{ router.get('ospf_target_id') or '' }}" maxlength="128" aria-describedby="{{ prefix }}-ospf-help">
       <div id="{{ prefix }}-ospf-help" class="form-text">Enter only after the router’s OSPF configuration has been checked.</div>
     </div>
+    <div class="col-md-4">
+      <label class="form-label" for="{{ prefix }}-capacity">Outbound capacity (Mbps)</label>
+      <input class="form-control" id="{{ prefix }}-capacity" name="capacity_mbps" value="{{ router.capacity_mbps if router.capacity_mbps is not none else '' }}" type="number" min="0.000001" step="any">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="{{ prefix }}-price">Carrier price per decimal GB</label>
+      <input class="form-control" id="{{ prefix }}-price" name="cost_per_gb" value="{{ router.cost_per_gb if router.cost_per_gb is not none else '' }}" type="number" min="0" step="any">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label" for="{{ prefix }}-currency">Currency</label>
+      <input class="form-control" id="{{ prefix }}-currency" name="currency" value="{{ router.currency }}" maxlength="3" pattern="[A-Z]{3}" placeholder="NGN">
+    </div>
       <div class="col-md-6">
         <label class="form-label" for="{{ prefix }}-ifindex">SNMP interface index</label>
         <input class="form-control" id="{{ prefix }}-ifindex" name="snmp_ifindex" value="{{ router.get('snmp_ifindex') if router.get('snmp_ifindex') is not none else '' }}" type="number" min="1" step="1">
@@ -49,6 +61,7 @@
     <div class="col-md-4">
       <label class="form-label" for="{{ prefix }}-api-port">API port</label>
       <input class="form-control" id="{{ prefix }}-api-port" name="api_port" value="{{ router.get('api_port') if router.get('api_port') is not none else '' }}" type="number" min="1" max="65535">
+      <div class="form-text">Use the port shown in WinBox → IP → Services. Defaults are API 8728 and API-SSL 8729.</div>
     </div>
     <div class="col-md-4">
       <label class="form-label" for="{{ prefix }}-ssh-port">SSH port</label>
@@ -59,6 +72,7 @@
         <input class="form-check-input" id="{{ prefix }}-api-tls" name="api_tls" type="checkbox" value="1" {% if router.get('api_tls', false) %}checked{% endif %}>
         <label class="form-check-label" for="{{ prefix }}-api-tls">Use API-SSL (verify certificate)</label>
       </div>
+      <div class="form-text">This must match the router's enabled service. Checking it does not enable API-SSL on the MikroTik.</div>
     </div>
     <div class="col-12">
       <label class="form-label" for="{{ prefix }}-controller-auth">Controller authentication reference</label>
@@ -67,8 +81,8 @@
     </div>
     <div class="col-12">
       <label class="form-label" for="{{ prefix }}-credentials">API diagnostic credential reference</label>
-      <input class="form-control" id="{{ prefix }}-credentials" name="credential_ref" value="{{ router.get('credential_ref', '') }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="ROUTER_R1" aria-describedby="{{ prefix }}-credential-help" autocomplete="off">
-      <div id="{{ prefix }}-credential-help" class="form-text">For <code>ROUTER_R1</code>, set <code>ROUTER_R1_USERNAME</code> and <code>ROUTER_R1_PASSWORD</code> in the local <code>.env</code> file.</div>
+      <input class="form-control" id="{{ prefix }}-credentials" name="credential_ref" value="{{ router.get('credential_ref', '') }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="ROUTER_R1" aria-describedby="{{ prefix }}-credential-help" autocomplete="off" {% if router.get('api_credentials_managed') %}readonly{% endif %}>
+      <div id="{{ prefix }}-credential-help" class="form-text">{% if router.get('api_credentials_managed') %}Saved privately. This reference is preserved when you save router settings. To change the API login, run the local credential setup command again.{% else %}For <code>ROUTER_R1</code>, set <code>ROUTER_R1_USERNAME</code> and <code>ROUTER_R1_PASSWORD</code> in the local <code>.env</code> file.{% endif %}</div>
     </div>
   </div>
 {% endmacro %}
@@ -123,9 +137,18 @@
         {% if router.get('detected_routeros_version') %}<div><dt>Detected RouterOS version</dt><dd>{{ router.detected_routeros_version }}</dd></div>{% endif %}
       </dl>
       <p class="form-text">A check-in becomes stale after {{ polling.stale_after_seconds }} seconds. A receipt confirms delivery only. Routing changes are off.</p>
+      {% if not router.api_diagnostics.ready %}
+        <div class="alert alert-info section-gap">
+          <strong>Complete API diagnostic setup</strong>
+          <ul>{% for requirement in router.api_diagnostics.requirements %}<li>{{ requirement }}</li>{% endfor %}</ul>
+          <p>To save the API login privately, run this from the project terminal:</p>
+          <pre><code>.venv/bin/python manage.py configure-router-api --router-id {{ router.router_id }}</code></pre>
+          <p class="mb-0">The command prompts for username and password without displaying them. It saves their reference and preserves your API port, TLS setting, polling keys and TX monitoring. Refresh this page afterward.</p>
+        </div>
+      {% endif %}
       <form method="post" action="{{ url_for('router_management.test_api', router_id=router.router_id) }}" class="section-gap">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn btn-outline-primary" type="submit">Run optional API diagnostic</button>
+        <button class="btn btn-outline-primary" type="submit" {% if not router.api_diagnostics.ready %}disabled{% endif %}>Run optional API diagnostic</button>
         <span class="form-text test-help">Reads router details only. Its result is separate from controller polling.</span>
       </form>
       <form method="post" action="{{ url_for('router_management.edit_router', router_id=router.router_id) }}" class="section-gap">

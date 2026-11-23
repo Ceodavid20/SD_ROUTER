@@ -1,9 +1,10 @@
 """Local administrator setup; secrets are never accepted as command arguments."""
 
 import argparse
-from getpass import getpass
+from getpass import GetPassWarning, getpass
 from pathlib import Path
 import secrets
+import warnings
 
 from werkzeug.security import generate_password_hash
 
@@ -39,6 +40,8 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     administrator = commands.add_parser("configure-admin", help="Set the browser administrator locally.")
     administrator.add_argument("--username", help="Administrator username; prompted if omitted.")
+    api_setup = commands.add_parser("configure-router-api", help="Privately save an existing router's API login; no router connection or transport changes.")
+    api_setup.add_argument("--router-id", required=True)
     provision = commands.add_parser("provision-router", help="Create a private RouterOS polling bundle for an existing identity.")
     provision.add_argument("--router-id", required=True)
     provision.add_argument("--controller-url", help="Approved HTTPS server origin; defaults to CONTROLLER_BASE_URL.")
@@ -81,7 +84,22 @@ def main() -> None:
                 config = load_config()
                 storage = StorageService(config["DATA_DIR"], config["OUTPUT_DIR"])
                 storage.initialize()
-                if args.command == "provision-router":
+                if args.command == "configure-router-api":
+                    from services.api_credentials_service import configure_api_credentials, registered_api_target
+
+                    registered_api_target(storage, args.router_id)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("error", GetPassWarning)
+                        try:
+                            username = getpass("Router API username (hidden): ")
+                            password = getpass("Router API password (hidden): ")
+                        except GetPassWarning:
+                            raise ValueError("Run credential setup in an interactive terminal that supports hidden input.") from None
+                    configure_api_credentials(storage, config, args.router_id, username, password)
+                    print("API credentials saved privately for the existing router.")
+                    print("Reload Routers and run the optional diagnostic. No server restart is needed.")
+                    print("No router was contacted. API port, TLS policy, polling and TX settings were preserved.")
+                elif args.command == "provision-router":
                     result = provision_router(
                         storage, PROJECT_ROOT / ".env", args.router_id,
                         args.controller_url or config.get("CONTROLLER_BASE_URL", ""),

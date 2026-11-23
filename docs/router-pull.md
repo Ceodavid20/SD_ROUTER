@@ -1,6 +1,6 @@
 # Router-initiated polling: Python compatibility protocol v1
 
-This stage lets a simulated router authenticate to Flask and receive validated JSON. It exercises the communication boundary without contacting a production router or changing a route.
+The compatibility endpoint lets a registered router authenticate to Flask and receive validated no-action JSON. Actual MikroTik RouterOS clients use the separately documented V2 protocol.
 
 This document retains the **v1 HMAC-SHA256** Python contract. Native
 RouterOS 7.21.4 installations now use [protocol v2](routeros-v2-protocol.md),
@@ -31,27 +31,16 @@ The server does not log in to RouterOS for this process. The existing RouterOS A
 | `services/router_auth_service.py` | Verify current per-router credentials and signed request freshness. |
 | `services/router_poll_service.py` | Persist rate limits and replay protection, update accepted check-ins, and issue no-action responses. |
 | `services/router_communication_state.py` | Validate bounded communication-state JSON. |
-| `scripts/simulate_router.py` | Local end-to-end test using ephemeral credentials and temporary files. |
 
-## 2. Run the local test
-
-Use the VS Code terminal in the project folder:
+## 2. Automated protocol checks
 
 ```sh
-.venv/bin/python scripts/simulate_router.py
+.venv/bin/python -m pytest -q tests/test_router_auth.py tests/test_router_polling.py
 ```
 
-No server process or device is required. The script invokes Flask's test client in process and creates its registry and state in a temporary directory. Its environment key is generated for that process and removed when the test finishes. It neither overwrites `.env` nor adds a simulated router to the operational inventory.
-
-Expected results:
-
-- A labelled `LOCAL SIMULATION` response with `status: "authenticated"` and `action: "none"`.
-- Successful response field, identity, and expiry validation.
-- HTTP `409` for reusing the accepted request.
-- HTTP `401` for an invalid signature.
-- A final `PASS` summary.
-
-This verifies Python client/server communication locally. It does not establish network reachability, prove a real RouterOS script works, or confirm a configuration was received or applied by a device.
+Protocol tests use isolated temporary fixtures and make no router connections.
+Runtime simulated-router scripts are removed. Actual routers use their
+provisioned authenticated client and the approved HTTPS controller listener.
 
 ## 3. Separate listener and configuration
 

@@ -12,21 +12,6 @@ from uuid import uuid4
 from services.json_storage import StorageService, ValidationError
 
 
-INITIAL_AGGREGATION_ROUTERS = [
-    {
-        "router_id": f"LAGOS-AGG-{number}",
-        "name": f"Lagos Aggregation Router {number}",
-        "carrier": None, "endpoint": "Lagos", "router_role": "aggregation_router",
-        "ip_address": "", "model": "", "routeros_version": "", "interface_name": "",
-        "snmp_ifindex": None, "ospf_target_id": None, "snmp_version": None,
-        "snmp_credential_ref": None, "capacity_mbps": None, "cost_per_gb": None,
-        "currency": "", "api_port": None, "api_tls": False, "ssh_port": None,
-        "credential_ref": "", "monitoring_enabled": False,
-        "connection_status": "untested", "last_checked_at": None, "last_error": None,
-    }
-    for number in (1, 2)
-]
-
 DEFAULT_ROUTING_PATHS = {
     "schema_version": 1,
     "paths": [],
@@ -85,7 +70,8 @@ def validate_routing_paths(value: Any) -> None:
         raise ValidationError("Routing paths must be a list.")
     ids, links = set(), set()
     for path in value["paths"]:
-        _keys(path, _PATH_FIELDS, "path")
+        if not isinstance(path, dict) or set(path) not in (_PATH_FIELDS, _PATH_FIELDS | {"monitor_router_id"}):
+            raise ValidationError("Invalid path fields.")
         for key in ("path_id", "aggregation_router_id", "carrier_router_id"):
             if not isinstance(path[key], str) or not _ID.fullmatch(path[key]):
                 raise ValidationError("Invalid path or router ID.")
@@ -94,6 +80,11 @@ def validate_routing_paths(value: Any) -> None:
         ids.add(path["path_id"])
         if path["aggregation_router_id"] == path["carrier_router_id"]:
             raise ValidationError("Select two different routers.")
+        monitor = path.get("monitor_router_id")
+        if monitor is not None and (not isinstance(monitor, str) or monitor not in (
+            path["aggregation_router_id"], path["carrier_router_id"],
+        )):
+            raise ValidationError("Select a path endpoint as its outbound measurement source.")
         if path["carrier"] not in ("MTN", "GLO"):
             raise ValidationError("Select MTN or Glo.")
         if not isinstance(path["route_role"], str) or path["route_role"] not in _ROLES:
@@ -180,6 +171,7 @@ class PathConfigService:
             "path_capacity_bps": _integer(form, "path_capacity_bps"),
             "route_role": _text(form.get("route_role", "not_set"), "route role", required=True),
             "relationship_status": _text(form.get("relationship_status", "operator_selected"), "path status", required=True),
+            "monitor_router_id": _text(form.get("monitor_router_id"), "outbound measurement source"),
         }
         inventory = {router["router_id"]: router for router in self.storage.read_json("routers.json")}
         for key in ("aggregation_router_id", "carrier_router_id"):
@@ -208,6 +200,8 @@ class PathConfigService:
         def replace(config: dict[str, Any]) -> dict[str, Any]:
             for index, current in enumerate(config["paths"]):
                 if current["path_id"] == path_id:
+                    if "monitor_router_id" not in form:
+                        path["monitor_router_id"] = current.get("monitor_router_id")
                     config["paths"][index] = path
                     return config
             raise ValidationError("Routing path was not found.")

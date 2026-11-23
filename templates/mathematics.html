@@ -2,33 +2,41 @@
 {% from "_components.html" import heading %}
 {% block title %}Traffic analysis{% endblock %}
 {% block content %}
-  {{ heading('Traffic analysis', 'Readings, traffic costs and moving averages.') }}
+  {{ heading('Traffic analysis', 'Moving averages, outbound utilization and estimated traffic costs.') }}
   <section class="surface panel" aria-labelledby="analysis-title">
     <div class="panel-heading">
-      <div>
-        <h2 id="analysis-title">Calculation history</h2>
-        <p>Cost and traffic-share formulas have not been set.</p>
+      <div><h2 id="analysis-title">Latest calculation</h2><p>Mean of the latest {{ status.averaging_window }} valid TX readings from the current counter series.</p></div>
+      <form method="post" action="{{ url_for('workflow.calculate') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="destination" value="mathematics">
+        <button class="btn btn-primary" type="submit">Calculate analysis</button>
+      </form>
+    </div>
+    {% if calculation %}
+      <p>Calculated {{ calculation.timestamp }} (UTC). {% if not calculation.is_current %}<strong>Historical snapshot. Calculate again for current inputs.</strong>{% endif %}</p>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead><tr><th scope="col">Router / interface</th><th scope="col">State / readings</th><th scope="col">Latest TX (Mbps)</th><th scope="col">Average (Mbps)</th><th scope="col">Previous average</th><th scope="col">Change (%)</th><th scope="col">Utilization (%)</th><th scope="col">Path share (%)</th><th scope="col">Estimated cost / hour</th></tr></thead>
+          <tbody>
+            {% for row in calculation.analysis %}
+              <tr>
+                <th scope="row">{{ row.name }}<small class="table-secondary-line">{{ row.interface or 'Interface not configured' }}</small></th>
+                <td>{{ row.state | replace('_', ' ') | capitalize }}<small class="table-secondary-line">{{ row.sample_count }} / {{ row.window_size }}</small></td>
+                {% for value in [row.current_mbps, row.average_mbps, row.previous_average_mbps, row.change_percent, row.utilization_percent, row.traffic_share_percent] %}<td>{{ '%.3f' | format(value) if value is not none else '—' }}</td>{% endfor %}
+                <td>{{ ('%.4f' | format(row.cost_per_hour)) ~ ' ' ~ row.currency if row.cost_per_hour is not none else '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-    </div>
-    <div class="table-responsive">
-      <table class="table align-middle mb-0">
-        <thead><tr><th scope="col">Time (UTC)</th><th scope="col">Router / interface</th><th scope="col">Outbound Mbps</th><th scope="col">Traffic cost</th><th scope="col">Traffic share</th><th scope="col">Average</th><th scope="col">Previous average</th><th scope="col">Change (%)</th></tr></thead>
-        <tbody><tr><td class="table-empty" colspan="8">No calculations recorded.</td></tr></tbody>
-      </table>
-    </div>
+    {% else %}
+      <p>No calculations recorded. Enable the selected interfaces in <a href="{{ url_for('pages.monitoring') }}">Traffic monitoring</a>, collect a full averaging window, then calculate.</p>
+    {% endif %}
   </section>
-  <div class="row g-3 section-gap">
-    <div class="col-md-6">
-      <div class="surface panel h-100">
-        <h2>Moving average</h2>
-        <p class="text-secondary mb-0">Mean of the latest {{ status.averaging_window }} valid outbound readings per interface.</p>
-      </div>
-    </div>
-    <div class="col-md-6">
-      <div class="surface panel h-100">
-        <h2>Previous average</h2>
-        <p class="text-secondary mb-0">Used to calculate percentage change.</p>
-      </div>
-    </div>
-  </div>
+  <section class="surface panel section-gap">
+    <h2>How the figures are used</h2>
+    <p>Averages use the current uninterrupted counter series. The previous average ends one sample earlier. A change from a zero previous average has no percentage value.</p>
+    <p>Path shares are calculated within each aggregation router's confirmed paths. Costs use confirmed carrier prices per decimal GB and project the average rate over one hour.</p>
+    <a class="btn btn-outline-primary" href="{{ url_for('pages.optimization') }}">Review dry-run recommendation</a>
+  </section>
 {% endblock %}

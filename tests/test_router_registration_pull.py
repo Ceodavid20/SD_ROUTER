@@ -147,6 +147,7 @@ def test_router_page_keeps_management_ip_optional_and_api_diagnostic_separate(tm
         "DATA_DIR": tmp_path / "data", "OUTPUT_DIR": tmp_path / "output",
     })
 
+    app.extensions["json_storage"].write_json("routers.json", [{"router_id": "EXISTING-R1", "name": "Existing router"}])
     response = app.test_client().get("/routers")
     page = response.get_data(as_text=True)
 
@@ -157,6 +158,6 @@ def test_router_page_keeps_management_ip_optional_and_api_diagnostic_separate(tm
     assert 'name="controller_auth_ref"' in page
     assert 'name="controller_auth_enabled"' not in page
     assert 'name="controller_auth_key_ids"' not in page
-    ip_input = page.split('id="edit-MTN-LAGOS-address"', 1)[1].split(">", 1)[0]
+    ip_input = page.split('id="edit-EXISTING-R1-address"', 1)[1].split(">", 1)[0]
     assert "required" not in ip_input
     assert 'action="/routers/add"' not in page

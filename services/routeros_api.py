@@ -161,9 +161,24 @@ class RouterOSReadOnlyClient:
                     "Check that the matching service is enabled and reachable from this computer."
                 ) from exc
             if self.tls:
-                context = ssl.create_default_context(cafile=self.ca_file)
+                try:
+                    context = ssl.create_default_context(cafile=self.ca_file)
+                except (OSError, ssl.SSLError) as exc:
+                    raise RouterAPIError(
+                        "The controller could not load trusted router CA certificates. "
+                        "Check SDR_ROUTER_CA_FILE on this computer."
+                    ) from exc
                 connection.settimeout(self._remaining())
-                connection = context.wrap_socket(connection, server_hostname=self.host)
+                try:
+                    connection = context.wrap_socket(connection, server_hostname=self.host)
+                except ssl.SSLCertVerificationError:
+                    raise
+                except (ssl.SSLError, ConnectionResetError, ConnectionAbortedError) as exc:
+                    raise RouterAPIError(
+                        f"Router API-SSL handshake failed on TCP port {self.port}. "
+                        "In WinBox > IP > Services, confirm api-ssl is enabled on this port "
+                        "with a certificate selected. The plain api service cannot accept TLS."
+                    ) from exc
             self._socket = connection
             self._talk(["/login", "=name=" + self._username, "=password=" + self._password])
             rows = self._talk([
@@ -175,7 +190,10 @@ class RouterOSReadOnlyClient:
             return {key: value[:256] for key, value in rows[0].items()
                     if key in ("board-name", "version", "uptime", "cpu-load")}
         except ssl.SSLCertVerificationError as exc:
-            raise RouterAPIError("Router TLS certificate verification failed. Configure the trusted router CA.") from exc
+            raise RouterAPIError(
+                "Router TLS certificate verification failed. Configure the trusted router CA "
+                "and ensure the certificate covers the router management address."
+            ) from exc
         except (TimeoutError, socket.timeout) as exc:
             raise RouterAPIError("Router API request timed out.") from exc
         except (OSError, ssl.SSLError) as exc:

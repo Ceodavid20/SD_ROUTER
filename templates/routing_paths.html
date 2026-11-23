@@ -35,6 +35,14 @@
       <div class="form-text" id="{{ prefix }}-capacity-help">Enter the confirmed capacity as a whole number, such as 1000000000 for 1 Gbit/s.</div>
     </div>
     <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-monitor">Outbound TX measurement source</label>
+      <select class="form-select" id="{{ prefix }}-monitor" name="monitor_router_id">
+        <option value="">Select a path endpoint</option>
+        {% for router in routers %}<option value="{{ router.router_id }}" {% if path.get('monitor_router_id') == router.router_id %}selected{% endif %}>{{ router.name or router.router_id }}</option>{% endfor %}
+      </select>
+      <div class="form-text">Choose this path's endpoint whose selected interface transmits outbound. Each measurement may supply one path only.</div>
+    </div>
+    <div class="col-md-6">
       <label class="form-label" for="{{ prefix }}-aggregation-interface">Aggregation router interface</label>
       <input class="form-control" id="{{ prefix }}-aggregation-interface" name="aggregation_interface" value="{{ path.get('aggregation_interface') or '' }}" maxlength="128" autocomplete="off" placeholder="For example, ether1">
     </div>

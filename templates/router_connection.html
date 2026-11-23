@@ -35,6 +35,7 @@
       <div><dt>Request method</dt><dd><code>{{ connection.method }}</code></dd></div>
       <div><dt>Request path</dt><dd><code>{{ connection.poll_path }}</code></dd></div>
       <div><dt>Receipt path</dt><dd><code>{{ connection.ack_path }}</code></dd></div>
+      <div><dt>Outbound TX telemetry endpoint</dt><dd><code>{{ connection.traffic_endpoint_url or connection.traffic_path }}</code></dd></div>
       <div><dt>Protocol</dt><dd>RouterOS {{ connection.protocol_version }}</dd></div>
       <div><dt>Authentication</dt><dd>Per-router {{ connection.authentication }} signature over verified HTTPS</dd></div>
       <div><dt>Polling interval</dt><dd>{{ connection.poll_interval }} seconds</dd></div>
@@ -42,6 +43,21 @@
     </dl>
     <p class="form-text mb-0">The endpoint accepts authenticated POST requests. Opening it in a browser does not register or connect a router.</p>
   </section>
+
+  {% if registered_routers %}
+    <section class="surface panel section-gap" aria-labelledby="registered-title">
+      <div class="panel-heading"><h2 id="registered-title">Registered MikroTik routers</h2></div>
+      {% for router in registered_routers %}
+        <dl class="status-list">
+          <div><dt>Router</dt><dd>{{ router.name }} · {{ router.router_id }}</dd></div>
+          <div><dt>Controller polling</dt><dd>{{ router.controller_polling.state | capitalize }}</dd></div>
+          <div><dt>Outbound TX interface</dt><dd>{{ router.interface_name or 'Not configured' }}</dd></div>
+          <div><dt>Monitoring</dt><dd>{{ router.traffic_monitoring.state | replace('_', ' ') | capitalize }}</dd></div>
+        </dl>
+      {% endfor %}
+      <a class="btn btn-outline-primary" href="{{ url_for('pages.monitoring') }}">Traffic monitoring</a>
+    </section>
+  {% endif %}
 
   <section class="surface panel section-gap" aria-labelledby="connection-steps-title">
     <div class="panel-heading">

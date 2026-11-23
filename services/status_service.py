@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from services.json_storage import StorageService
 from services.controller_status_service import read_controller_status
 from services.traffic_service import read_traffic_status
+from services.workflow_service import WorkflowService
 
 
 def read_status(storage: StorageService, config: Mapping[str, Any]) -> dict[str, Any]:
@@ -19,6 +20,7 @@ def read_status(storage: StorageService, config: Mapping[str, Any]) -> dict[str,
     traffic = read_traffic_status(storage, config, routers)
     enabled = [summary for summary in traffic.values() if summary["enabled"]]
     measured = [summary for summary in enabled if summary["state"] == "measured"]
+    calculation = WorkflowService(storage, config).read_latest()
     readiness = "not_configured"
     if routers:
         readiness = (
@@ -41,7 +43,11 @@ def read_status(storage: StorageService, config: Mapping[str, Any]) -> dict[str,
         # Publish a network total only when every enabled router has a current rate.
         "outbound_mbps": sum(summary["tx_mbps"] for summary in measured)
         if enabled and len(measured) == len(enabled) else None,
-        "optimization": "not_started",
+        "optimization": "not_started" if calculation is None else (
+            "recommendation_ready" if calculation["is_current"] and calculation["status"] == "ready"
+            else "recalculation_required" if calculation["status"] == "ready" else calculation["status"]),
+        "optimization_objective": settings.get("optimization_objective", "not_configured"),
+        "last_calculation_at": calculation["timestamp"] if calculation else None,
         "automation": settings["automation"],
         "routing_changes_enabled": settings["routing_changes_enabled"],
         "monitoring_interval_seconds": settings["monitoring_interval_seconds"],

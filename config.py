@@ -4,13 +4,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
-
 from dotenv import load_dotenv
-
-
 PROJECT_ROOT = Path(__file__).resolve().parent
-
-
 def _integer_env(name: str, default: int, minimum: int, maximum: int) -> int:
     try:
         value = int(os.environ.get(name, str(default)))
@@ -19,8 +14,6 @@ def _integer_env(name: str, default: int, minimum: int, maximum: int) -> int:
     if not minimum <= value <= maximum:
         raise ValueError(f"{name} is outside its supported range.")
     return value
-
-
 def load_config() -> dict[str, Any]:
     load_dotenv(PROJECT_ROOT / ".env", override=False)
     return {
@@ -53,6 +46,7 @@ def load_config() -> dict[str, Any]:
             if value.strip()
         ],
         "ROUTER_CA_FILE": os.environ.get("SDR_ROUTER_CA_FILE") or None,
+        "API_CREDENTIALS_ENV_FILE": PROJECT_ROOT / ".env",
         "API_TIMEOUT_SECONDS": 3,
         "MAX_CONTENT_LENGTH": 64 * 1024,
         "MAX_FORM_MEMORY_SIZE": 64 * 1024,

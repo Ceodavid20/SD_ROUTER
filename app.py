@@ -14,6 +14,7 @@ from controllers.page_controller import pages
 from controllers.router_controller import router_management
 from controllers.path_controller import routing_paths
 from controllers.monitoring_controller import monitoring_management
+from controllers.workflow_controller import workflow
 from services.json_storage import StorageError, StorageService
 from services.security_service import LoginThrottle, admin_is_authenticated, csrf_token, valid_csrf
 
@@ -50,6 +51,7 @@ def create_app(test_config: Mapping[str, Any] | None = None) -> Flask:
     app.register_blueprint(router_management)
     app.register_blueprint(routing_paths)
     app.register_blueprint(monitoring_management)
+    app.register_blueprint(workflow)
 
     @app.before_request
     def protect_company_operations() -> Response | tuple[Response, int] | None:

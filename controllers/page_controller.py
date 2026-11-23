@@ -6,6 +6,7 @@ from services.status_service import read_status
 from services.router_service import RouterService
 from services.path_config_service import PathConfigService
 from services.controller_connection_service import connection_details
+from services.workflow_service import WorkflowService
 
 
 pages = Blueprint("pages", __name__)
@@ -46,7 +47,10 @@ def routers() -> str:
 
 @pages.get("/routers/connect")
 def router_connection() -> str:
-    return _render("router_connection", connection=connection_details(current_app.config))
+    return _render(
+        "router_connection", connection=connection_details(current_app.config),
+        registered_routers=RouterService(current_app.extensions["json_storage"], current_app.config).list_routers(),
+    )
 
 
 @pages.get("/monitoring")
@@ -57,7 +61,7 @@ def monitoring() -> str:
                 for row in reversed(storage.list_traffic(limit=100))]
     return _render(
         "monitoring", routers=RouterService(storage, current_app.config).list_routers(),
-        readings=readings,
+        readings=readings, connection=connection_details(current_app.config),
     )
 
 
@@ -73,17 +77,23 @@ def routing_paths() -> str:
 
 @pages.get("/mathematics")
 def mathematics() -> str:
-    return _render("mathematics")
+    return _render("mathematics", calculation=WorkflowService(
+        current_app.extensions["json_storage"], current_app.config,
+    ).read_latest())
 
 
 @pages.get("/optimization")
 def optimization() -> str:
-    return _render("optimization")
+    return _render("optimization", calculation=WorkflowService(
+        current_app.extensions["json_storage"], current_app.config,
+    ).read_latest())
 
 
 @pages.get("/json-output")
 def json_output() -> str:
-    return _render("json_output")
+    return _render("json_output", calculation=WorkflowService(
+        current_app.extensions["json_storage"], current_app.config,
+    ).read_latest())
 
 
 @pages.get("/automation")

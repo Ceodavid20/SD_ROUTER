@@ -2,7 +2,14 @@
 {% from "_components.html" import heading %}
 {% block title %}Router output{% endblock %}
 {% block content %}
-  {{ heading('Router output', 'Configuration commands prepared for routers.') }}
+  {{ heading('Router output', 'Local dry-run recommendation for review. Routing changes are off.') }}
+  {% if calculation %}
+    <section class="surface panel section-gap" aria-labelledby="dry-run-json-title">
+      <div class="panel-heading"><h2 id="dry-run-json-title">Dry-run calculation JSON</h2><span class="category-pill">{{ 'Current inputs' if calculation.is_current else 'Historical snapshot' }}</span></div>
+      <pre class="table-responsive">{{ calculation | tojson(indent=2) }}</pre>
+      <p class="form-text">This calculation snapshot is available for review through the local workflow API.</p>
+    </section>
+  {% endif %}
   <section class="surface panel" aria-labelledby="commands-title">
     <div class="panel-heading">
       <h2 id="commands-title">Commands</h2>
@@ -16,6 +23,6 @@
   </section>
   <section class="surface panel section-gap" aria-labelledby="endpoint-title">
     <div class="panel-heading"><h2 id="endpoint-title">Router endpoint</h2></div>
-    <p class="text-secondary mb-0"><code>GET /router-config/&lt;router_id&gt;</code> returns a command when one is available. Routing changes are off.</p>
+    <p class="text-secondary mb-0"><code>GET /api/workflow</code> returns the latest local calculation. Device polling and acknowledgements continue to return no routing action. Command delivery remains locked.</p>
   </section>
 {% endblock %}

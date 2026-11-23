@@ -77,14 +77,15 @@ def test_add_router_link_opens_connection_setup_instead_of_a_form(app, path):
 
 
 def test_router_page_removes_registration_form_but_retains_existing_router_actions(app):
+    app.extensions["json_storage"].write_json("routers.json", [{"router_id": "EXISTING-R1", "name": "Existing router"}])
     response = app.test_client().get("/routers")
     page = elements(response)
     assert not any(form.get("action") == "/routers/add" for form in page.forms)
     assert not any(field.get("name") == "router_id" for field in page.inputs)
     actions = {form.get("action") for form in page.forms}
-    assert "/routers/MTN-LAGOS/edit" in actions
-    assert "/routers/MTN-LAGOS/delete" in actions
-    assert "/routers/MTN-LAGOS/test-api" in actions
+    assert "/routers/EXISTING-R1/edit" in actions
+    assert "/routers/EXISTING-R1/delete" in actions
+    assert "/routers/EXISTING-R1/test-api" in actions
 
 
 @pytest.mark.parametrize("with_csrf", [False, True])
@@ -95,6 +96,7 @@ def test_removed_manual_registration_route_cannot_create_a_router(app, with_csrf
     before = deepcopy(storage.read_json("routers.json"))
     form = {"router_id": "SHOULD-NOT-BE-ADDED", "name": "Rejected registration"}
     if with_csrf:
+        client.get("/settings")
         with client.session_transaction() as session:
             form["csrf_token"] = session["csrf_token"]
 

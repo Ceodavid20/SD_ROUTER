@@ -37,42 +37,6 @@ _MAX_SEGMENT_BYTES = 8 * 1024 * 1024
 _SEGMENT = re.compile(r"traffic_segments/traffic-\d{4}-\d{2}-\d{2}-\d{4}\.jsonl\Z")
 
 
-INITIAL_CARRIER_ROUTERS = [
-    {
-        "router_id": router_id,
-        "name": name,
-        "carrier": carrier,
-        "endpoint": endpoint,
-        "router_role": "carrier_endpoint",
-        "ip_address": "",
-        "model": "",
-        "routeros_version": "",
-        "interface_name": "",
-        "snmp_ifindex": None,
-        "ospf_target_id": None,
-        "snmp_version": None,
-        "snmp_credential_ref": None,
-        "capacity_mbps": None,
-        "cost_per_gb": None,
-        "currency": "",
-        "api_port": None,
-        "api_tls": False,
-        "ssh_port": None,
-        "credential_ref": "",
-        "monitoring_enabled": False,
-        "connection_status": "untested",
-        "last_checked_at": None,
-        "last_error": None,
-    }
-    for router_id, name, carrier, endpoint in (
-        ("MTN-LAGOS", "MTN Lagos", "MTN", "Lagos"),
-        ("MTN-ABUJA", "MTN Abuja", "MTN", "Abuja"),
-        ("GLO-LAGOS", "Glo Lagos", "GLO", "Lagos"),
-        ("GLO-ABUJA", "Glo Abuja", "GLO", "Abuja"),
-    )
-]
-
-
 def _utc_timestamp() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
@@ -243,10 +207,6 @@ class StorageService:
             from services.path_config_service import DEFAULT_ROUTING_PATHS
 
             return deepcopy(DEFAULT_ROUTING_PATHS)
-        if name == "routers.json":
-            from services.path_config_service import INITIAL_AGGREGATION_ROUTERS
-
-            return deepcopy(INITIAL_CARRIER_ROUTERS + INITIAL_AGGREGATION_ROUTERS)
         return deepcopy(default)
 
     def read_json(self, name: str) -> Any:
@@ -511,7 +471,7 @@ class StorageService:
         if not targets:
             return windows
         manifest = self._read_unlocked("traffic_history.json")
-        for entry in reversed(manifest["segments"]):
+        for entry in sorted(manifest["segments"], key=lambda item: (item["date"], item["file"]), reverse=True):
             path = self._segment_path(entry["file"])
             if path.stat().st_size > _MAX_SEGMENT_BYTES:
                 raise StorageError("Traffic segment exceeds its size limit.")
@@ -551,16 +511,14 @@ class StorageService:
                 inputs["router_traffic_v2.json"], inputs["automation_settings.json"]["averaging_window"] + 1,
             )
             result = calculate(inputs, windows, results)
-            existing = next((row for row in reversed(results)
-                             if row.get("workflow_version") == 1
-                             and row.get("evaluation_id") == result["evaluation_id"]), None)
-            if existing is not None:
+            existing = next((row for row in reversed(results) if row.get("workflow_version") == 1), None)
+            if existing is not None and existing["evaluation_id"] == result["evaluation_id"]:
                 return deepcopy(existing)
             for name, records in (("averages.json", result["analysis"]),
                                   ("routing_costs.json", result["allocations"])):
                 previous = self._read_unlocked(name)
                 projection = [{"workflow_version": 1, "evaluation_id": result["evaluation_id"],
-                               "timestamp": result["timestamp"], **row} for row in records]
+                               "calculated_at": result["timestamp"], **row} for row in records]
                 self._write_unlocked(name, [row for row in previous
                     if row.get("evaluation_id") != result["evaluation_id"]] + projection)
             self._write_unlocked("optimization_results.json", [*results, result])
@@ -710,3 +668,12 @@ class StorageService:
                     for key in ("category", "message"):
                         _text(event.get(key), key)
                     _timestamp(event.get("timestamp"))
+            elif name in ("optimization_results.json", "averages.json", "routing_costs.json"):
+                from services.workflow_state import validate_workflow_projection, validate_workflow_result
+
+                for record in value:
+                    if "workflow_version" in record:
+                        if name == "optimization_results.json":
+                            validate_workflow_result(record)
+                        else:
+                            validate_workflow_projection(record, name)

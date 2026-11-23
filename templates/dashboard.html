@@ -1,7 +1,9 @@
 {% extends "base.html" %}
-{% from "_components.html" import activity_table %}
+{% from "_components.html" import activity_table, bandwidth_value %}
 {% block title %}Dashboard{% endblock %}
+{% block head_extra %}<meta http-equiv="refresh" content="15">{% endblock %}
 {% block content %}
+  {% set outbound_unit = 'Kbps' if status.outbound_mbps is not none and status.outbound_mbps < 1 else 'Mbps' %}
   <div class="page-heading page-heading--with-action">
     <div>
       <h1>Dashboard</h1>
@@ -52,7 +54,7 @@
     <div class="col-6 col-xl-3">
       <div class="surface metric-card">
         <div class="metric-label">Outbound bandwidth</div>
-        <div class="metric-value">{% if status.outbound_mbps is not none %}{{ '%.3f' | format(status.outbound_mbps) }}{% else %}<span aria-label="Unavailable">—</span>{% endif %} <small>Mbps</small></div>
+        <div class="metric-value">{% if status.outbound_mbps is not none %}{{ bandwidth_value(status.outbound_mbps, outbound_unit) }}{% else %}<span aria-label="Unavailable">—</span>{% endif %} <small>{{ outbound_unit }}</small></div>
         <p>{% if status.traffic_monitoring.enabled %}{{ status.traffic_monitoring.measured }} / {{ status.traffic_monitoring.enabled }} enabled routers reporting{% else %}Collection not started{% endif %}</p>
       </div>
     </div>
@@ -71,7 +73,7 @@
         <div class="chart-empty">
           <span class="empty-mark nav-icon--monitoring" aria-hidden="true"></span>
           {% if status.outbound_mbps is not none %}
-            <strong>{{ '%.3f' | format(status.outbound_mbps) }} Mbps outbound</strong>
+            <strong>{{ bandwidth_value(status.outbound_mbps, outbound_unit) }} {{ outbound_unit }} outbound</strong>
             <p>Current TX from all {{ status.traffic_monitoring.enabled }} enabled routers.</p>
           {% elif status.traffic_monitoring.enabled %}
             <strong>Waiting for current TX readings</strong>
@@ -91,7 +93,7 @@
           <div><dt>Traffic collection</dt><dd>{{ status.monitoring | replace('_', ' ') | capitalize }}</dd></div>
           <div><dt>Optimization</dt><dd>{{ status.optimization | replace('_', ' ') | capitalize }}</dd></div>
           <div><dt>Automation</dt><dd>{{ status.automation | capitalize }}</dd></div>
-          <div><dt>Last result</dt><dd>None</dd></div>
+          <div><dt>Last result (UTC)</dt><dd>{{ status.last_calculation_at or 'None' }}</dd></div>
         </dl>
       </section>
     </div>

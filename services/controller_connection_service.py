@@ -6,7 +6,7 @@ import re
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
-from services.routeros_protocol import ROUTEROS_ACK_PATH, ROUTEROS_POLL_PATH
+from services.routeros_protocol import ROUTEROS_ACK_PATH, ROUTEROS_POLL_PATH, ROUTEROS_TRAFFIC_PATH
 
 
 def _is_loopback(host: str) -> bool:
@@ -39,7 +39,8 @@ def connection_details(config: Mapping[str, Any]) -> dict[str, Any]:
     details = {
         "endpoint_url": None, "scope": "not_configured", "configuration_error": None,
         "poll_path": ROUTEROS_POLL_PATH, "ack_path": ROUTEROS_ACK_PATH,
-        "ack_endpoint_url": None, "method": "POST",
+        "ack_endpoint_url": None, "traffic_path": ROUTEROS_TRAFFIC_PATH,
+        "traffic_endpoint_url": None, "method": "POST",
         "protocol_version": "2.0", "authentication": "HMAC-SHA512",
         "poll_interval": config.get("ROUTER_POLL_INTERVAL", 60),
     }
@@ -63,6 +64,7 @@ def connection_details(config: Mapping[str, Any]) -> dict[str, Any]:
                 raise ValueError
             details["endpoint_url"] = urlunsplit((parts.scheme, parts.netloc, ROUTEROS_POLL_PATH, "", ""))
             details["ack_endpoint_url"] = urlunsplit((parts.scheme, parts.netloc, ROUTEROS_ACK_PATH, "", ""))
+            details["traffic_endpoint_url"] = urlunsplit((parts.scheme, parts.netloc, ROUTEROS_TRAFFIC_PATH, "", ""))
             details["scope"] = "local" if _is_loopback(host) else "configured"
             return details
         except (ValueError, TypeError):
@@ -78,6 +80,7 @@ def connection_details(config: Mapping[str, Any]) -> dict[str, Any]:
         authority = f"[{host}]" if ":" in host else host
         details["endpoint_url"] = f"http://{authority}:{port}{ROUTEROS_POLL_PATH}"
         details["ack_endpoint_url"] = f"http://{authority}:{port}{ROUTEROS_ACK_PATH}"
+        details["traffic_endpoint_url"] = f"http://{authority}:{port}{ROUTEROS_TRAFFIC_PATH}"
         details["scope"] = "local"
     else:
         details["configuration_error"] = "Set CONTROLLER_BASE_URL to the approved controller address before device setup."

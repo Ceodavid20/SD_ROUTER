@@ -7,9 +7,10 @@ remain unchanged. Traffic requests never issue or acknowledge routing
 instructions and never update polling check-in or receipt metadata.
 
 Monitoring is disabled for new routers. Existing operator settings are
-preserved. This implementation does not contact routers during startup,
-page rendering, ingestion or tests. It installs no scheduler and does not
-change operational `.env`, router configurations or the installed TLS proxy.
+preserved. The Flask applications do not contact routers during startup,
+page rendering, ingestion or tests. Those operations install no scheduler
+and do not change router configurations or the installed TLS proxy.
+An operator-authorized installation is recorded below.
 Keep `SIMULATION_MODE=true` and `LIVE_ROUTING_ENABLED=false` during development.
 
 ## Components
@@ -126,7 +127,8 @@ link and verify the chosen interface's accounting on the target device.
 The collector reads the documented `tx-byte` property only. See the
 [MikroTik interface reference](https://manual.mikrotik.com/docs/cli-reference/interface/)
 for counter semantics and hardware-offload accounting limits. Native
-validation of this new collector on the target RouterOS release is pending.
+validation on RouterOS 7.25.1 is recorded below. Other releases still
+require their own native validation.
 
 ## Persistent security and interrupted writes
 
@@ -168,8 +170,8 @@ state to clear an error or restore it separately from traffic history.
    This saves a local registry setting only. Existing authentication mode
    applies; CSRF is required even while browser login is paused for local work.
 3. Obtain approval before any target-router command, collector installation,
-   scheduler change or installed proxy change. No such action was performed
-   as part of this implementation.
+   scheduler change or installed proxy change. These operations are separate
+   from normal Flask requests and startup.
 
 An optional local preparation command reuses an existing active generated
 key and creates a new private bundle. It neither rotates credentials nor
@@ -196,7 +198,7 @@ do not establish RouterOS execution or interoperability.
 
 The TLS configuration generator includes the new path for future bundles.
 An already installed proxy may deny it until an approved administrator
-adds **only** `/api/controller/v2/traffic` under the existing source and
+   adds **only** `/api/controller/v2/traffic` under the existing source and
 body-size restrictions. Do not regenerate private TLS material or restart
 the live proxy just to bypass that review.
 
@@ -208,7 +210,11 @@ historical measurements. A stale or disabled rate is unavailable. The
 dashboard shows a network total only when every enabled router has a
 current measured rate; the count of reporting routers stays visible.
 Historical readings survive disablement. GET requests do not collect data
-or change state. Reload the page to refresh it.
+or change state. The monitoring page refreshes every 15 seconds. Small
+nonzero rates retain visible precision in both the current reading and
+history; a measured zero remains zero. Monitoring tables show Kbps, and
+the dashboard uses Kbps below 1 Mbps. One Mbps equals 1,000 Kbps. Stored
+measurements and JSON API fields continue to use Mbps.
 
 | Status | Meaning |
 | --- | --- |
@@ -228,3 +234,33 @@ outbound network connections. They exercise HMAC path/body binding, strict
 schemas, timestamp boundaries, independent rate limits, key revocation,
 replay after restart, concurrency, interrupted append recovery, TX math,
 counter resets, interface/enablement changes and browser auth/CSRF behavior.
+
+## Approved native commissioning on November 23, 2026
+
+The existing `SDR-CHR-LAB-01` router, running RouterOS **7.25.1**, was
+commissioned after operator authorization. Its collector reads only the
+cumulative `tx-byte` counter on **ether1** and posts signed samples to
+`https://192.168.56.1:18443/api/controller/v2/traffic`.
+
+- Native import dry-run reported no syntax errors before installation.
+- The `sdr-controller-traffic` script and scheduler use only `read,test`
+  permissions. The scheduler invokes the script with
+  `use-script-permissions` every 60 seconds.
+- Real RouterOS Fetch requests passed certificate verification and the
+  controller's HMAC, timestamp, interface and opt-in checks. Native
+  execution was verified independently from Python test results.
+- The first sample established a baseline. Subsequent scheduler samples
+  produced measured Mbps, persisted history and a frontend `receiving`
+  status. A monitoring disable/re-enable correctly began a new series.
+- The existing HTTPS proxy was reused without edits or restarts. Its
+  original `SDR Controller CA 996AFD18` trust remained in place, and the
+  working API-SSL certificate set was preserved.
+- Poll/ACK clients, interface configuration, OSPF, routing, firewall and
+  counter values were not changed or reset. No RX counter was read.
+  `SIMULATION_MODE=true` and `LIVE_ROUTING_ENABLED=false` remain set.
+
+The native collector and its rendered source contain an authentication
+key. Keep that source private; do not export it verbosely or commit it.
+The Flask applications continue to require a separate, explicitly enabled
+collector for any additional router. No routers or example traffic were
+added during commissioning.

@@ -18,6 +18,7 @@ from services.traffic_service import read_traffic_status
 from services.traffic_protocol import validate_interface
 from services.router_protocol import ProtocolError
 from services.controller_status_service import _authorization_enabled
+from services.api_credentials_service import APICredentialError, api_credentials
 
 
 class RouterValidationError(ValueError):
@@ -83,6 +84,7 @@ class RouterService:
         result["api_port"] = router.get("api_port") if type(router.get("api_port")) is int else None
         result["ssh_port"] = router.get("ssh_port") if type(router.get("ssh_port")) is int else None
         result["api_tls"] = router.get("api_tls") is True
+        result["api_credentials_managed"] = router.get("api_credentials_source") == "private_env"
         controller_ref = router.get("controller_auth_ref", "")
         result["controller_auth_ref"] = (
             controller_ref if isinstance(controller_ref, str)
@@ -121,9 +123,10 @@ class RouterService:
         communication = read_controller_status(self.storage, self.config, records)
         monitoring = read_traffic_status(self.storage, self.config, records)
         routers = [self._public(router) for router in records]
-        for router in routers:
+        for router, record in zip(routers, records):
             router["controller_polling"] = communication[router["router_id"]]
             router["traffic_monitoring"] = monitoring[router["router_id"]]
+            router["api_diagnostics"] = self.api_diagnostic_readiness(record)
         return routers
 
     def _validated(
@@ -246,6 +249,13 @@ class RouterService:
                 # and instruction history added by communication services.
                 updated = {**current, **record}
                 updated["monitoring_enabled"] = current.get("monitoring_enabled") is True
+                # The private setup command owns managed references. An older
+                # browser form must not clear or roll back a newly saved login.
+                # Read the current reference inside the storage transaction so
+                # a concurrent credential rotation is preserved as well.
+                if (current.get("api_credentials_source") == "private_env"
+                        or "credential_ref" not in data):
+                    updated["credential_ref"] = current.get("credential_ref", "")
                 for field in ("detected_model", "detected_routeros_version"):
                     updated.pop(field, None)
                 current_auth = self._public(current)
@@ -276,6 +286,29 @@ class RouterService:
             if updated.get(field) is None:
                 public[field] = None
         return public
+
+    def configure_monitoring_interface(self, router_id: str, interface: str) -> None:
+        """Update only the selected router's TX interface, without contacting it."""
+        if not isinstance(router_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", router_id):
+            raise RouterValidationError("Router ID is invalid.")
+        try:
+            validate_interface(interface)
+        except ProtocolError as exc:
+            raise RouterValidationError("Enter one valid outbound interface name.") from exc
+
+        def configure(routers):
+            router = next((item for item in routers if item["router_id"] == router_id), None)
+            if router is None:
+                raise RouterValidationError("Router was not found.")
+            if router.get("interface_name") != interface:
+                router.update(interface_name=interface, monitoring_enabled=False,
+                              monitoring_generation=str(uuid4()))
+            return routers
+
+        self.storage.update_json("routers.json", configure)
+        self.storage.append_activity("monitoring", "Outbound TX monitoring interface configured.", {
+            "router_id": router_id, "interface": interface,
+        })
 
     def set_monitoring(self, router_id: str, enabled: bool) -> None:
         """Explicit local opt-in; changing this flag never installs a collector."""
@@ -350,30 +383,50 @@ class RouterService:
                 data[key] = ""
         return self._validated(data, allow_pending_address=True)
 
-    def _preflight(self, router: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
-        router = self._validated_saved(router)
+    def _api_setup(self, saved: dict[str, Any]):
+        issues = []
+        try:
+            router = self._validated_saved(saved)
+        except RouterValidationError as exc:
+            return None, ("", ""), [str(exc)]
         if not router["ip_address"]:
-            raise RouterValidationError("Management IP address has not been entered for this router.")
+            issues.append("Management IP address has not been entered for this router.")
         if router["api_port"] is None:
-            raise RouterValidationError("API port has not been entered for this router.")
+            issues.append("API port has not been entered for this router.")
         if not router["api_tls"] and not self.config.get("ALLOW_PLAINTEXT_API", False):
-            raise RouterValidationError("Unencrypted API connections are blocked. Configure API-SSL or explicitly authorize API access through a protected company network.")
-        address = ip_address(router["ip_address"])
+            issues.append("Unencrypted API connections are blocked. Configure API-SSL or explicitly authorize API access through a protected company network.")
         try:
             allowed = [ip_network(network) for network in self.config.get("ROUTER_ALLOWED_NETWORKS", [])]
         except ValueError as exc:
-            raise RouterValidationError("The controller's router network allowlist needs correction.") from exc
-        if not any(address in network for network in allowed):
-            raise RouterValidationError("Router address is outside the configured company management networks.")
+            allowed = []
+            issues.append("The controller's router network allowlist needs correction.")
+        if router["ip_address"] and not any(ip_address(router["ip_address"]) in network for network in allowed):
+            issues.append("Router address is outside the configured company management networks.")
         reference = router["credential_ref"]
+        username, password = "", ""
         if not reference:
-            raise RouterValidationError("Configure a credential reference for the read-only router account.")
-        username = os.environ.get(reference + "_USERNAME", "")
-        password = os.environ.get(reference + "_PASSWORD", "")
-        if not username or not password:
-            raise RouterValidationError("The referenced router credentials are not configured on this server.")
-        if len(username) > 128 or len(password) > 4096:
-            raise RouterValidationError("The configured router credentials exceed the supported size.")
+            issues.append("Configure a credential reference for the read-only router account using the local setup command below.")
+        else:
+            try:
+                username, password = api_credentials({**router, "api_credentials_source": saved.get("api_credentials_source")}, self.config)
+            except APICredentialError as exc:
+                issues.append(str(exc))
+            else:
+                if not username or not password:
+                    issues.append("The referenced router credentials are not configured on this server.")
+                elif len(username) > 128 or len(password) > 4096:
+                    issues.append("The configured router credentials exceed the supported size.")
+        return router, (username, password), issues
+
+    def api_diagnostic_readiness(self, router: dict[str, Any]) -> dict[str, Any]:
+        """Show every local prerequisite without contacting or logging in to a router."""
+        _, _, issues = self._api_setup(router)
+        return {"ready": not issues, "requirements": issues}
+
+    def _preflight(self, saved: dict[str, Any]) -> tuple[str, str, dict[str, Any]]:
+        router, (username, password), issues = self._api_setup(saved)
+        if issues:
+            raise RouterValidationError(issues[0])
         return username, password, router
 
     def test_api(self, router_id: str) -> dict[str, Any]:

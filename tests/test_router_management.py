@@ -1,6 +1,7 @@
 """Real-device setup is tested without contacting a company router."""
 
 import json
+import ssl
 from types import SimpleNamespace
 
 import pytest
@@ -205,6 +206,62 @@ def test_refused_tcp_connection_has_specific_error_and_sends_no_login(monkeypatc
 
     assert attempted and attempted[0][0] == ("10.20.0.1", 8728)
     assert commands == []
+
+
+@pytest.mark.parametrize("error", [
+    ssl.SSLError("test-only-private TLS details"),
+    ConnectionResetError("test-only-private TLS details"),
+    ConnectionAbortedError("test-only-private TLS details"),
+])
+def test_tls_handshake_failure_identifies_service_without_sending_credentials(monkeypatch, error):
+    connection = FakeSocket(b"")
+    attempts = []
+    def connect(address, **kwargs):
+        attempts.append(address)
+        return connection
+    def wrap(sock, *, server_hostname):
+        assert sock is connection and server_hostname == "10.20.0.1"
+        raise error
+    monkeypatch.setattr("socket.create_connection", connect)
+    monkeypatch.setattr("ssl.create_default_context", lambda **kwargs: SimpleNamespace(wrap_socket=wrap))
+    client = RouterOSReadOnlyClient("10.20.0.1", 8728, "test-user", "test-password", tls=True)
+    with pytest.raises(RouterAPIError, match="API-SSL handshake failed on TCP port 8728") as caught:
+        client.read_resource()
+    assert "api-ssl" in str(caught.value) and "certificate" in str(caught.value)
+    assert "test-only-private" not in str(caught.value)
+    assert connection.closed and connection.sent == b"" and client._socket is None
+    assert attempts == [("10.20.0.1", 8728)]  # No plaintext retry.
+
+
+def test_untrusted_certificate_is_reported_separately_and_sends_no_login(monkeypatch):
+    connection = FakeSocket(b"")
+    contexts = []
+    def context(*, cafile):
+        contexts.append(cafile)
+        def wrap(sock, *, server_hostname):
+            raise ssl.SSLCertVerificationError("test-only-private certificate details")
+        return SimpleNamespace(wrap_socket=wrap)
+    monkeypatch.setattr("socket.create_connection", lambda *args, **kwargs: connection)
+    monkeypatch.setattr("ssl.create_default_context", context)
+    client = RouterOSReadOnlyClient("10.20.0.1", 8729, "test-user", "test-password", ca_file="test-ca.pem")
+    with pytest.raises(RouterAPIError, match="certificate verification failed") as caught:
+        client.read_resource()
+    assert contexts == ["test-ca.pem"]
+    assert "management address" in str(caught.value) and "test-only-private" not in str(caught.value)
+    assert connection.closed and connection.sent == b""
+
+
+def test_missing_ca_file_identifies_controller_configuration_without_sending_login(monkeypatch):
+    connection = FakeSocket(b"")
+    def context(**kwargs):
+        raise FileNotFoundError("test-only-private CA path")
+    monkeypatch.setattr("socket.create_connection", lambda *args, **kwargs: connection)
+    monkeypatch.setattr("ssl.create_default_context", context)
+    client = RouterOSReadOnlyClient("10.20.0.1", 8729, "test-user", "test-password", ca_file="missing-test-ca.pem")
+    with pytest.raises(RouterAPIError, match="SDR_ROUTER_CA_FILE") as caught:
+        client.read_resource()
+    assert "test-only-private" not in str(caught.value)
+    assert connection.closed and connection.sent == b""
 
 
 def test_device_error_does_not_echo_sensitive_device_text(monkeypatch):
