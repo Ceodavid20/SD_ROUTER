@@ -9,10 +9,15 @@ import math
 import os
 import re
 from typing import Any
+from uuid import uuid4
 
 from services.json_storage import StorageService
 from services.controller_status_service import read_controller_status
 from services.routeros_api import RouterAPIError, RouterOSReadOnlyClient
+from services.traffic_service import read_traffic_status
+from services.traffic_protocol import validate_interface
+from services.router_protocol import ProtocolError
+from services.controller_status_service import _authorization_enabled
 
 
 class RouterValidationError(ValueError):
@@ -114,9 +119,11 @@ class RouterService:
         # Authorization uses the exact registry metadata, as polling does.
         # Public projection must not repair malformed keys before this check.
         communication = read_controller_status(self.storage, self.config, records)
+        monitoring = read_traffic_status(self.storage, self.config, records)
         routers = [self._public(router) for router in records]
         for router in routers:
             router["controller_polling"] = communication[router["router_id"]]
+            router["traffic_monitoring"] = monitoring[router["router_id"]]
         return routers
 
     def _validated(
@@ -238,6 +245,7 @@ class RouterService:
                 # Preserve metadata not edited by this form, including check-in
                 # and instruction history added by communication services.
                 updated = {**current, **record}
+                updated["monitoring_enabled"] = current.get("monitoring_enabled") is True
                 for field in ("detected_model", "detected_routeros_version"):
                     updated.pop(field, None)
                 current_auth = self._public(current)
@@ -251,6 +259,9 @@ class RouterService:
                     # not silently reuse enablement from the previous key set.
                     updated["controller_auth_enabled"] = False
                     updated["controller_auth_key_ids"] = []
+                if (updated.get("interface_name") != current.get("interface_name")
+                        or updated.get("controller_auth_ref") != current.get("controller_auth_ref")):
+                    updated["monitoring_generation"] = str(uuid4())
                 routers[index] = updated
                 return routers
             raise RouterValidationError("Router was not found.")
@@ -265,6 +276,34 @@ class RouterService:
             if updated.get(field) is None:
                 public[field] = None
         return public
+
+    def set_monitoring(self, router_id: str, enabled: bool) -> None:
+        """Explicit local opt-in; changing this flag never installs a collector."""
+        if (not isinstance(router_id, str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", router_id)
+                or type(enabled) is not bool):
+            raise RouterValidationError("Invalid monitoring setting.")
+
+        def configure(routers):
+            router = next((item for item in routers if item["router_id"] == router_id), None)
+            if router is None:
+                raise RouterValidationError("Router was not found.")
+            if enabled:
+                try:
+                    validate_interface(router.get("interface_name"))
+                except ProtocolError as exc:
+                    raise RouterValidationError("Configure one outbound interface before enabling monitoring.") from exc
+                if not _authorization_enabled(router):
+                    raise RouterValidationError("Provision controller authentication before enabling monitoring.")
+            if (router.get("monitoring_enabled") is True) != enabled:
+                router["monitoring_generation"] = str(uuid4())
+            router["monitoring_enabled"] = enabled
+            return routers
+
+        self.storage.update_json("routers.json", configure)
+        self.storage.append_activity("monitoring", "Outbound traffic monitoring setting updated.", {
+            "router_id": router_id, "enabled": enabled,
+        })
 
     def delete_router(self, router_id: str) -> None:
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", router_id):

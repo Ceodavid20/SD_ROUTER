@@ -29,7 +29,10 @@ class RouterPollService:
     def __init__(self, storage: StorageService, config: Mapping[str, Any]) -> None:
         self.storage, self.config = storage, config
 
-    def check_rate_limit(self, source: str, now: datetime | None = None) -> None:
+    def check_rate_limit(
+        self, source: str, now: datetime | None = None, *,
+        state_document: str = "router_communication.json",
+    ) -> None:
         """Count attempts before auth. Persist limits across processes/restarts."""
         now = now or datetime.now(UTC)
         maximum = self.config.get("ROUTER_RATE_LIMIT_ATTEMPTS", 30)
@@ -56,7 +59,7 @@ class RouterPollService:
             state["rate_limits"] = buckets
             return state
 
-        self.storage.update_json("router_communication.json", count)
+        self.storage.update_json(state_document, count)
         if not result["allowed"]:
             if result["audit"]:
                 self.storage.append_activity("security", "Router polling rate limit reached.")

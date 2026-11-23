@@ -51,7 +51,14 @@ def router_connection() -> str:
 
 @pages.get("/monitoring")
 def monitoring() -> str:
-    return _render("monitoring")
+    storage = current_app.extensions["json_storage"]
+    # A fixed projection prevents unknown legacy history fields reaching HTML.
+    readings = [{key: row[key] for key in ("timestamp", "router_id", "interface", "tx_mbps")}
+                for row in reversed(storage.list_traffic(limit=100))]
+    return _render(
+        "monitoring", routers=RouterService(storage, current_app.config).list_routers(),
+        readings=readings,
+    )
 
 
 @pages.get("/routing-paths")

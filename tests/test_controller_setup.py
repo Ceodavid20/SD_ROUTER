@@ -458,6 +458,7 @@ def test_tls_generation_produces_valid_public_chain_and_sans_without_starting_li
     assert "SSLProtocol -all +TLSv1.2" in config
     assert "Require ip 127.0.0.1/32" in config
     assert 'Require all denied' in config
+    assert '^/api/controller/(v1/poll|v2/(poll|ack|traffic))$' in config
     assert 'ProxyRequests Off' in config
     assert 'Listen 127.0.0.1:18443' in config
     # The unprivileged listener must not try to create its proxy mutexes in

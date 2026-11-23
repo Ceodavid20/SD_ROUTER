@@ -156,6 +156,13 @@ class RouterOSPollService:
             self._authentication_failed("future_request")
         return router
 
+    def authenticate(self, payload, raw, key_id, signature, path, now):
+        """Verify V2 credentials/freshness without issuing a poll or receipt.
+
+        The caller validates its own strict schema and consumes its nonce.
+        """
+        return self._authenticate(payload, raw, key_id, signature, path, now)
+
     def handle(
         self, raw: bytes, key_id: str, signature: str, source: str,
         request_type: str = "poll", now: datetime | None = None, count_attempt: bool = True,

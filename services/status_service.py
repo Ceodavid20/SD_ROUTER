@@ -5,6 +5,7 @@ from collections.abc import Mapping
 
 from services.json_storage import StorageService
 from services.controller_status_service import read_controller_status
+from services.traffic_service import read_traffic_status
 
 
 def read_status(storage: StorageService, config: Mapping[str, Any]) -> dict[str, Any]:
@@ -15,6 +16,9 @@ def read_status(storage: StorageService, config: Mapping[str, Any]) -> dict[str,
         state: sum(summary["state"] == state for summary in polling.values())
         for state in ("disabled", "awaiting", "authenticated", "stale")
     }
+    traffic = read_traffic_status(storage, config, routers)
+    enabled = [summary for summary in traffic.values() if summary["enabled"]]
+    measured = [summary for summary in enabled if summary["state"] == "measured"]
     readiness = "not_configured"
     if routers:
         readiness = (
@@ -32,7 +36,11 @@ def read_status(storage: StorageService, config: Mapping[str, Any]) -> dict[str,
         # Retain the legacy API-diagnostic readiness field for compatibility.
         "controller_polling": controller_counts,
         "storage": "ready",
-        "monitoring": "not_started",
+        "monitoring": "not_started" if not enabled else ("receiving" if measured else "awaiting_readings"),
+        "traffic_monitoring": {"enabled": len(enabled), "measured": len(measured)},
+        # Publish a network total only when every enabled router has a current rate.
+        "outbound_mbps": sum(summary["tx_mbps"] for summary in measured)
+        if enabled and len(measured) == len(enabled) else None,
         "optimization": "not_started",
         "automation": settings["automation"],
         "routing_changes_enabled": settings["routing_changes_enabled"],

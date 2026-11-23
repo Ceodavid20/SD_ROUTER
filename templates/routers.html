@@ -118,6 +118,7 @@
         <div><dt>Last optional API check</dt><dd>{{ router.last_checked_at or 'Not tested' }}</dd></div>
         <div><dt>API diagnostic result</dt><dd>{{ router.last_error or (router.connection_status | replace('_', ' ') | capitalize) }}</dd></div>
         <div><dt>Controller authentication</dt><dd>{{ 'Enabled in registry' if router.controller_auth_enabled else 'Not enabled' }}</dd></div>
+        <div><dt>Outbound monitoring</dt><dd>{{ router.traffic_monitoring.state | replace('_', ' ') | capitalize }} · <a href="{{ url_for('pages.monitoring') }}">Traffic monitoring</a></dd></div>
         {% if router.get('detected_model') %}<div><dt>Detected model</dt><dd>{{ router.detected_model }}</dd></div>{% endif %}
         {% if router.get('detected_routeros_version') %}<div><dt>Detected RouterOS version</dt><dd>{{ router.detected_routeros_version }}</dd></div>{% endif %}
       </dl>

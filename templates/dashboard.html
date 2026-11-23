@@ -52,8 +52,8 @@
     <div class="col-6 col-xl-3">
       <div class="surface metric-card">
         <div class="metric-label">Outbound bandwidth</div>
-        <div class="metric-value"><span aria-label="Unavailable">—</span> <small>Mbps</small></div>
-        <p>Collection not started</p>
+        <div class="metric-value">{% if status.outbound_mbps is not none %}{{ '%.3f' | format(status.outbound_mbps) }}{% else %}<span aria-label="Unavailable">—</span>{% endif %} <small>Mbps</small></div>
+        <p>{% if status.traffic_monitoring.enabled %}{{ status.traffic_monitoring.measured }} / {{ status.traffic_monitoring.enabled }} enabled routers reporting{% else %}Collection not started{% endif %}</p>
       </div>
     </div>
   </div>
@@ -70,8 +70,16 @@
         </div>
         <div class="chart-empty">
           <span class="empty-mark nav-icon--monitoring" aria-hidden="true"></span>
-          <strong>No traffic readings</strong>
-          <p>Readings will appear here after traffic collection is set up.</p>
+          {% if status.outbound_mbps is not none %}
+            <strong>{{ '%.3f' | format(status.outbound_mbps) }} Mbps outbound</strong>
+            <p>Current TX from all {{ status.traffic_monitoring.enabled }} enabled routers.</p>
+          {% elif status.traffic_monitoring.enabled %}
+            <strong>Waiting for current TX readings</strong>
+            <p>{{ status.traffic_monitoring.measured }} of {{ status.traffic_monitoring.enabled }} enabled routers have a current measured rate.</p>
+          {% else %}
+            <strong>No traffic readings</strong>
+            <p>Enable one outbound interface per router in Traffic monitoring.</p>
+          {% endif %}
         </div>
       </section>
     </div>

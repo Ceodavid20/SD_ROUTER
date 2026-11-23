@@ -19,7 +19,7 @@
     <div class="panel-heading"><h2 id="integrations-title">Integrations</h2></div>
     <dl class="status-list">
       <div><dt>Router connections</dt><dd>Set on each router</dd></div>
-      <div><dt>Traffic collection</dt><dd>Not started</dd></div>
+      <div><dt>Traffic collection</dt><dd>{{ status.monitoring | replace('_', ' ') | capitalize }} · {{ status.traffic_monitoring.enabled }} routers enabled</dd></div>
       <div><dt>Cost and traffic-share formulas</dt><dd>Not set</dd></div>
       <div><dt>Routing changes</dt><dd>Off</dd></div>
     </dl>

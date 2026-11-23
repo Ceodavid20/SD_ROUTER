@@ -124,6 +124,10 @@ class StorageService:
         "router_communication_v2.json": {
             "schema_version": 2, "routers": {}, "seen_requests": [], "issued_responses": [],
         },
+        "router_traffic_v2.json": {
+            "schema_version": 1, "routers": {}, "seen_requests": [],
+            "rate_limits": {}, "pending_reading": None,
+        },
         "traffic_history.json": {"schema_version": 1, "storage": "segmented_jsonl", "segments": []},
         "averages.json": [],
         "optimization_results.json": [],
@@ -208,6 +212,7 @@ class StorageService:
                     self._write_unlocked(name, initial, backup=False)
                 else:
                     self._read_unlocked(name)
+            self._flush_pending_traffic_unlocked(self._read_unlocked("router_traffic_v2.json"))
             events = self._read_unlocked("activity_logs.json")
             changed = False
             cleaned_events = []
@@ -354,34 +359,102 @@ class StorageService:
     def append_traffic(self, reading: dict[str, Any]) -> dict[str, Any]:
         """Append a complete JSON line; rewrite the small manifest only on rotation."""
         self._validate_traffic(reading)
-        encoded = (json.dumps(reading, allow_nan=False, separators=(",", ":")) + "\n").encode("utf-8")
+        encoded = self._traffic_bytes(reading)
         if len(encoded) > 65536:
             raise ValidationError("Traffic reading is too large.")
-        date = _timestamp(reading["timestamp"]).date().isoformat()
         with self._locked():
-            manifest = self._read_unlocked("traffic_history.json")
-            entries = [entry for entry in manifest["segments"] if entry["date"] == date]
-            segment = self._segment_path(entries[-1]["file"]) if entries else None
-            if segment is None or (segment.exists() and segment.stat().st_size + len(encoded) > _MAX_SEGMENT_BYTES):
-                index = len(entries) + 1
-                relative = f"traffic_segments/traffic-{date}-{index:04d}.jsonl"
-                segment = self._segment_path(relative)
-                # Create before publishing its name, so the manifest never points
-                # to a file that does not exist after an interrupted rotation.
-                segment.touch(mode=0o600, exist_ok=True)
-                self._sync_directory(segment.parent)
-                manifest["segments"].append({"date": date, "file": relative})
-                self._write_unlocked("traffic_history.json", manifest)
-            with segment.open("a+b") as stream:
-                stream.seek(0, os.SEEK_END)
-                if stream.tell():
-                    stream.seek(-1, os.SEEK_END)
-                    if stream.read(1) != b"\n":
-                        raise StorageError("Traffic segment has an incomplete final record; repair it before appending.")
+            self._flush_pending_traffic_unlocked(self._read_unlocked("router_traffic_v2.json"))
+            relative, _ = self._traffic_target_unlocked(reading, len(encoded))
+            with self._segment_path(relative).open("ab") as stream:
                 stream.write(encoded)
                 stream.flush()
                 os.fsync(stream.fileno())
         return deepcopy(reading)
+
+    @staticmethod
+    def _traffic_bytes(reading: dict[str, Any]) -> bytes:
+        return (json.dumps(reading, allow_nan=False, separators=(",", ":")) + "\n").encode("utf-8")
+
+    def _traffic_target_unlocked(self, reading: dict[str, Any], size: int) -> tuple[str, int]:
+        date = _timestamp(reading["timestamp"]).date().isoformat()
+        manifest = self._read_unlocked("traffic_history.json")
+        entries = [entry for entry in manifest["segments"] if entry["date"] == date]
+        relative = entries[-1]["file"] if entries else None
+        segment = self._segment_path(relative) if relative else None
+        if segment is None or segment.stat().st_size + size > _MAX_SEGMENT_BYTES:
+            relative = f"traffic_segments/traffic-{date}-{len(entries) + 1:04d}.jsonl"
+            segment = self._segment_path(relative)
+            # An unreferenced file from an interrupted rotation must be empty.
+            if segment.exists() and segment.stat().st_size:
+                raise StorageError("Unreferenced traffic segment requires repair.")
+            segment.touch(mode=0o600, exist_ok=True)
+            self._sync_directory(segment.parent)
+            manifest["segments"].append({"date": date, "file": relative})
+            self._write_unlocked("traffic_history.json", manifest)
+        with segment.open("rb") as stream:
+            offset = stream.seek(0, os.SEEK_END)
+            if offset:
+                stream.seek(-1, os.SEEK_END)
+                if stream.read(1) != b"\n":
+                    raise StorageError("Traffic segment has an incomplete final record; repair it before appending.")
+        return relative, offset
+
+    def _flush_pending_traffic_unlocked(self, state: dict[str, Any]) -> None:
+        """Complete one committed append exactly once, including after a crash.
+
+        The persisted file/offset and expected bytes distinguish an unwritten,
+        partially written or fully written line. Unrelated bytes fail closed.
+        All history writers hold the same lock and flush this outbox first.
+        """
+        pending = state["pending_reading"]
+        if pending is None:
+            return
+        manifest = self._read_unlocked("traffic_history.json")
+        if not any(entry["file"] == pending["file"] for entry in manifest["segments"]):
+            raise StorageError("Pending traffic segment is absent from history.")
+        encoded = self._traffic_bytes(pending["reading"])
+        with self._segment_path(pending["file"]).open("r+b") as stream:
+            size = stream.seek(0, os.SEEK_END)
+            offset = pending["offset"]
+            if not offset <= size <= offset + len(encoded):
+                raise StorageError("Pending traffic offset conflicts with history.")
+            if offset:
+                stream.seek(offset - 1)
+                if stream.read(1) != b"\n":
+                    raise StorageError("Pending traffic offset is not a record boundary.")
+            stream.seek(offset)
+            existing = stream.read()
+            if not encoded.startswith(existing):
+                raise StorageError("Pending traffic bytes conflict with history.")
+            stream.seek(offset)
+            stream.write(encoded)
+            stream.flush()
+            os.fsync(stream.fileno())
+        state["pending_reading"] = None
+        self._write_unlocked("router_traffic_v2.json", state)
+
+    def commit_traffic(self, updater: Callable) -> dict[str, Any]:
+        """Commit nonce/baseline and a recoverable history append under one lock.
+
+        The callback receives current registry/settings snapshots, so a
+        concurrent disable or interface/key change cannot authorize stale data.
+        No callback may acquire storage locks or perform external I/O.
+        """
+        with self._locked():
+            state = self._read_unlocked("router_traffic_v2.json")
+            self._flush_pending_traffic_unlocked(state)
+            state, reading = updater(
+                state, self._read_unlocked("routers.json"),
+                self._read_unlocked("automation_settings.json"),
+            )
+            if reading is not None:
+                self._validate_traffic(reading)
+                encoded = self._traffic_bytes(reading)
+                relative, offset = self._traffic_target_unlocked(reading, len(encoded))
+                state["pending_reading"] = {"file": relative, "offset": offset, "reading": reading}
+            self._write_unlocked("router_traffic_v2.json", state)
+            self._flush_pending_traffic_unlocked(state)
+            return deepcopy(state)
 
     def list_traffic(self, limit: int = 100) -> list[dict[str, Any]]:
         """Read recent segments with bounded memory, returning append order."""
@@ -416,6 +489,83 @@ class StorageService:
         commands = self.read_json("router_config.json")["commands"]
         return next((command for command in commands if command["router_id"] == router_id), None)
 
+    def _workflow_inputs_unlocked(self) -> dict[str, Any]:
+        return {name: self._read_unlocked(name) for name in (
+            "routers.json", "routing_paths.json", "automation_settings.json", "router_traffic_v2.json",
+        )}
+
+    def read_workflow_snapshot(self) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+        """Read consistent inputs/results without collecting or writing anything."""
+        with self._locked():
+            return self._workflow_inputs_unlocked(), self._read_unlocked("optimization_results.json")
+
+    def _traffic_windows_unlocked(self, state: dict[str, Any], count: int) -> dict[str, list]:
+        """Find the latest readings in each current counter series.
+
+        Inspect at most one bounded segment in memory and stop as soon as
+        every series has its window. Legacy history remains untouched.
+        """
+        targets = {router_id: record for router_id, record in state["routers"].items()
+                   if record.get("series_id") and record["sample_state"] == "measured"}
+        windows = {router_id: [] for router_id in targets}
+        if not targets:
+            return windows
+        manifest = self._read_unlocked("traffic_history.json")
+        for entry in reversed(manifest["segments"]):
+            path = self._segment_path(entry["file"])
+            if path.stat().st_size > _MAX_SEGMENT_BYTES:
+                raise StorageError("Traffic segment exceeds its size limit.")
+            for line in reversed(path.read_bytes().splitlines(keepends=True)):
+                if not line.endswith(b"\n"):
+                    raise StorageError("Traffic segment has an incomplete final record.")
+                try:
+                    row = json.loads(line, parse_constant=self._invalid_constant,
+                                     object_pairs_hook=self._unique_object)
+                except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
+                    raise StorageError("Traffic segment contains invalid JSON.") from exc
+                self._validate_traffic(row)
+                router_id = row["router_id"]
+                target = targets.get(router_id)
+                if (target and len(windows[router_id]) < count
+                        and row.get("series_id") == target["series_id"]
+                        and row["interface"] == target["interface"]):
+                    windows[router_id].append({key: row[key] for key in (
+                        "timestamp", "tx_mbps", "tx_octets", "interval_seconds", "request_id",
+                    )})
+            if all(len(rows) >= count for rows in windows.values()):
+                break
+        return {router_id: list(reversed(rows)) for router_id, rows in windows.items()}
+
+    def calculate_workflow(self, calculate: Callable) -> dict[str, Any]:
+        """Publish a calculation after its average/cost projections are durable.
+
+        The result is the commit record. Orphan projections from an interrupted
+        calculation are ignored by readers and replaced on an identical retry.
+        Device state, router output, credentials and routing settings are not written.
+        """
+        with self._locked():
+            inputs = self._workflow_inputs_unlocked()
+            self._flush_pending_traffic_unlocked(inputs["router_traffic_v2.json"])
+            results = self._read_unlocked("optimization_results.json")
+            windows = self._traffic_windows_unlocked(
+                inputs["router_traffic_v2.json"], inputs["automation_settings.json"]["averaging_window"] + 1,
+            )
+            result = calculate(inputs, windows, results)
+            existing = next((row for row in reversed(results)
+                             if row.get("workflow_version") == 1
+                             and row.get("evaluation_id") == result["evaluation_id"]), None)
+            if existing is not None:
+                return deepcopy(existing)
+            for name, records in (("averages.json", result["analysis"]),
+                                  ("routing_costs.json", result["allocations"])):
+                previous = self._read_unlocked(name)
+                projection = [{"workflow_version": 1, "evaluation_id": result["evaluation_id"],
+                               "timestamp": result["timestamp"], **row} for row in records]
+                self._write_unlocked(name, [row for row in previous
+                    if row.get("evaluation_id") != result["evaluation_id"]] + projection)
+            self._write_unlocked("optimization_results.json", [*results, result])
+            return deepcopy(result)
+
     def write_router_config(self, command: dict[str, Any]) -> None:
         self._validate_command(command)
 
@@ -446,6 +596,18 @@ class StorageService:
             raise ValidationError("Traffic field names must be strings.")
         if any(key.lower().startswith("rx") for key in reading):
             raise ValidationError("Only outbound TX metrics are supported.")
+        if "series_id" in reading:
+            from services.routeros_protocol import _uuid4
+            from services.router_protocol import ProtocolError
+
+            try:
+                _uuid4(reading["series_id"])
+            except ProtocolError as exc:
+                raise ValidationError("Invalid traffic series identity.") from exc
+            if (type(reading.get("interval_seconds")) is not int
+                    or not 1 <= reading["interval_seconds"] <= 3 * 86400
+                    or "tx_octets" not in reading or "request_id" not in reading):
+                raise ValidationError("A measured series requires counter, interval and request metadata.")
         _encode(reading)
 
     @staticmethod
@@ -491,6 +653,10 @@ class StorageService:
             for key in ("start_time", "stop_time"):
                 if value.get(key) is not None and (not isinstance(value[key], str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value[key])):
                     raise ValidationError("Schedule times must be HH:MM or null.")
+            if value.get("optimization_objective", "not_configured") not in (
+                "not_configured", "minimize_cost", "balance_utilization",
+            ):
+                raise ValidationError("Select a supported dry-run optimization objective.")
         elif name == "traffic_history.json":
             if not isinstance(value, dict) or value.get("schema_version") != 1 or value.get("storage") != "segmented_jsonl" or not isinstance(value.get("segments"), list):
                 raise ValidationError("Invalid traffic history manifest.")
@@ -516,6 +682,10 @@ class StorageService:
             from services.routeros_poll_service import validate_routeros_state
 
             validate_routeros_state(value)
+        elif name == "router_traffic_v2.json":
+            from services.traffic_state import validate_traffic_state
+
+            validate_traffic_state(value)
         elif name == "router_config.json":
             if not isinstance(value, dict) or value.get("schema_version") != 1 or not isinstance(value.get("commands"), list):
                 raise ValidationError("Invalid router output envelope.")

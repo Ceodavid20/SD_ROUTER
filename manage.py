@@ -48,6 +48,11 @@ def main() -> None:
     revoke = commands.add_parser("revoke-router-auth", help="Revoke one key or disable a router's controller authorization.")
     revoke.add_argument("--router-id", required=True)
     revoke.add_argument("--key-id")
+    traffic = commands.add_parser("prepare-traffic-client", help="Prepare a separate disabled TX collector using an existing active key; no router connection.")
+    traffic.add_argument("--router-id", required=True)
+    traffic.add_argument("--key-id", required=True)
+    traffic.add_argument("--controller-url", help="Approved HTTPS origin; defaults to CONTROLLER_BASE_URL.")
+    traffic.add_argument("--output-dir", required=True)
     tls = commands.add_parser("setup-controller-tls", help="Generate private TLS files and a device-only Apache configuration; does not start it.")
     tls.add_argument("--hostname", required=True)
     tls.add_argument("--listen-address", default="127.0.0.1")
@@ -85,6 +90,15 @@ def main() -> None:
                     print("Private router bundle prepared:", result["output_dir"])
                     print("Restart the device server to load the new credential reference.")
                     print("No router was contacted. No routing configuration was applied.")
+                elif args.command == "prepare-traffic-client":
+                    from services.traffic_setup_service import prepare_traffic_client
+
+                    result = prepare_traffic_client(
+                        storage, args.router_id, args.key_id,
+                        args.controller_url or config.get("CONTROLLER_BASE_URL", ""), args.output_dir,
+                    )
+                    print("Private disabled traffic client prepared:", result["output_dir"])
+                    print("No router, polling client, monitoring setting or TLS proxy was changed.")
                 else:
                     revoke_router_key(storage, args.router_id, args.key_id)
                     print("Router controller authorization revoked.")

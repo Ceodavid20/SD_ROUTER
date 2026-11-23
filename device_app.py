@@ -11,6 +11,7 @@ from werkzeug.exceptions import HTTPException
 
 from config import load_config
 from controllers.router_poll_controller import router_poll
+from controllers.traffic_controller import router_traffic
 from services.json_storage import StorageError, StorageService
 from services.router_poll_service import PollError
 from services.router_protocol import MAX_REQUEST_BYTES, ProtocolError
@@ -49,10 +50,11 @@ def create_device_app(test_config: Mapping[str, Any] | None = None) -> Flask:
     storage.initialize()
     app.extensions["json_storage"] = storage
     app.register_blueprint(router_poll)
+    app.register_blueprint(router_traffic)
 
     @app.before_request
     def require_protected_transport():
-        if request.blueprint != "router_poll":
+        if request.blueprint not in ("router_poll", "router_traffic"):
             return None
         # Waitress clears forwarded headers by default. Only an explicitly
         # configured local TLS proxy may supply the verified scheme/source.

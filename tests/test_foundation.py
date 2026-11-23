@@ -137,6 +137,7 @@ def test_all_required_storage_files_are_initialized(app):
         "routing_paths.json",
         "router_communication.json",
         "router_communication_v2.json",
+        "router_traffic_v2.json",
         "automation_settings.json",
         "activity_logs.json",
     }

@@ -5,6 +5,12 @@ The device-only app accepts `POST /api/controller/v2/poll` and
 Version 1 is unchanged and documented separately in
 [the Python v1 reference](router-pull.md).
 
+The independent `POST /api/controller/v2/traffic` endpoint is documented in
+[outbound traffic monitoring](traffic-monitoring.md). It uses path-bound
+V2 HMAC authentication with its own strict TX-only body, replay state and
+source budget. Traffic cannot change these poll/receipt contracts or
+consume their rate-limit quota. The existing native polling client is unchanged.
+
 ## Requests and authentication
 
 Use `Content-Type: application/json`, no query parameters or

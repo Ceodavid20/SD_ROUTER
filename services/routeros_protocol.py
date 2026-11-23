@@ -21,6 +21,7 @@ from services.router_protocol import (
 
 ROUTEROS_POLL_PATH = "/api/controller/v2/poll"
 ROUTEROS_ACK_PATH = "/api/controller/v2/ack"
+ROUTEROS_TRAFFIC_PATH = "/api/controller/v2/traffic"
 _REQUEST_FIELDS = {"protocol_version", "router_id", "request_id", "timestamp", "request_type"}
 _RESPONSE_FIELDS = {
     "protocol_version", "router_id", "request_id", "response_id", "status",
@@ -96,7 +97,7 @@ def sign_routeros_request(
         raise ProtocolError("Invalid router request size.")
     if not isinstance(key_id, str) or not KEY_ID.fullmatch(key_id):
         raise ProtocolError("Invalid authentication key ID.")
-    if path not in (ROUTEROS_POLL_PATH, ROUTEROS_ACK_PATH):
+    if path not in (ROUTEROS_POLL_PATH, ROUTEROS_ACK_PATH, ROUTEROS_TRAFFIC_PATH):
         raise ProtocolError("Unsupported signed endpoint.")
     canonical = "\n".join((
         "SDR-POLL-V2", "POST", path, key_id, hashlib.sha512(raw).hexdigest(),

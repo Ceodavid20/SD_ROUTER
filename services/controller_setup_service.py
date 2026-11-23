@@ -276,7 +276,7 @@ def create_controller_tls(
         f'ProxyPass "/api/controller/" "http://127.0.0.1:{backend_port}/api/controller/" connectiontimeout=3 timeout=10',
         f'ProxyPassReverse "/api/controller/" "http://127.0.0.1:{backend_port}/api/controller/"',
         '<Location "/">', 'Require all denied', '</Location>',
-        '<LocationMatch "^/api/controller/v[12]/(poll|ack)$">',
+        '<LocationMatch "^/api/controller/(v1/poll|v2/(poll|ack|traffic))$">',
         'Require ip ' + ' '.join(networks), 'LimitRequestBody 8192', '</LocationMatch>',
         '</VirtualHost>', '',
     ])
