@@ -1,8 +1,14 @@
-# Lagos–Abuja SDR Controller
+# SD_ROUTER Controller
 
-The controller stores router and operational settings in JSON files. Its intended optimization scope is outbound traffic on the MTN and Glo Lagos–Abuja trunks. Aggregation handoffs and operating limits are entered by the operator.
+The controller stores router and operational settings in JSON files. Administrators configure main routers, carrier links, outbound interfaces and capacities. The existing MTN/Glo CHR laboratory is one configured topology; physical routers and additional carriers use the same inventory and optimization services.
 
-The controller implements authenticated polling and receipts, opt-in outbound TX monitoring, moving-average inputs and advisory adaptive traffic allocation. The native RouterOS 7.21.4 polling client uses verified HTTPS and protocol v2. Polling still returns a versioned **no-action** JSON response. A separate traffic endpoint calculates Mbps from cumulative TX counters on explicitly authorized outbound interfaces. Live routing changes remain disabled.
+The controller implements authenticated polling and receipts, opt-in outbound TX monitoring, moving-average inputs and advisory adaptive traffic allocation. The native RouterOS 7 client uses verified HTTPS and protocol v2; its prerequisites must be checked on each target device. Polling still returns a versioned **no-action** JSON response. A separate traffic endpoint calculates Mbps from cumulative TX counters on explicitly authorized outbound interfaces. Live routing changes remain disabled.
+
+Physical-router onboarding, deployment isolation and migration steps are in
+[docs/production-router-onboarding.txt](docs/production-router-onboarding.txt).
+Use a new private production profile instead of reusing lab data, credentials or
+certificates. Router setup includes read-only discovery, baseline review and
+scoped approval; connecting physical hardware never enables routing execution.
 
 ## Start the application
 

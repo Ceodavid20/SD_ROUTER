@@ -1,0 +1,259 @@
+SD_ROUTER PRODUCTION READINESS AUDIT AND IMPLEMENTATION
+24 November 2026
+
+Outcome
+-------
+The current application was extended in place. The existing CHR lab, live TX
+graph, optimization On/Off switch, signed V1/V2 polling/ACK, traffic history and
+MLU mathematics were preserved. No MikroTik commands or router configuration
+changes were made during this readiness work. Time ON/OFF scheduling was not
+implemented. Physical hardware was not available and was not claimed tested.
+
+Physical read-only onboarding is now a configurable workflow. Automatic routing
+execution is still unavailable and blocked, including after scope approval.
+This is readiness groundwork, not a claim of certified production routing.
+
+1. Hardcoded assumptions found and addressed
+------------------------------------------
+- Private API/controller credential files were tied to the workspace .env.
+  They now follow the selected private profile, with optional explicit paths.
+- dotenv startup changed process-global environment state. Parsing is now local;
+  isolated profiles do not import ambient lab router credential references.
+- The browser listener used a fixed loopback host/8000 port. Both are configurable;
+  loopback remains enforced for the supplied production server launchers.
+- The optional API used only a single global CA and system/resource read.
+  Per-router API CA overrides and bounded interface/routing discovery were added.
+- Native script comments implied one RouterOS version, 7.21.4. They now state
+  capability requirements and prepend a local feature preflight.
+- Native fetch deadlines, dashboard refresh, browser timeout, API/discovery
+  timeout, discovery freshness and session duration now have validated settings.
+- Carrier-specific SNMP and interface examples were removed from setup forms.
+- Manual browser registration had previously been removed for ZTP. The new
+  requirement restores explicit CSRF-protected physical/virtual registration
+  alongside the existing secure enrollment flow.
+- Inventory roles, deployment kind, activation and per-router CA are configurable.
+  Existing metadata and managed credentials survive ordinary edits.
+
+The production optimizer already used registered link groups. There were no
+MTN/Glo IDs, management addresses or 8/4 Gbps constants in its mathematical
+logic. Those values were persisted lab configuration and were preserved until
+the user's later explicit request to lower lab test limits.
+
+Kept legitimate constants: protocol paths/versions, HMAC-SHA512 construction,
+API framing bit masks, UUID/counter bounds, byte-to-bit/Mbps conversion factors,
+security reply/body/retention limits and validated configurable defaults.
+API-SSL 8729 and local 8000/8001 are overridable defaults, not mandatory ports.
+UTC timestamps are a protocol requirement; physical router timezones are not
+changed. Existing start/stop placeholders remain inactive, with no scheduler.
+
+2. Main files created or modified in this audit
+---------------------------------------------
+New implementation:
+  services/deployment_service.py
+  services/onboarding_state.py
+  services/router_onboarding_service.py
+  templates/router_setup.html
+  scripts/routeros/controller_preflight.rsc
+
+Configuration/listeners/management:
+  config.py, app.py, device_app.py, serve.py, serve_optimizer.py, manage.py
+  controllers/router_controller.py
+  services/json_storage.py, router_service.py, routeros_api.py
+  services/api_credentials_service.py, controller_setup_service.py
+  services/enrollment_service.py, traffic_setup_service.py
+
+Safety and presentation integration:
+  services/router_auth_service.py, routeros_poll_service.py
+  services/controller_status_service.py, traffic_service.py
+  services/workflow_service.py, adaptive_routing.py, optimization_pull_service.py
+  services/optimization_graphs.py
+  templates/routers.html, routing_paths.html, _live_tx.html
+  static/js/optimization-charts.js
+  scripts/routeros/controller_poll_v2.rsc, controller_traffic_v2.rsc
+  scripts/routeros/controller_optimization_v2.rsc, controller_bootstrap.rsc
+
+New tests:
+  tests/test_deployment_profiles.py, test_router_onboarding.py
+  tests/test_router_discovery_api.py, test_dynamic_topology.py
+Existing contract expectations updated for explicitly requested registration and
+the additive onboarding JSON file:
+  tests/test_router_connection_setup.py, test_router_registration_pull.py
+  tests/test_controller_status.py, test_foundation.py
+
+Documentation/artifacts:
+  .env.production.example
+  docs/production-readiness-plan.txt
+  docs/production-router-onboarding.txt
+  README.md and an appended update to dave.txt
+  output/production-readiness-verification-20261124.json
+
+Earlier work already present in dirty/untracked files was retained. No git reset,
+rewrite, deletion of lab records or removal of earlier reports was performed.
+
+3. Configuration architecture and environment isolation
+------------------------------------------------------
+Select SDR_ENV=development|laboratory|production in the launch environment.
+Laboratory and production require separate SDR_PROFILE_DIR directories. Optional
+SDR_ENV_FILE selects the profile's private configuration. Data, output, API and
+controller credentials, certificates and private bundles stay within that root.
+An owner-only marker prevents a profile from silently changing environments;
+production refuses unmarked existing data. Symlink paths and shared external
+resources are rejected before application storage is opened.
+
+Production requires authenticated administration, a persistent session key,
+secure cookies, approved HTTPS origins, explicit bounded management networks,
+verified API TLS and the existing SIMULATION_MODE=true/LIVE_ROUTING_ENABLED=false
+locks. Loopback HTTP convenience is disabled in production. Backends accept
+forwarded headers only from one explicitly configured local TLS proxy.
+
+Profile defaults and optional environment variables are documented in the
+migration guide and .env.production.example. No Python edits are needed when
+changing router addresses, identities, roles, interfaces, ports, carriers or caps.
+Per-link capacity in Routing paths is authoritative for the adaptive optimizer;
+the router WAN-capacity metadata is a separate inventory/default value. Explicit
+path overrides must be reviewed when changing a router's default capacity.
+
+4. Router onboarding workflow
+----------------------------
+Register -> configure secure API/CA -> save read-only credentials -> authenticate
+and discover -> select exact TX interfaces -> assign role and carrier links ->
+configure/confirm per-link capacity -> prepare trusted private native bundle ->
+validate target prerequisites/install through approved initial trust channel ->
+rediscover -> capture/review/approve baseline -> explicitly enable monitoring ->
+verify real successive TX readings -> review advisories -> approve/revoke exact
+resource scope if desired. Scope approval cannot enable the missing executor.
+
+The separate setup page avoids adding instructions or extra graphs to Dashboard.
+Inventory, graph and optimization controls remain functional. The setup page
+shows architecture/model/version, discovered resources and evidence/unknowns.
+Private bundle downloads require an authenticated HTTPS session, explicit trust
+confirmation and the selected public controller CA. Generated traffic/advisory
+clients remain disabled and install no scheduler. Existing provisioning CLI and
+single-use enrollment are preserved. Production enrollment cannot opt around
+baseline review to enable monitoring or register CHR lab grants.
+
+5. RouterOS compatibility strategy
+---------------------------------
+One bounded native client supports fixed read-only print operations and property
+allowlists. It never requests RX counters, arbitrary commands, script sources,
+passwords or private keys. Extra returned properties are discarded. API traps
+are drained and reported safely as unavailable/denied, not assumed supported.
+Model/version/architecture and interface/routing observations are stored in a
+new closed-schema router_onboarding.json file with locked atomic JSON writes.
+
+RouterOS 6 and 7 use different OSPF discovery menus; v7 table discovery is not
+issued as a guessed v6 equivalent. Legacy challenge API login remains rejected.
+Native V2 requires v7 JSON/SHA512/random/time primitives; a local self-test is
+included before client operations. A version number alone never marks untested
+script features supported. HTTPS polling and hardware counter correctness still
+need actual target-device validation. FastTrack/offload observations trigger
+review; the controller does not alter these features to perform discovery.
+
+6. Dynamic topology and policy generation
+----------------------------------------
+The existing MLU/proportional controller is unchanged mathematically. It uses
+configured groups, capacities, real main-router TX measurements, average windows,
+availability, thresholds, hold-down and cost-reference settings. No artificial
+TX was added to live data. Independent tests exercise two main routers, each
+with three arbitrarily named carrier links and different capacities/interfaces.
+
+Signed advisory delivery remains scoped to the requesting router and preserves
+the existing authenticated wire contracts and expiry/replay behavior. A separate
+administrator policy preview binds current recommendations to an approved
+baseline and exact observed resource IDs/fields on that router. Observed costs
+and proposed costs remain distinct. PCC bucket allocation remains advisory;
+expansion into physical classifier rules needs a reviewed execution adapter.
+
+7. Baselines, rollback and production safeguards
+----------------------------------------------
+Baseline capture stores the projected routing snapshot and specifically mapped
+managed fields. Approval uses fingerprints of inventory, CA trust, topology and
+settings; unrelated resources are not granted write scope. Capture/approval and
+scope authorization are separate actions. Scope authorizations expire and can
+be revoked. Settings changes, rediscovery, deactivation and optimization Off
+invalidate/revoke them. Turning On does not restore old approvals.
+
+Deactivation retains history while disabling monitoring and active device keys.
+Reactivation does not re-enable old authorization. Deletion requires unlinking
+associated paths. Production monitoring opt-in requires a current approved
+baseline. Stale/counter-reset behavior and TX-only signed ingress are preserved.
+
+Baseline and rollback-reference JSON downloads preserve original scoped values.
+They are explicitly projected references, not full RouterOS backups. A complete
+device backup and a verified routing execution/restore adapter remain necessary
+before enabling actual routing writes. No automatic restore was performed.
+Receipt acknowledgement remains delivery evidence; it is not application or
+verified forwarding evidence. Applied reports remain rejected in advisory mode.
+Controller loss does not change router forwarding. The controller contains no
+enabled route/OSPF/PCC actuator or controller-dependent forwarding requirement.
+
+8. Automated test results and operational checks
+-----------------------------------------------
+Full command: .venv/bin/python -m pytest -q
+Final result: 724 passed in 63.49 seconds.
+The previous build had 666 tests; this work adds 58 cases. All hardware behavior
+in new tests is mocked or uses local framed socket fixtures. No physical-router
+compatibility or live failover result was fabricated.
+
+Coverage includes profile isolation/insecure startup, arbitrary inventory/roles,
+changed IP/interface/carrier/capacity, two independent three-link groups,
+versioned discovery, unavailable capabilities, read-only command restrictions,
+RX/secret field rejection, private HTTPS bundles, concurrent endpoint edits,
+baseline/scope drift/expiry/revocation, production monitoring authorization,
+scoped dynamic JSON, and existing full protocol/UI/storage regressions.
+
+The local browser, device backend and advisory worker were reloaded after the
+suite passed. HTTP checks returned 200 for Dashboard, Routers, Optimization,
+the MTN setup page and the live graph feed. Verification confirmed that the
+inventory changed only by the later requested test capacities and that both
+existing history segment prefixes are unchanged. Routing flags remain true/false
+for simulation/live routing respectively. The TLS proxy and routers were untouched.
+
+9. Follow-up request: lower lab congestion test limits
+----------------------------------------------------
+The user's urgent request was applied to JSON configuration, not RouterOS:
+  MTN path capacity: 400,000 bps = 0.4 Mbps; 80% threshold = 0.32 Mbps.
+  Glo path capacity: 200,000 bps = 0.2 Mbps; 80% threshold = 0.16 Mbps.
+Both carrier inventory values and authoritative path values were aligned. Before
+the change, path values still held 8/4 Gbps despite separately edited tiny router
+capacity values; this was why changing inventory alone did not affect the solver.
+
+The configurable routing-cost reference was scaled to 5 Mbps for this lab test,
+preserving useful metric ranges with the existing formula at the lower capacities.
+Its previous value and all prior JSON values were privately backed up. The
+optimization switch was Off and was left Off. No traffic was generated, no link
+was physically throttled and no optimization execution was enabled.
+
+10. Physical validation and remaining deployment work
+----------------------------------------------------
+Still required on actual target hardware: certificate/address/clock validation;
+exact RouterOS primitive support and account rights; TX counter visibility under
+bridging, VLANs, bonding and hardware offload; FastTrack/PCC/table interactions;
+real WAN throughput; forwarding equivalence; sustained load/CPU/storage tests;
+full backups; verified staged execution, rollback and independent forwarding
+verification. Interface-list OSPF templates or PCC mappings without direct
+interface evidence need explicit adapter/mapping work before scoping writes.
+
+Large API menus fail safely at bounded reply limits rather than producing a
+claimed complete baseline; larger installations may need scoped pagination.
+JSON storage remains a locked single-controller-host design, not a distributed
+database. Native advisories retain the 8 KiB security bound.
+
+Deploy trusted admin/device TLS proxies, firewall rules, service supervision and
+private backups using approved infrastructure. Never enable LIVE_ROUTING_ENABLED
+in this release. Routing execution remains a separate reviewed capability.
+
+11. Transition instructions and preservation evidence
+----------------------------------------------------
+Follow docs/production-router-onboarding.txt and .env.production.example.
+Start a new production profile; register physical routers and their actual links
+through the frontend. Preserve the existing CHR profile independently. Do not
+copy lab credentials/certificates/history or relabel them as production data.
+No application source edits are needed for this read-only onboarding transition.
+
+Private preservation snapshots (owner-only; do not publish):
+  private/production-readiness-20261124T132447Z/source-before-audit.tar.gz
+  private/production-readiness-20261124T132447Z/lab-state-before-activation.tar.gz
+  private/production-readiness-20261124T132447Z/lab-capacities-before-*.json
+The complete test log is in that private directory. The safe operational check
+summary is output/production-readiness-verification-20261124.json.

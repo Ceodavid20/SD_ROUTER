@@ -105,6 +105,10 @@ def main() -> None:
 
         try:
             if args.command == "setup-controller-tls":
+                from services.deployment_service import validate_deployment, profile_path
+                config = load_config()
+                validate_deployment(config, setup=True)
+                profile_path(config, args.output_dir)
                 result = create_controller_tls(
                     args.hostname, args.output_dir, listen_address=args.listen_address,
                     port=args.port, backend_port=args.backend_port,
@@ -186,7 +190,7 @@ def main() -> None:
                         fetch_timeout_seconds=config["ROUTER_FETCH_TIMEOUT_SECONDS"],
                     )
                     print("Private router bundle prepared:", result["output_dir"])
-                    print("Restart the device server to load the new credential reference.")
+                    print("Reload Routers to review the new private credential reference.")
                     print("No router was contacted. No routing configuration was applied.")
                 elif args.command == "prepare-optimization-client":
                     from services.traffic_setup_service import prepare_optimization_client

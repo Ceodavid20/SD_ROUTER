@@ -107,4 +107,6 @@ def configure_api_credentials(storage, config, router_id, username, password):
         return rows
 
     storage.update_json("routers.json", bind)
+    from services.router_service import RouterService
+    RouterService(storage, config)._revoke_execution_scope(router_id)
     storage.append_activity("security", "Router API credentials configured privately.", {"router_id": router_id})

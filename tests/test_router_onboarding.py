@@ -35,6 +35,7 @@ def onboarding(tmp_path, monkeypatch):
     env.chmod(0o600)
     app = create_app({"TESTING": True, "AUTH_ENABLED": False, "DATA_DIR": tmp_path / "data",
         "OUTPUT_DIR": tmp_path / "output", "API_CREDENTIALS_ENV_FILE": env,
+        "CONTROLLER_CREDENTIALS_ENV_FILE": env, "PRIVATE_BUNDLE_DIR": tmp_path / "private" / "bundles",
         "ROUTER_ALLOWED_NETWORKS": ["10.73.0.0/24"], "ROUTER_CA_FILE": None,
         "SIMULATION_MODE": True, "LIVE_ROUTING_ENABLED": False})
     storage = app.extensions["json_storage"]
@@ -80,6 +81,8 @@ def test_dynamic_discovery_is_read_only_and_projects_model_architecture_interfac
     assert view["capabilities"]["json_serialization"]["status"] == "unknown"
     assert view["capabilities"]["tx_monitoring"]["status"] == "observed"
     assert view["execution_enabled"] is False
+    detected = RouterService(storage, app.config).list_routers()[0]
+    assert detected["detected_architecture"] == "arm64"
     response = app.test_client().get("/routers/DISTRIBUTION-EAST/setup")
     assert response.status_code == 200
     assert "arm64" in response.text and "synthetic-hidden-password" not in response.text
@@ -201,3 +204,91 @@ def test_arbitrary_router_roles_and_carrier_names_need_no_source_edit(onboarding
         "carrier": "Community upstream", "interface_name": "sfp28-12", "capacity_mbps": "1234.5"})
     row = storage.read_json("routers.json")[1]
     assert (row["router_role"], row["carrier"], row["capacity_mbps"], row["interface_name"]) == (role, "Community upstream", 1234.5, "sfp28-12")
+
+
+def test_physical_production_monitoring_requires_approved_baseline(onboarding):
+    app, storage, routers, service, _, _ = onboarding
+    storage.update_json("routers.json", lambda rows: [{**row, "controller_auth_ref": "TEST_REF", "controller_auth_key_ids": ["PRIMARY"],
+        "controller_auth_enabled": True} if row["router_id"] == "DISTRIBUTION-EAST" else row for row in rows])
+    app.config["ENVIRONMENT"] = "production"
+    with pytest.raises(RouterValidationError, match="baseline"):
+        routers.set_monitoring("DISTRIBUTION-EAST", True)
+    baseline = approved(onboarding)
+    routers.set_monitoring("DISTRIBUTION-EAST", True)
+    view = service.view("DISTRIBUTION-EAST", now=NOW)
+    assert view["router"]["monitoring_enabled"] is True
+    assert view["baseline_current"] is True
+    assert view["scope_approved"] is False and view["execution_enabled"] is False
+
+
+def test_off_on_does_not_revive_approved_execution_scope(onboarding):
+    app, storage, _, service, _, _ = onboarding
+    approved(onboarding)
+    workflow = WorkflowService(storage, app.config)
+    workflow.set_optimization_enabled(False)
+    workflow.set_optimization_enabled(True)
+    assert service.view("DISTRIBUTION-EAST", now=NOW)["scope_approved"] is False
+
+
+def test_private_bundle_is_blocked_without_https_and_admin_auth(onboarding):
+    app, storage, _, _, _, _ = onboarding
+    client = app.test_client()
+    client.get("/routers")
+    with client.session_transaction() as session:
+        csrf = session["csrf_token"]
+    before = storage.read_json("routers.json")
+    assert client.post("/routers/DISTRIBUTION-EAST/bundle", data={"csrf_token": csrf, "confirm": "true"}).status_code == 403
+    assert storage.read_json("routers.json") == before
+
+
+def test_private_native_bundle_is_dynamic_and_remains_disabled(onboarding, tmp_path):
+    from io import BytesIO
+    from zipfile import ZipFile
+    from hashlib import sha256
+    from werkzeug.security import generate_password_hash
+    from services.controller_setup_service import create_controller_tls
+    app, storage, _, service, _, _ = onboarding
+    ca = create_controller_tls("devices.example.test", tmp_path / "trust", allowed_sources=["10.73.0.0/24"])["ca_certificate"]
+    app.config.update(AUTH_ENABLED=True, ADMIN_USERNAME="operator", ADMIN_PASSWORD_HASH=generate_password_hash("synthetic-only-password"),
+        CONTROLLER_BASE_URL="https://devices.example.test", CONTROLLER_CA_FILE=ca, ROUTER_FETCH_TIMEOUT_SECONDS=19)
+    service.discover("DISTRIBUTION-EAST", now=NOW)
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["admin_user"] = "operator"
+        session["admin_fingerprint"] = sha256(app.config["ADMIN_PASSWORD_HASH"].encode()).hexdigest()
+        session["csrf_token"] = "synthetic-session-csrf"
+    response = client.post("/routers/DISTRIBUTION-EAST/bundle", base_url="https://localhost",
+        data={"csrf_token": "synthetic-session-csrf", "confirm": "true"})
+    assert response.status_code == 200 and response.mimetype == "application/zip"
+    assert response.headers["Cache-Control"] == "no-store"
+    with ZipFile(BytesIO(response.data)) as bundle:
+        poll = bundle.read("controller-poll.rsc").decode()
+        traffic = bundle.read("traffic/controller-traffic.rsc").decode()
+        advisory = bundle.read("advisory/controller-optimization.rsc").decode()
+        assert '"DISTRIBUTION-EAST"' in poll and "duration=19s" in poll
+        assert '"uplink-fibre.100"' in traffic and "duration=19s" in traffic
+        assert ":local sdrTrafficEnabled false;" in traffic
+        assert ":local sdrOptimizationEnabled false;" in advisory
+        assert "SDR prerequisites failed" in poll and "__FETCH_TIMEOUT_SECONDS__" not in poll
+    assert storage.read_json("routers.json")[0]["monitoring_enabled"] is False
+    assert app.config["LIVE_ROUTING_ENABLED"] is False
+
+
+def test_scoped_policy_contains_only_selected_router_resource_and_observed_cost(onboarding, monkeypatch):
+    app, _, _, service, path, _ = onboarding
+    baseline = approved(onboarding)
+    latest = {"is_current": True, "adaptive": {"groups": [
+        {"aggregation_router_id": "OTHER-MAIN", "decision_id": "f" * 64, "decision_version": 9, "links": []},
+        {"aggregation_router_id": "DISTRIBUTION-EAST", "decision_id": "a" * 64, "decision_version": 2,
+         "expires_at": "2026-11-24T12:00:30Z", "links": [{"path_id": path["path_id"], "calculated_cost": 37,
+             "recommended_weight": .4, "pcc": {"bucket_count": 120, "first_bucket": 0, "last_bucket": 119}}]}]}}
+    monkeypatch.setattr(WorkflowService, "read_latest", lambda *a, **k: latest)
+    policy = service.policy_preview("DISTRIBUTION-EAST", now=NOW)
+    assert policy["baseline_digest"] == baseline["digest"]
+    assert policy["managed_resources"][0]["observed_value"] == "25"
+    assert policy["managed_resources"][0]["proposed_value"] == 37
+    assert policy["expires_at"] == "2026-11-24T12:00:30Z"
+    assert "OTHER-MAIN" not in json.dumps(policy)
+    assert policy["execution_enabled"] is False and policy["action"] == "none"
+    latest["is_current"] = False
+    assert service.policy_preview("DISTRIBUTION-EAST", now=NOW)["managed_resources"] == []

@@ -203,8 +203,9 @@ class EnrollmentService:
                 collector = collector.replace(":local sdrTrafficEnabled false;", ":local sdrTrafficEnabled true;", 1)
             router.update(name=grant["name"] or body["router_name"], interface_name=grant["outbound_interface"],
                 management_interface=grant["management_interface"], carrier=grant["carrier"],
-                router_role="carrier" if grant["carrier"] else "router",
-                deployment_kind="chr_lab" if grant["chr_lab"] else "router",
+                router_role=(existing or {}).get("router_role") or ("carrier" if grant["carrier"] else "unassigned"),
+                deployment_kind="chr_lab" if grant["chr_lab"] else (existing or {}).get("deployment_kind", "unspecified"),
+                inventory_generation=(existing or {}).get("inventory_generation") or str(uuid4()),
                 controller_auth_ref=reference, controller_auth_key_ids=[key_id], controller_auth_enabled=True,
                 controller_credentials_source="private_env", monitoring_enabled=grant["enable_monitoring"],
                 monitoring_generation=str(uuid4()), monitoring_interval_seconds=grant["interval_seconds"],

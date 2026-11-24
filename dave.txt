@@ -1496,3 +1496,41 @@ changes router policies. Recent changes records pause/resume actions.
 The On/Off control passed the full 666-test suite and browser checks. Off blocks
 manual and automatic optimization as well as device recommendation delivery;
 signed TX collection continues. The current enabled state was preserved.
+
+
+UPDATE: PHYSICAL-ROUTER READINESS AND LAB CONGESTION LIMITS
+24 November 2026
+
+The earlier sections describe the build at their original dates. This update
+records the current changes without deleting that project history.
+
+The existing CHR inventory, signed V1/V2 polling/ACK, TX history, live graph,
+optimization On/Off control and MLU mathematics were preserved. Router setup
+now supports physical/virtual registration, configurable roles and per-router
+CA trust, read-only capability/interface/routing discovery, baseline review,
+private native client bundles and expiring resource-scope approvals.
+
+Development, laboratory and production can use separate private profiles.
+Production requires authenticated HTTPS administration and isolated resources.
+Read docs/production-router-onboarding.txt before introducing physical routers.
+The detailed audit is output/production-readiness-report-20261124.txt.
+
+No physical routers were tested, and no router configuration was changed by
+this readiness work. Execution scope approval cannot enable routing: the live
+executor is still unavailable. A rollback reference is a projected baseline,
+not a complete RouterOS backup or automatic restore mechanism. Physical
+counter/offload validation and a reviewed execution/restore adapter remain.
+
+At your later request, the authoritative laboratory link capacities were
+lowered to MTN 0.4 Mbps and Glo 0.2 Mbps. Their 80-percent congestion thresholds
+are 0.32 and 0.16 Mbps. Matching router inventory values were aligned; the
+routing-cost reference was scaled to 5 Mbps for this lab test. These settings
+model congestion in Flask; they do not throttle an interface or generate TX.
+Previous values were backed up privately. Optimization was Off and remained
+Off; enable it using the existing switch when ready to test recommendations.
+SIMULATION_MODE=true and LIVE_ROUTING_ENABLED=false remain in force.
+
+The complete automated suite passed: 724 tests, 63.49 seconds. Local pages were
+verified after reload. Existing router data was preserved except for the
+explicitly requested test capacities, and original history prefixes matched
+the private preservation snapshot.

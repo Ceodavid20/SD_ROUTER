@@ -1,7 +1,8 @@
 """Local-only provisioning helpers. No router connection or firewall changes.
 
 Secrets are written to private files/environment references, never returned
-in JSON or browser pages. The browser has no provisioning route.
+in JSON or rendered pages. An explicit authenticated HTTPS action may download
+a private client bundle through the router setup controller.
 """
 
 from __future__ import annotations
@@ -138,7 +139,7 @@ def provision_router(
     _private_file(target / 'README.txt', (
         'PRIVATE ROUTER CLIENT BUNDLE\n'
         'controller-poll.rsc contains this router\'s controller secret. Do not paste or upload it to the website.\n'
-        'Restart the device server after provisioning so it loads the new environment reference.\n'
+        'Managed credentials are read from the selected private profile without a server restart.\n'
         'Verify controller address, certificate trust, router clock, and permissions before use.\n'
         'Copy only the client script and public CA certificate to the approved router through a trusted channel.\n'
         'Import and trust the public CA only after verifying its fingerprint through that channel.\n'
@@ -155,8 +156,7 @@ def provision_router(
         if current is None or tuple(current.get(k) for k in ('controller_auth_ref', 'controller_auth_key_ids', 'controller_auth_enabled')) != expected_auth:
             raise ValueError('Router authorization changed during provisioning. Review the unused bundle before retrying.')
         current.update(controller_auth_ref=reference, controller_auth_enabled=True,
-                       controller_auth_key_ids=[*active, key_id],
-                       controller_credentials_source="private_env")
+                       controller_auth_key_ids=[*active, key_id])
         return routers
 
     storage.update_json('routers.json', enable)

@@ -136,7 +136,7 @@
               <th scope="row"><a href="#router-{{ router.router_id }}">{{ router.name }}</a><small class="table-secondary-line">{{ router.router_id }}</small></th>
               <td>{{ router.carrier or 'Not set' }}{% if router.endpoint %}<small class="table-secondary-line">{{ router.endpoint }}</small>{% endif %}</td>
               <td>{{ router.ip_address }}</td>
-              <td>{{ router.model or 'Not provided' }}<small class="table-secondary-line">{{ router.routeros_version or 'Not provided' }}</small></td>
+              <td>{{ router.detected_model or router.model or 'Not provided' }}<small class="table-secondary-line">{{ router.detected_routeros_version or router.routeros_version or 'Not provided' }}{% if router.detected_architecture %} · {{ router.detected_architecture }}{% endif %}</small></td>
               <td>{{ router.interface_name or 'Not configured' }}</td>
               <td>{{ router.snmp_ifindex if router.snmp_ifindex is not none else 'Not configured' }}</td>
               <td><span class="category-pill">{{ router.controller_polling.state | capitalize }}</span>{% if router.controller_polling.last_authenticated_at %}<small class="table-secondary-line">{{ router.controller_polling.last_authenticated_at }}</small>{% endif %}</td>

@@ -77,6 +77,8 @@ def validate_deployment(config, *, setup=False):
     data, output = resources[:2]
     if data == output or data.is_relative_to(output) or output.is_relative_to(data):
         raise ValueError("DATA_DIR and OUTPUT_DIR must be separate directories.")
+    if any(path.is_relative_to(data) or path.is_relative_to(output) for path in resources[2:]):
+        raise ValueError("Keep configuration and credentials separate from data and output directories.")
     for key in ("ROUTER_CA_FILE", "CONTROLLER_CA_FILE"):
         if config.get(key):
             profile_path(config, config[key])

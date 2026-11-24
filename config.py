@@ -25,6 +25,26 @@ def load_config() -> dict[str, Any]:
         raise ValueError("Set an isolated SDR_PROFILE_DIR for laboratory or production.")
     root = Path(profile).expanduser().absolute() if profile else PROJECT_ROOT
     env_file = Path(os.environ.get("SDR_ENV_FILE", root / ".env")).expanduser().absolute()
+    if environment != "development":
+        # Refuse another profile's config before even parsing its credentials.
+        if (env_file == root or not env_file.is_relative_to(root)
+                or any(path.is_symlink() for path in (root, env_file, *env_file.parents))):
+            raise ValueError("The selected environment file must stay inside its isolated profile without symbolic links.")
+        marker = root / ".sdr-environment.json"
+        if marker.is_symlink():
+            raise ValueError("The environment marker must not be a symbolic link.")
+        if marker.exists():
+            import json
+            if marker.stat().st_size > 1024:
+                raise ValueError("Invalid environment marker.")
+            try:
+                saved = json.loads(marker.read_text())
+            except (ValueError, UnicodeError) as exc:
+                raise ValueError("Invalid environment marker.") from exc
+            if saved != {"schema_version": 1, "environment": environment}:
+                raise ValueError("This profile belongs to another environment.")
+        if env_file.exists() and (not env_file.is_file() or env_file.stat().st_mode & 0o077):
+            raise ValueError("Profile environment files must be owner-only regular files.")
     values = {**dotenv_values(env_file, interpolate=False), **os.environ}
 
     def boolean(name, default):

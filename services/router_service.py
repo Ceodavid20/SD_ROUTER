@@ -137,12 +137,28 @@ class RouterService:
         # Public projection must not repair malformed keys before this check.
         communication = read_controller_status(self.storage, self.config, records)
         monitoring = read_traffic_status(self.storage, self.config, records)
+        discovered = self.storage.read_json("router_onboarding.json")["routers"]
         routers = [self._public(router) for router in records]
         for router, record in zip(routers, records):
             router["controller_polling"] = communication[router["router_id"]]
             router["traffic_monitoring"] = monitoring[router["router_id"]]
             router["api_diagnostics"] = self.api_diagnostic_readiness(record)
+            discovery = discovered.get(router["router_id"], {}).get("discovery")
+            if discovery:
+                from services.router_onboarding_service import _binding
+                if discovery["binding"] == _binding(record, self.config):
+                    resources = discovery["snapshot"]["resource"]["rows"]
+                    if resources:
+                        router.update(detected_model=resources[0].get("board-name", ""),
+                                      detected_routeros_version=resources[0].get("version", ""),
+                                      detected_architecture=resources[0].get("architecture-name", ""))
         return routers
+
+    def _revoke_execution_scope(self, router_id):
+        entry = self.storage.read_json("router_onboarding.json")["routers"].get(router_id)
+        if entry and entry["authorization"] is not None:
+            from services.router_onboarding_service import RouterOnboardingService
+            RouterOnboardingService(self.storage, self.config).revoke(router_id)
 
     def _validated(
         self, form: Mapping[str, Any], *, allow_pending_address: bool = False
@@ -243,6 +259,7 @@ class RouterService:
 
     def add_router(self, form: Mapping[str, Any]) -> dict[str, Any]:
         record = self._validated(form, allow_pending_address=True)
+        record["inventory_generation"] = str(uuid4())
 
         def append(routers: list[dict[str, Any]]) -> list[dict[str, Any]]:
             if any(item["router_id"] == record["router_id"] for item in routers):
@@ -262,6 +279,8 @@ class RouterService:
         carrier = _string({"carrier": carrier}, "carrier", required=True, limit=64)
         if type(chr_lab) is not bool or type(bind_source) is not bool:
             raise RouterValidationError("Lab and source-binding settings must be booleans.")
+        if chr_lab and self.config.get("ENVIRONMENT") == "production":
+            raise RouterValidationError("Laboratory CHR registration is blocked in production.")
         try:
             validate_interface(outbound_interface)
             validate_interface(management_interface)
@@ -273,6 +292,7 @@ class RouterService:
             "api_tls": True, "ssh_port": "22",
         })
         record.update(carrier=carrier, router_role="carrier",
+                      inventory_generation=str(uuid4()),
                       capacity_confirmed=False,
                       management_interface=management_interface,
                       deployment_kind="chr_lab" if chr_lab else "router",
@@ -370,6 +390,7 @@ class RouterService:
             raise RouterValidationError("Router was not found.")
 
         updated_routers = self.storage.update_json("routers.json", replace)
+        self._revoke_execution_scope(router_id)
         updated = next(item for item in updated_routers if item["router_id"] == router_id)
         self.storage.append_activity("routers", f"Router {router_id} settings updated; connectivity must be checked again.")
         public = self._public(updated)
@@ -400,6 +421,7 @@ class RouterService:
             return routers
 
         self.storage.update_json("routers.json", configure)
+        self._revoke_execution_scope(router_id)
         self.storage.append_activity("monitoring", "Outbound TX monitoring interface configured.", {
             "router_id": router_id, "interface": interface,
         })
@@ -421,6 +443,7 @@ class RouterService:
                            monitoring_generation=str(uuid4()), monitoring_enabled=False)
             return rows
         self.storage.update_json("routers.json", configure)
+        self._revoke_execution_scope(router_id)
 
     def set_monitoring(self, router_id: str, enabled: bool) -> None:
         """Explicit local opt-in; changing this flag never installs a collector."""
@@ -428,12 +451,23 @@ class RouterService:
                 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", router_id)
                 or type(enabled) is not bool):
             raise RouterValidationError("Invalid monitoring setting.")
+        baseline_binding = None
+        if enabled and self.config.get("ENVIRONMENT") == "production":
+            from services.router_onboarding_service import RouterOnboardingService
+            view = RouterOnboardingService(self.storage, self.config).view(router_id)
+            if not view["baseline_current"] or not view["baseline"]["approved_at"]:
+                raise RouterValidationError("Capture and approve the current routing baseline before production monitoring opt-in.")
+            baseline_binding = view["baseline"]["binding"]
 
         def configure(routers):
             router = next((item for item in routers if item["router_id"] == router_id), None)
             if router is None:
                 raise RouterValidationError("Router was not found.")
             if enabled:
+                if baseline_binding is not None:
+                    from services.router_onboarding_service import _binding
+                    if _binding(router, self.config) != baseline_binding:
+                        raise RouterValidationError("Router settings changed after baseline review.")
                 if router.get("active", True) is not True:
                     raise RouterValidationError("Activate this router before enabling monitoring.")
                 try:
@@ -448,6 +482,7 @@ class RouterService:
             return routers
 
         self.storage.update_json("routers.json", configure)
+        self._revoke_execution_scope(router_id)
         self.storage.append_activity("monitoring", "Outbound traffic monitoring setting updated.", {
             "router_id": router_id, "enabled": enabled,
         })
@@ -462,7 +497,7 @@ class RouterService:
                 raise RouterValidationError("Router was not found.")
             if row.get("active", True) is not active:
                 row.update(active=active, monitoring_enabled=False, controller_auth_enabled=False,
-                           monitoring_generation=str(uuid4()))
+                           controller_auth_key_ids=[], monitoring_generation=str(uuid4()))
             return rows
         self.storage.update_json("routers.json", update)
         from services.router_onboarding_service import RouterOnboardingService

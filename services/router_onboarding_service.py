@@ -34,14 +34,23 @@ def _router(inputs, router_id):
 
 
 def _binding(router, config):
-    keys = ("router_id", "ip_address", "api_port", "api_tls", "api_ca_file", "credential_ref",
+    keys = ("router_id", "inventory_generation", "ip_address", "api_port", "api_tls", "api_ca_file", "credential_ref",
             "api_credentials_source", "controller_auth_ref", "controller_auth_key_ids", "controller_auth_enabled",
             "router_role", "deployment_kind", "active", "interface_name", "monitoring_interfaces",
-            "monitoring_generation", "traffic_source_ip", "capacity_mbps", "capacity_confirmed")
+            "traffic_source_ip", "capacity_mbps", "capacity_confirmed")
+    ca_file = router.get("api_ca_file") or config.get("ROUTER_CA_FILE")
+    ca_digest = None
+    if ca_file:
+        path = Path(ca_file)
+        try:
+            if path.is_file() and not path.is_symlink() and path.stat().st_size <= 1024 * 1024:
+                ca_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            pass
     return _hash({"router": {key: router.get(key) for key in keys},
                   "environment": config.get("ENVIRONMENT", "development"),
                   "controller": config.get("CONTROLLER_BASE_URL", ""),
-                  "ca_file": router.get("api_ca_file") or str(config.get("ROUTER_CA_FILE") or "")})
+                  "ca_file": str(ca_file or ""), "ca_digest": ca_digest})
 
 
 def _topology(inputs, router_id):
@@ -314,6 +323,7 @@ class RouterOnboardingService:
             raise RouterValidationError("Discover a capable RouterOS 7 device before preparing its native client bundle.")
         if not view["router"]["api_tls"]:
             raise RouterValidationError("Verify API-SSL before preparing the native client bundle.")
+        monitored_interfaces(view["router"])
         ca = self.config.get("CONTROLLER_CA_FILE")
         if not ca:
             raise RouterValidationError("Configure the profile's trusted public controller CA file first.")

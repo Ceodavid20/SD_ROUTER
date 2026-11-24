@@ -126,6 +126,7 @@ def test_all_required_storage_files_are_initialized(app):
     output_dir = Path(app.config["OUTPUT_DIR"])
     expected_data = {
         "routers.json",
+        "router_onboarding.json",
         "traffic_history.json",
         "averages.json",
         "optimization_results.json",

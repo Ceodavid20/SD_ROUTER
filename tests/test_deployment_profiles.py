@@ -35,6 +35,7 @@ def test_profile_loader_does_not_import_lab_environment_or_mutate_process(monkey
     root.mkdir(mode=0o700)
     env = root / ".env"
     env.write_text("SDR_COMPANY_NAME=Isolated network\nSDR_API_TIMEOUT_SECONDS=12\n")
+    env.chmod(0o600)
     monkeypatch.setenv("SDR_ENV", "laboratory")
     monkeypatch.setenv("SDR_PROFILE_DIR", str(root))
     monkeypatch.delenv("SDR_ENV_FILE", raising=False)

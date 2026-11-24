@@ -1,0 +1,31 @@
+{
+  "checked_at": "2026-11-24T14:31:26.294578+00:00",
+  "router_id": "SDR-CHR-LAB-01",
+  "verified_https": true,
+  "initiated_by_real_router": true,
+  "hmac_sha512": true,
+  "recommendation_status": "advisory_recommendation",
+  "decision_version": 8,
+  "application_report": "not_applied",
+  "execution_authorized": false,
+  "routing_changes_made": false,
+  "native_client_installed": false,
+  "routeros_decimal_fields_decoded_as_text": true,
+  "demand_mbps": 0.312146762667,
+  "links": [
+    {
+      "carrier": "MTN",
+      "interface": "sdr-to-mtn",
+      "target_bps": 208097.841778,
+      "calculated_cost": 20,
+      "recommended_weight": 0.716667
+    },
+    {
+      "carrier": "GLO",
+      "interface": "sdr-to-glo",
+      "target_bps": 104048.920889,
+      "calculated_cost": 412,
+      "recommended_weight": 0.283333
+    }
+  ]
+}

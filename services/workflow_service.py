@@ -20,6 +20,7 @@ from services.traffic_service import project_traffic_status, stale_after_seconds
 OBJECTIVES = {"minimize_cost", "balance_utilization", "adaptive_mlu"}
 _ROUTER_INPUTS = (
     "active",
+    "inventory_generation",
     "router_id", "name", "interface_name", "monitoring_enabled", "monitoring_generation",
     "capacity_mbps", "cost_per_gb", "currency", "controller_auth_enabled",
     "controller_auth_ref", "controller_auth_key_ids",

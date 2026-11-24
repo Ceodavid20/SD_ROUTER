@@ -1,0 +1,18 @@
+{
+  "inventory_preserved_except_requested_test_capacities": true,
+  "historical_segment_prefixes_preserved": 2,
+  "simulation_mode": true,
+  "live_routing_enabled": false,
+  "optimization_enabled": false,
+  "capacity_limits_mbps": {
+    "MTN": 0.4,
+    "GLO": 0.2
+  },
+  "pages": {
+    "/": 200,
+    "/routers": 200,
+    "/optimization": 200,
+    "/routers/SDR-MTN-01/setup": 200,
+    "/api/optimization/live": 200
+  }
+}

@@ -302,7 +302,7 @@ def test_router_page_and_dashboard_show_polling_independently_of_api_diagnostic(
     assert "Previous response received; latest receipt pending" in content
     assert "A receipt confirms delivery only. Routing changes are off." in content
     assert "test-only-hidden-registry-secret" not in content
-    assert 'action="/routers/add"' not in content
+    assert 'action="/routers/add"' in content
     dashboard = client.get("/").get_data(as_text=True)
     assert 'data-live-tx' in dashboard and "Optional API diagnostics" not in dashboard
     assert client.get("/api/system/status").get_json()["controller_polling"]["authenticated"] == 1

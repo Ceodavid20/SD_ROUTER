@@ -1,0 +1,209 @@
+SD_ROUTER: transitioning from CHR to physical MikroTik routers
+24 November 2026
+
+What is available
+-----------------
+The same Flask inventory, signed device protocols, TX counter processing,
+history, live graph and adaptive MLU optimizer support registered physical and
+virtual routers. A router is identified by its registered identity and keys,
+not by a hardcoded model, carrier, IP address or interface name. Connecting
+physical hardware does not enable routing writes. All advice remains advisory.
+
+The current CHR lab is preserved. Its addresses, interface mappings, capacities,
+keys and history remain lab configuration. The 8/4 Gbps settings describe the
+existing laboratory model, not measured CHR throughput or production defaults.
+
+Deployment profiles
+-------------------
+Select the profile in the PROCESS environment before starting any component:
+
+  SDR_ENV=development     Existing local behavior; workspace .env is the default.
+  SDR_ENV=laboratory      Requires its own SDR_PROFILE_DIR.
+  SDR_ENV=production      Requires a different, new SDR_PROFILE_DIR.
+
+SDR_ENV_FILE optionally selects the private .env inside the selected profile.
+Never copy a lab .env, data directory or private client bundle into production.
+Do not point production at the existing lab directory. Existing development
+configuration continues to work without migration; it is not silently renamed.
+
+For example, create a new private deployment directory under a service account:
+
+  mkdir -m 700 /absolute/private/sdr-production
+  cp .env.production.example /absolute/private/sdr-production/.env
+  chmod 600 /absolute/private/sdr-production/.env
+  export SDR_ENV=production
+  export SDR_PROFILE_DIR=/absolute/private/sdr-production
+
+Use an actual approved absolute path; the example is not a required location.
+Replace example DNS origins and management networks in the private .env.
+Then run .venv/bin/python manage.py configure-admin. It prompts privately,
+stores a password hash and persistent random session key, and does not contact
+a router. Configuration and credential files must be owner-only regular files.
+
+Defaults are profile/data, profile/output, profile/.env and
+profile/private/router-bundles. Optional overrides:
+
+  SDR_DATA_DIR, SDR_OUTPUT_DIR
+  SDR_API_CREDENTIALS_FILE, SDR_CONTROLLER_CREDENTIALS_FILE
+  SDR_PRIVATE_BUNDLE_DIR
+  SDR_ROUTER_CA_FILE, SDR_CONTROLLER_CA_FILE
+
+All isolated profile resources must stay inside that profile. Configuration
+and credentials must be separate from data/output directories. Symlink paths
+are rejected. A private environment marker prevents using the same profile as
+both lab and production. Production refuses unmarked existing data rather than
+adopting it. Separate processes and TLS proxies must use the same selected
+profile. Launch workers with the same exported variables.
+
+Configuration is parsed without modifying the process environment. Isolated
+profiles read router credential references only from their selected private
+files, ignoring ambient lab router credentials. Existing development environment
+references remain compatible. File-backed credentials are read on demand.
+
+Production requires authenticated administration, a persistent session key,
+secure cookies, approved HTTPS admin/controller origins, explicit bounded
+management networks, API certificate verification, SIMULATION_MODE=true and
+LIVE_ROUTING_ENABLED=false. Both backends bind to configurable loopback ports.
+Use approved HTTPS reverse proxies and network access rules. Only one explicit
+loopback proxy may provide trusted forwarded source/scheme headers. Serve the
+administrator application at SDR_ADMIN_BASE_URL and the device API at
+CONTROLLER_BASE_URL. Unencrypted requests are rejected in production, including
+loopback requests and requests to the login page. Do not expose backend ports
+directly or enable wildcard proxy trust.
+
+The existing setup-controller-tls command prepares device TLS files/configuration
+without starting a listener or changing a firewall. Its output directory must
+be inside the selected profile. Administrator TLS proxy deployment, service
+supervision, DNS, firewall rules and backup operations remain deployment tasks.
+No public listener is automatically started by this readiness implementation.
+
+Physical router onboarding
+-------------------------
+1. Give the router initial management connectivity and a correct clock through
+   an approved setup channel. Confirm the management network is allowlisted.
+2. Sign into Flask over HTTPS. Open Routers and expand "Register physical or
+   virtual router". Choose a unique ID, name, physical deployment and role.
+   Roles include main, distribution, carrier, upstream and custom lowercase names.
+3. Enter the actual management IP, API-SSL port and optional per-router trusted
+   public CA file path. The port must match the enabled router service and its
+   certificate must cover the management address. Saving Flask settings does
+   not enable services or change certificates on the router.
+4. Open Router setup and discovery. Save the dedicated read-only API account
+   privately. Its password is never returned in inventory JSON, HTML or logs.
+5. Click "Test authentication and discover router". Review model, architecture,
+   RouterOS version, interfaces, routing tables, OSPF, PCC and offload findings.
+   Unavailable/denied menus remain unknown. Do not treat an empty menu as an
+   active routing protocol. No routing or script-source reads are issued.
+6. Select exact discovered outbound TX interfaces. A changed selection disables
+   monitoring. Separate carrier demand needs separate main-router TX counters.
+   A shared aggregate counter cannot be divided into measured carrier demand.
+7. Enter real confirmed WAN capacities in Mbps; configure per-link capacities,
+   carrier names, main/carrier relationships and switching eligibility in
+   Routing paths. Multiple main routers and three or more carriers are supported.
+   Do not infer internet capacity from an Ethernet port's nominal link speed.
+8. Configure the profile's public controller CA. Through the authenticated
+   HTTPS setup page, explicitly authorize and download a private native client
+   bundle, or use the existing provisioning CLI. Deliver it through the trusted
+   initial setup channel. This generates files and keys locally; it installs
+   nothing on the router. Existing keys are preserved until explicitly revoked.
+9. Validate the included native preflight on the target. It exercises JSON
+   round-tripping, SHA-512, random values and epoch timestamps. Establish CA trust
+   through the approved initial channel; never disable certificate verification.
+   Install/run the read-only poll client and collector only with approval.
+   The generated TX/advisory scripts are disabled by default and add no scheduler.
+10. Run discovery again after changing connection details, keys or TX selection.
+    Capture a baseline. Optionally map specific observed OSPF cost/PCC fields to
+    exact main-router paths. A scoped resource must match a unique TX interface.
+    Templates using interface lists and PCC rules lacking a direct outbound
+    interface may need a reviewed adapter/mapping before they can be scoped.
+11. Download/review and approve the projected baseline. Keep a separate complete,
+    trusted RouterOS backup. The app captures selected routing fields, not router
+    passwords, private certificates, arbitrary scripts or a complete device image.
+12. Enable monitoring explicitly. Production requires an approved current baseline.
+    The initial counter sample establishes a baseline; subsequent samples produce
+    Mbps = delta(TX octets) * 8 / elapsed seconds / 1,000,000. RX is never requested.
+    Verify the chosen direction and counters with a controlled workload on the
+    physical device. Check that counter resets and stale intervals are handled.
+13. Review the live TX graph and optimization table. Configure averaging, hold-down,
+    thresholds and controller settings in Settings. Confirm that the links can
+    actually carry the same traffic before interpreting allocation suggestions.
+    The graph supports clicking readings; optimization On/Off remains available.
+14. Review scoped policy JSON. Baseline approval and execution-scope approval are
+    separate. Scope approval is limited in time and bound to exact inventory,
+    topology, policy and resource fingerprints. Revocation is immediate locally.
+    Actual execution remains blocked: this release has no live routing executor.
+    Do not enable LIVE_ROUTING_ENABLED. A separately reviewed execution/restore
+    adapter and physical rollback validation are required before routing writes.
+
+The existing secure single-use token enrollment flow remains available. It
+requires network connectivity and a trusted initial bootstrap configuration.
+Production enrollment does not bypass baseline review to enable monitoring and
+does not accept lab identity grants. Re-enrollment preserves the configured role
+and deployment metadata. TLS authenticates the controller certificate; per-router
+HMAC authenticates signed telemetry/polls. Automatic client-certificate issuance
+and mutual TLS are not claimed by this implementation.
+
+Capabilities and hardware validation
+-----------------------------------
+Read-only API discovery shares a single allowlisted native client for CHR and
+physical models. It uses explicit field projections and a total byte/time budget.
+It reads only selected TX counters, never RX counters, script sources, private
+keys or generic exports. Extra unsolicited API properties are discarded.
+
+RouterOS 6 uses its OSPF interface menu; RouterOS 7 uses interface templates and
+the routing table menu. Modern API login is required; legacy challenge login is
+rejected. The native V2 script requires RouterOS 7 primitives, verified by the
+local preflight. A 7.x version alone is not proof that all script primitives or
+permissions work. Future/unrecognized major versions have no routing adapter.
+Read failures do not fabricate successful capability checks. Traps are drained
+and safely classified as unavailable or denied without exposing device messages.
+
+Physical validation still needs to establish:
+- Trusted API and controller certificates, address coverage and clock behavior.
+- Read account permissions and the actual RouterOS release's scripting support.
+- Counter visibility/direction for Ethernet, VLAN, bridge, bond and offloaded paths.
+- FastTrack/PCC/policy-routing interactions and any hardware forwarding bypass.
+- Sustained sampling/CPU/storage behavior and real achievable WAN capacity.
+- Forwarding alternatives, OSPF adjacency impact, PCC flow persistence and failover.
+- Complete backups and an approved, verified execution/restore adapter.
+
+The app does not disable FastTrack/offload or reconfigure routing to perform
+discovery. Large menus exceeding bounded API reply limits fail safely rather
+than being advertised as complete baselines; large inventories may need scoped
+discovery/pagination. Device advisories retain the native 8 KiB response bound.
+These are resource/security bounds, not a two-carrier topology assumption.
+
+Failure and recovery
+--------------------
+Controller loss leaves router forwarding unchanged. Native clients only read
+counters/pull advice; they contain no routing actuator or controller-dependent
+default route. Expired advice and stale counters are not actionable suggestions.
+Receipt acknowledgement means delivery, not execution or verified improvement.
+An "applied" report remains rejected without an authorized execution mechanism.
+
+Deactivate retains history and routing-path references while disabling monitoring
+and revoking active device keys. Reactivation requires fresh explicit provisioning.
+Remove associated paths before deleting inventory; history is retained. Old scopes
+are invalidated by configuration changes, rediscovery or optimization Off. Turning
+On again does not restore revoked approvals. Approvals never override global locks.
+
+The controller uses owner-only JSON, locked transactions, atomic replacement and
+validated .bak files. Back up the selected profile securely, including credentials
+and public/private trust material, with access restricted to the service owner.
+Use the baseline download and rollback-reference JSON to review original managed
+field values. The reference is deliberately non-executable; it is not a complete
+RouterOS restore image. No live rollback was performed or claimed in this work.
+
+Official compatibility references consulted
+-------------------------------------------
+API framing and projected properties:
+https://manual.mikrotik.com/docs/developer-guides/api/
+Scripting JSON and SHA-512 primitives:
+https://manual.mikrotik.com/docs/developer-guides/scripting/
+OSPF differences in RouterOS 7:
+https://manual.mikrotik.com/docs/getting-started/upgrading-to-v7/
+Hardware offload interactions:
+https://manual.mikrotik.com/docs/bridging-and-switching/l3-hardware-offloading/
+
+These references guide capability discovery; mocked tests are not physical-device
+certification. No production router configurations were modified for this audit.
