@@ -15,16 +15,11 @@
         :local sdrVariant [:pick "89ab" [:rndnum from=0 to=3]];
         :local sdrRequestId ([:rndstr from=$sdrHex length=8] . "-" . [:rndstr from=$sdrHex length=4] . "-4" . [:rndstr from=$sdrHex length=3] . "-" . $sdrVariant . [:rndstr from=$sdrHex length=3] . "-" . [:rndstr from=$sdrHex length=12]);
         :local sdrNow [:tonum ([:tonsec [:timestamp]] / 1000000000)];
-        :local sdrDeviceId "";
-        :do { :set sdrDeviceId [/system/license/get system-id]; } on-error={};
-        :if ([:len $sdrDeviceId] = 0) do={
-            :do { :set sdrDeviceId [/system/routerboard/get serial-number]; } on-error={};
+        :local sdrDeviceId ("bootstrap-" . $sdrRequestId);
+        :local sdrEthernet [/interface/ethernet/find];
+        :if ([:len $sdrEthernet] > 0) do={
+            :set sdrDeviceId [/interface/ethernet/get [:pick $sdrEthernet 0] mac-address];
         };
-        :if ([:len $sdrDeviceId] = 0) do={
-            :local sdrEthernet [/interface/ethernet/find];
-            :if ([:len $sdrEthernet] > 0) do={ :set sdrDeviceId [/interface/ethernet/get [:pick $sdrEthernet 0] mac-address]; };
-        };
-        :if ([:len $sdrDeviceId] = 0) do={ :error "Device identity is unavailable"; };
         :local sdrBody [:serialize value={"protocol_version"="1.0";"request_type"="enroll";"request_id"=$sdrRequestId;"timestamp"=$sdrNow;"router_name"=[/system/identity/get name];"device_id"=$sdrDeviceId;"interface"=$sdrInterface} to=json options=json.no-string-conversion];
         :local sdrHeaders ("Content-Type:application/json,Authorization:Bearer " . $sdrToken);
         :local sdrFetched;

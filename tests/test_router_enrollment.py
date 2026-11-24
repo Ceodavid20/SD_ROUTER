@@ -215,6 +215,7 @@ def test_default_grant_registers_but_keeps_monitoring_disabled(setup):
     reply = enroll(setup, token)
     assert reply.status_code == 200 and reply.get_json()["monitoring_enabled"] is False
     assert storage.read_json("routers.json")[0]["monitoring_enabled"] is False
+    assert storage.read_json("routers.json")[0]["capacity_confirmed"] is False
 
 
 def test_concurrent_uses_have_exactly_one_success_and_one_router(setup):
@@ -260,6 +261,10 @@ def test_enrollment_rate_limit_is_independent_from_poll_and_traffic(setup):
 
 def test_enrollment_endpoint_never_appears_on_browser_app(setup):
     assert create_app(setup[2]).test_client().post(ENROLLMENT_PATH).status_code == 404
+    page = create_app(setup[2]).test_client().get("/routers/connect").get_data(as_text=True)
+    assert "Zero-touch provisioning" in page
+    assert "https://controller.example.test:18443" + ENROLLMENT_PATH in page
+    assert "single-use" in page and "trusted bootstrap" in page
 
 
 def test_per_router_interval_controls_counter_gaps_without_hardcoded_ether1(setup):

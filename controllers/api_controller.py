@@ -61,6 +61,15 @@ def live_monitoring() -> Response:
         history=history)
 
 
+@api.get("/optimization")
+def live_optimization() -> Response:
+    response = jsonify(calculation=WorkflowService(
+        current_app.extensions["json_storage"], current_app.config,
+    ).preview())
+    response.cache_control.no_store = True
+    return response
+
+
 @router_config.get("/router-config/<router_id>")
 def current_router_config(router_id: str) -> Response:
     """Return only a validated router command, never an internal storage file."""

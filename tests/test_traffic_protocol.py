@@ -63,7 +63,6 @@ def test_malformed_json_is_rejected(raw):
     with pytest.raises(ProtocolError):
         parse_traffic_request(raw)
 
-
 def test_missing_field_is_rejected():
     body = payload()
     del body["tx_octets"]

@@ -15,7 +15,9 @@
   <section class="overview-banner" aria-labelledby="overview-title">
     <div>
       <h2 id="overview-title">Network overview</h2>
-      {% if router_counts.authenticated %}
+      {% if status.traffic_monitoring.measured %}
+        <p>{{ status.traffic_monitoring.measured }} of {{ status.traffic_monitoring.enabled }} enabled routers are reporting authenticated TX measurements.</p>
+      {% elif router_counts.authenticated %}
         <p>{{ router_counts.authenticated }} of {{ router_counts.registered }} routers have recent authenticated controller check-ins.</p>
       {% elif status.controller_polling.awaiting or status.controller_polling.stale %}
         <p>Waiting for current authenticated router check-ins.</p>
@@ -91,7 +93,7 @@
         <dl class="status-list">
           <div><dt>Optional API diagnostics</dt><dd>{{ router_counts.connected }} / {{ router_counts.registered }} passed</dd></div>
           <div><dt>Traffic collection</dt><dd>{{ status.monitoring | replace('_', ' ') | capitalize }}</dd></div>
-          <div><dt>Optimization</dt><dd>{{ status.optimization | replace('_', ' ') | capitalize }}</dd></div>
+          <div><dt>Live recommendations</dt><dd>{{ live_preview.status | replace('_', ' ') | capitalize }} · Dry Run</dd></div>
           <div><dt>Automation</dt><dd>{{ status.automation | capitalize }}</dd></div>
           <div><dt>Last result (UTC)</dt><dd>{{ status.last_calculation_at or 'None' }}</dd></div>
         </dl>

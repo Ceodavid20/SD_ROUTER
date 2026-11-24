@@ -32,6 +32,9 @@
     <div class="col-md-4">
       <label class="form-label" for="{{ prefix }}-capacity">Outbound capacity (Mbps)</label>
       <input class="form-control" id="{{ prefix }}-capacity" name="capacity_mbps" value="{{ router.capacity_mbps if router.capacity_mbps is not none else '' }}" type="number" min="0.000001" step="any">
+      <input type="hidden" name="capacity_confirmation_present" value="true">
+      <div class="form-check section-gap"><input class="form-check-input" id="{{ prefix }}-capacity-confirmed" name="capacity_confirmed" type="checkbox" value="1" {% if router.get('capacity_confirmed', false) %}checked{% endif %}><label class="form-check-label" for="{{ prefix }}-capacity-confirmed">Confirmed WAN capacity</label></div>
+      <div class="form-text">Only confirm a known WAN limit. A virtual adapter's link speed is not WAN capacity.</div>
     </div>
     <div class="col-md-4">
       <label class="form-label" for="{{ prefix }}-price">Carrier price per decimal GB</label>

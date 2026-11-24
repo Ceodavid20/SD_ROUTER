@@ -9,10 +9,8 @@ from werkzeug.security import generate_password_hash
 from app import create_app
 from services.controller_connection_service import connection_details
 
-
 POLL_PATH = "/api/controller/v2/poll"
 SETUP_PATH = "/routers/connect"
-
 
 class PageElements(HTMLParser):
     def __init__(self):

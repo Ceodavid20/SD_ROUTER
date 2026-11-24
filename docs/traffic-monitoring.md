@@ -198,7 +198,7 @@ do not establish RouterOS execution or interoperability.
 
 The TLS configuration generator includes the new path for future bundles.
 An already installed proxy may deny it until an approved administrator
-   adds **only** `/api/controller/v2/traffic` under the existing source and
+adds **only** `/api/controller/v2/traffic` under the existing source and
 body-size restrictions. Do not regenerate private TLS material or restart
 the live proxy just to bypass that review.
 
@@ -212,9 +212,22 @@ current measured rate; the count of reporting routers stays visible.
 Historical readings survive disablement. GET requests do not collect data
 or change state. The monitoring page refreshes every 15 seconds. Small
 nonzero rates retain visible precision in both the current reading and
-history; a measured zero remains zero. Monitoring tables show Kbps, and
-the dashboard uses Kbps below 1 Mbps. One Mbps equals 1,000 Kbps. Stored
+history; a measured zero remains zero. Monitoring supports Mbps and Kbps
+display selection and separate router-history filters. The dashboard uses
+Mbps for per-router comparisons and adapts its total for small rates.
+One Mbps equals 1,000 Kbps. Stored
 measurements and JSON API fields continue to use Mbps.
+
+The live dashboard and `GET /api/monitoring` calculate current per-router
+averages without contacting routers or writing a recommendation. Missing
+or unconfirmed capacities remain unknown for calculations. An entered
+capacity is used only after **Confirmed WAN capacity** is selected in
+**Routers**; a saved path limit cannot confirm an unknown WAN capacity.
+Traffic switching requires explicitly confirmed
+paths; the monitoring collector cannot establish that links are interchangeable.
+CHR lab labels represent virtual carrier links, while measurements come
+from their actual RouterOS counters. Per-router bootstrap intervals control
+freshness and counter-gap handling independently.
 
 | Status | Meaning |
 | --- | --- |

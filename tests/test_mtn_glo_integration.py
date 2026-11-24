@@ -173,3 +173,40 @@ def test_generic_registration_supports_other_names_ports_and_dynamic_sources(fle
     row = next(r for r in storage.read_json("routers.json") if r["router_id"] == "OTHER-RTR")
     assert row["api_port"] == 18729 and row["interface_name"] == "pppoe-wan"
     assert "traffic_source_ip" not in row and row["deployment_kind"] == "router"
+
+
+def test_entered_adapter_speed_is_not_treated_as_confirmed_wan_capacity(fleet):
+    app, storage, service = fleet
+    form = {"name":"MTN CHR lab", "ip_address":"192.0.2.11", "interface_name":"ether1",
+            "api_port":"8729", "api_tls":"1", "capacity_mbps":"10000",
+            "capacity_confirmation_present":"true"}
+    service.edit_router("SDR-MTN-01", form)
+    row = next(r for r in storage.read_json("routers.json") if r["router_id"] == "SDR-MTN-01")
+    assert row["capacity_mbps"] == 10000 and row["capacity_confirmed"] is False
+    preview = WorkflowService(storage, app.config).preview()
+    assert next(r for r in preview["analysis"] if r["router_id"] == row["router_id"])["capacity_mbps"] is None
+    service.edit_router("SDR-MTN-01", {**form,"capacity_confirmed":"1"})
+    preview = WorkflowService(storage, app.config).preview()
+    assert next(r for r in preview["analysis"] if r["router_id"] == row["router_id"])["capacity_mbps"] == 10000
+
+
+def test_saved_path_limit_does_not_confirm_unknown_wan_capacity(fleet, monkeypatch):
+    from services.path_config_service import PathConfigService
+    enable(fleet, monkeypatch)
+    app, storage, _ = fleet
+    now = datetime.now(UTC).replace(microsecond=0)
+    for index in range(6):
+        sample(fleet, "SDR-MTN-01", "192.0.2.11", now - timedelta(seconds=(5-index)*60), 1000+index*7_500_000)
+    paths = PathConfigService(storage)
+    paths.add_path({"aggregation_router_id":"SDR-CHR-LAB-01", "carrier_router_id":"SDR-MTN-01",
+                   "carrier":"MTN", "aggregation_interface":"ether1", "carrier_interface":"ether1",
+                   "path_capacity_bps":"10000000000", "route_role":"primary", "monitor_router_id":"SDR-MTN-01"})
+    before = storage.read_json("routing_paths.json")
+    preview = WorkflowService(storage, app.config).preview(now=now)
+    analysis = next(r for r in preview["analysis"] if r["router_id"] == "SDR-MTN-01")
+    assert analysis["state"] == "ready" and analysis["capacity_mbps"] is None
+    assert analysis["utilization_percent"] is None
+    recommendation = next(r for r in preview["recommendations"] if r["router_id"] == "SDR-MTN-01")
+    assert recommendation["capacity_mbps"] is None
+    assert any(r["code"] == "wan_capacity_required" for r in preview["issues"])
+    assert storage.read_json("routing_paths.json") == before

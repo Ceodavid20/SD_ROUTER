@@ -10,7 +10,7 @@
     —
   {%- else -%}
     {%- set value = mbps * 1000 if unit == 'Kbps' else mbps -%}
-    {{- '%.3g' | format(value) if 0 < value < 0.001 else '%.3f' | format(value) -}}
+    {{- '%.3g' | format(value) if 0 < value | abs < 0.001 else '%.3f' | format(value) -}}
   {%- endif -%}
 {%- endmacro %}
 

@@ -29,11 +29,15 @@ operational registry. Runtime demonstrations, example carrier routers and
 simulated traffic generators have been removed. New storage starts empty;
 existing router records, credentials and communication history are preserved.
 
-The selected device in this workspace is `SDR-CHR-LAB-01`, with outbound
-TX monitoring bound to `ether1`. Its existing RouterOS polling and receipt
-client remains unchanged. The separate traffic collector requires approved
-installation and explicit enablement before actual TX samples can arrive.
-No inbound RX counters are requested or accepted.
+This workspace monitors `SDR-CHR-LAB-01`, `SDR-MTN-01` and `SDR-GLO-01`,
+each with outbound TX monitoring bound to `ether1`. The original router's
+polling and receipt client remains unchanged. MTN and Glo are virtual carrier
+links with actual RouterOS TX measurements. The operator confirmed MTN at
+8 Gbps (8,000 Mbps), Glo at 4 Gbps (4,000 Mbps), and that they can carry the
+same outbound traffic. These limits and relationships are saved configuration,
+not runtime constants or throughput benchmarks. No inbound RX counters are
+requested or accepted. Future devices can use the trusted, single-use
+bootstrap described in the [ZTP instructions](../README.md#zero-touch-provisioning).
 
 The browser app listens on loopback port 8000 and the device backend on
 loopback port 8001. The existing approved TLS proxy supplies the router-facing
@@ -48,24 +52,38 @@ are supplied by the runtime application.
 The normal application retains its existing inventory and monitoring flags.
 
 1. In **Routers**, set the selected outbound interface. Enter confirmed
-   interface capacity, carrier marginal price per decimal GB, and currency.
-   Prices belong on the path's carrier router. Use the same currency for all
-   compared paths; currency conversion is not performed.
+   WAN capacity and select **Confirmed WAN capacity** only when the actual
+   limit is known. Adapter link speed is not WAN capacity. For cost
+   minimization, enter the carrier's marginal price per decimal GB and
+   currency on the path's carrier router. Use the same currency for all
+   compared paths; currency conversion is not performed. Utilization
+   balancing does not require prices.
 2. In **Routing paths**, configure both endpoints, their interfaces and the
    confirmed path capacity. Select the endpoint measuring TX in the intended
    outbound direction. Its path interface must exactly match that router's
    selected outbound interface. One measurement can supply one path only.
+   Carrier-side dry-run analysis can leave the aggregation interface blank;
+   the path still needs a confirmed capacity, carrier interface, measurement
+   source and explicit alternative-path relationship. An unknown physical
+   mapping is never invented. Aggregation-side measurement requires both
+   endpoint interfaces. Carrier labels come from inventory and are not
+   restricted to a fixed list of providers.
 3. Confirm participating paths and assign primary, alternate or standby roles.
    Set the utilization ceiling, hold-down time and congestion policy.
    Standby paths receive zero recommended allocation.
 4. In **Settings**, choose the objective, averaging window and expected
    sample interval. These settings do not change a collector or its schedule.
-5. Explicitly enable desired interfaces in **Traffic monitoring**. Actual
-   collector validation/installation and installed proxy changes still
-   require the previously established operational approval.
-6. Collect a full fresh window, then click **Calculate analysis** or
-   **Calculate dry-run recommendation**. Review calculations, allocation and
-   costs. **Router output** displays the local JSON snapshot.
+5. Explicitly enable desired interfaces in **Traffic monitoring**, or
+   authorize monitoring in the one-time bootstrap grant. Deliver the
+   bootstrap and trusted public CA using an approved initial setup method.
+   The installed collector then runs automatically. Proxy and network
+   changes remain separate administrative operations.
+6. Collect a full fresh window. Dashboard averages, allocations and advisory
+   status update automatically every 15 seconds. **Optimization** shows the
+   current calculation even when no snapshot has been saved. **Save calculation
+   snapshot** preserves a result for review and the configured hold-down;
+   saving is optional. Historical snapshots are shown separately. **Router
+   output** displays the saved local JSON snapshot.
 
 Missing settings, incomplete/warming/stale measurements, mismatched
 interfaces or mixed currencies produce explicit requirements on the
@@ -103,7 +121,7 @@ collect fresh readings first.
 Within each aggregation router, demand is the sum of averages from its
 explicit path measurement sources. Demand stays inside that group. Effective
 path capacity is the minimum of confirmed path capacity and configured
-measured/carrier interface capacities, multiplied by the utilization ceiling.
+confirmed measured/carrier WAN capacities, multiplied by the utilization ceiling.
 
 - **Minimize estimated financial cost:** fill lower-priced eligible paths
   first up to effective capacity. Equal prices use a deterministic order
@@ -140,6 +158,21 @@ a successful recommendation. Identical retries replace their projections
 and publish once. Existing legacy records are preserved. New records have
 strict field/numerical validation and ready allocations must conserve group
 demand and respect capacity/standby constraints.
+
+The read-only current result is available at `GET /api/optimization` under
+browser administrator policy, with `Cache-Control: no-store`. It uses the
+same calculation as saved snapshots and changes no JSON or router state.
+`GET /api/workflow` continues to return the latest committed snapshot.
+Fresh authenticated TX samples establish measurement readiness; optional
+RouterOS API diagnostic failures cannot block these calculations.
+
+The current workspace uses utilization balancing with an editable 80%
+utilization ceiling and a 120-second hold-down for saved recommendations.
+At the configured 8:4 Gbps capacities, balancing assigns two thirds of
+eligible demand to MTN and one third to Glo, while preserving the group total
+and respecting both permitted capacities. It does not create traffic or
+execute that allocation. GB data allowances are not interchangeable with
+Mbps or Gbps speed limits.
 
 GETs never collect traffic or write JSON. Fresh samples, revoked
 authorization, changed prices/interfaces/settings or aged measurements mark

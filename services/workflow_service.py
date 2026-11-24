@@ -12,6 +12,7 @@ import re
 from typing import Any
 
 from services.json_storage import StorageService
+from services.path_config_service import analysis_path_ready
 from services.router_protocol import parse_utc_timestamp, utc_text
 from services.traffic_service import project_traffic_status, stale_after_seconds
 
@@ -22,7 +23,7 @@ _ROUTER_INPUTS = (
     "capacity_mbps", "cost_per_gb", "currency", "controller_auth_enabled",
     "controller_auth_ref", "controller_auth_key_ids",
     "connection_status", "traffic_source_ip", "monitoring_interval_seconds",
-    "traffic_source_ip", "connection_status",
+    "capacity_confirmed",
 )
 
 
@@ -94,7 +95,9 @@ def _analyze(inputs, windows, config, now):
         average = math.fsum(row["tx_mbps"] for row in rows[-window:]) / window if current_state == "ready" else None
         previous = math.fsum(row["tx_mbps"] for row in rows[-window-1:-1]) / window if average is not None and len(rows) > window else None
         change = (average - previous) / previous * 100 if previous is not None and previous > 0 else None
-        capacity = router.get("capacity_mbps") if _numeric(router.get("capacity_mbps"), positive=True) else None
+        capacity = router.get("capacity_mbps") if (
+            router.get("capacity_confirmed", True) is True and _numeric(router.get("capacity_mbps"), positive=True)
+        ) else None
         price = router.get("cost_per_gb") if _numeric(router.get("cost_per_gb")) else None
         currency = _currency(router.get("currency"))
         observed_gb = math.fsum(row["tx_mbps"] * row["interval_seconds"] / 8000
@@ -174,8 +177,8 @@ def evaluate(inputs, windows, results, config, now):
     currencies = set()
     for path in active:
         path_id = path["path_id"]
-        if path["configuration_status"] != "configured":
-            issue("path_incomplete", f"Path {path_id}: enter both interfaces and confirmed capacity.")
+        if not analysis_path_ready(path):
+            issue("path_incomplete", f"Path {path_id}: enter confirmed capacity and the measurement interface; aggregation-side measurements also require both endpoint interfaces.")
             continue
         monitor_id = path.get("monitor_router_id")
         if monitor_id is None:
@@ -202,19 +205,20 @@ def evaluate(inputs, windows, results, config, now):
             issue("price_required", f"Path {path_id}: enter the carrier router's confirmed price per decimal GB and currency.")
         if _numeric(price) and currency is not None:
             currencies.add(currency)
-        if carrier.get("connection_status") in ("blocked", "disconnected"):
-            issue("connection_unavailable", f"Path {path_id}: the carrier router's secure API connection needs verification.")
         capacity = path["path_capacity_bps"] / 1_000_000
         for endpoint in (monitor, carrier):
-            configured_capacity = endpoint.get("capacity_mbps")
+            if endpoint.get("capacity_confirmed") is False:
+                issue("wan_capacity_required", f"Path {path_id}: confirm the actual WAN capacity for router {endpoint['router_id']} in Routers; a saved path limit does not confirm it.")
+            configured_capacity = endpoint.get("capacity_mbps") if endpoint.get("capacity_confirmed", True) is True else None
             if configured_capacity is not None:
                 if not _numeric(configured_capacity, positive=True):
                     issue("capacity_invalid", f"Path {path_id}: correct the router interface capacity.")
                 else:
                     capacity = min(capacity, configured_capacity)
         average = row["average_mbps"]
-        row["capacity_mbps"] = capacity
-        row["utilization_percent"] = average / capacity * 100 if average is not None else None
+        if monitor.get("capacity_confirmed") is not False:
+            row["capacity_mbps"] = capacity
+            row["utilization_percent"] = average / capacity * 100 if average is not None else None
         row["cost_per_gb"], row["currency"] = price if _numeric(price) else None, currency
         row["cost_per_hour"] = _cost(average, price) if average is not None and _numeric(price) and currency else None
         allowed = capacity * policy["utilization_limit_percent"] / 100 if policy["status"] == "configured" else None
@@ -306,22 +310,24 @@ class WorkflowService:
         inputs, windows, results = self.storage.read_monitoring_snapshot()
         preview = evaluate(inputs, windows, results, self.config, current)
         inventory = {row["router_id"]: row for row in inputs["routers.json"]}
+        by_router = {row["router_id"]: row for row in preview["analysis"]}
         recommendations = []
         for row in preview["analysis"]:
             router = inventory[row["router_id"]]
             if router.get("router_role") != "carrier" and not router.get("carrier"):
                 continue
-            allocation = next((p for p in preview["allocations"] if p["monitor_router_id"] == row["router_id"]), None)
+            allocation = next((p for p in preview["allocations"] if p["carrier_router_id"] == row["router_id"]), None)
+            measured = by_router[allocation["monitor_router_id"]] if allocation else row
             reasons = []
-            if row["capacity_mbps"] is None:
+            if row["capacity_mbps"] is None and (not allocation or router.get("capacity_confirmed") is False):
                 reasons.append("WAN capacity is unknown; configure a confirmed capacity before estimating utilization.")
             alternatives = [p for p in preview["allocations"] if allocation
                             and p["aggregation_router_id"] == allocation["aggregation_router_id"]
                             and p["carrier_router_id"] != allocation["carrier_router_id"]]
             if not alternatives:
                 reasons.append("Traffic-switching eligibility between these links has not been confirmed in Routing paths.")
-            if row["state"] != "ready":
-                reasons.append(f"A fresh averaging window is required ({row['sample_count']}/{row['window_size']} readings; {row['state'].replace('_', ' ')}).")
+            if measured["state"] != "ready":
+                reasons.append(f"A fresh averaging window is required ({measured['sample_count']}/{measured['window_size']} readings; {measured['state'].replace('_', ' ')}).")
             ready = preview["status"] == "ready" and not reasons and allocation is not None
             change = allocation["change_mbps"] if ready else None
             if change is None:
@@ -334,19 +340,22 @@ class WorkflowService:
             else:
                 action = "Consider shifting eligible outbound traffic to another confirmed path."
             recommendations.append({
-                "router_id": row["router_id"], "interface": row["interface"],
+                "router_id": row["router_id"], "interface": measured["interface"],
+                "monitor_router_id": measured["router_id"],
                 "status": "ready" if ready else "blocked", "mode": "dry_run",
                 "execution_status": "Dry Run", "action": "none",
                 "recommended_action": action,
                 "reason": " ".join(reasons) if reasons else "The configured objective was evaluated against fresh TX measurements and confirmed path limits.",
-                "current_mbps": row["current_mbps"], "average_mbps": row["average_mbps"],
-                "capacity_mbps": row["capacity_mbps"], "utilization_percent": row["utilization_percent"],
+                "current_mbps": measured["current_mbps"], "average_mbps": measured["average_mbps"],
+                "capacity_mbps": (None if router.get("capacity_confirmed") is False
+                                  else allocation["capacity_mbps"] if allocation else row["capacity_mbps"]),
+                "utilization_percent": measured["utilization_percent"],
                 "api_connection_status": router.get("connection_status", "untested"),
-                "monitoring_state": row["state"], "change_mbps": change,
+                "monitoring_state": measured["state"], "change_mbps": change,
                 "expected_benefit": {
                     "is_estimate": True,
                     "description": "Estimated capacity allocation only; no routing has been executed." if ready else "Unavailable until capacity, measurements and switching eligibility are confirmed.",
-                    "resulting_utilization_percent": allocation["recommended_mbps"] / row["capacity_mbps"] * 100 if ready else None,
+                    "resulting_utilization_percent": allocation["recommended_mbps"] / allocation["capacity_mbps"] * 100 if ready else None,
                 },
             })
         preview["recommendations"] = recommendations

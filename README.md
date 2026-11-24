@@ -37,7 +37,7 @@ To start the separate device listener in another project terminal:
 .venv/bin/python serve_devices.py
 ```
 
-It defaults to `127.0.0.1:8001`. The browser application remains on `127.0.0.1:8000`. The device application exposes only its polling, receipt and traffic routes. Its backend binds to loopback. An approved device-only TLS proxy provides the router-facing HTTPS address, with source restrictions and explicit local proxy trust. Use the approved origin already configured in the private environment file.
+It defaults to `127.0.0.1:8001`. The browser application remains on `127.0.0.1:8000`. The device application exposes polling, receipt, traffic and opt-in enrollment routes. Its backend binds to loopback. An approved device-only TLS proxy provides the router-facing HTTPS address, with source restrictions and explicit local proxy trust. Use the approved origin already configured in the private environment file.
 
 `CONTROLLER_HOST`, `CONTROLLER_PORT`, `CONTROLLER_BASE_URL`, and the polling settings are environment configuration. The sketch's address and port are not applied. Keep `SIMULATION_MODE=true` and `LIVE_ROUTING_ENABLED=false` during development. Setting live routing to true raises a startup error because this stage has no live execution capability.
 
@@ -47,11 +47,71 @@ Follow [RouterOS connection setup](docs/routeros-setup.md) for private provision
 
 The main application supports authenticated TX collection, moving averages, utilization/share calculations, estimated volume costs and constrained advisory allocations. It uses only saved router inventory and actual received readings. Missing measurements or settings remain unavailable.
 
-Enter confirmed carrier prices, explicitly select each path's TX measurement source, configure limits and choose an objective. Then calculate from a full fresh window. [Workflow documentation](docs/local-workflow.md) explains formulas, assumptions, setup and persistence.
+Enter confirmed WAN capacities, explicitly select each path's TX measurement source, configure limits and choose an objective. Cost minimization also needs confirmed carrier prices in a shared currency; utilization balancing does not require prices. Then calculate from a full fresh window. [Workflow documentation](docs/local-workflow.md) explains formulas, assumptions, setup and persistence.
+
+## Zero-touch provisioning
+
+After initial connectivity and a trusted bootstrap delivery, routers can enroll
+and start authenticated TX monitoring without per-router code changes, WinBox
+steps, API diagnostic clicks or controller restarts. Identities, interfaces,
+carrier labels, intervals and optional fixed-source restrictions are policy
+data. Router IDs can be assigned automatically.
+
+Enable `SDR_ENROLLMENT_ENABLED=true` once on the controller, set the approved
+HTTPS `CONTROLLER_BASE_URL`, and restart the device backend. Authorize one
+device with a short-lived, single-use bootstrap bundle:
+
+```sh
+.venv/bin/python manage.py create-enrollment-token \
+  --interface APPROVED_OUTBOUND_INTERFACE \
+  --ca-file /approved/controller-ca.pem \
+  --enable-monitoring \
+  --output-dir private/new-router-bootstrap
+```
+
+The command prints paths and expiry, never the token. Deliver its private
+`bootstrap.rsc` and public CA through a trusted initial setup process, such
+as the existing authenticated management channel or a controlled Netinstall
+workflow. Initial network connectivity, a valid clock and installation
+privileges are prerequisites. A completely unconfigured device cannot
+securely acquire trust from an unknown server by itself.
+
+The bootstrap verifies the controller's TLS certificate, consumes its token
+at `POST /api/controller/v2/enroll`, receives a distinct HMAC identity, and
+installs a TX-only collector and retrying scheduler with `read,test`
+permissions. Routing is never configured or executed. Monitoring is disabled
+unless the authorization explicitly uses `--enable-monitoring`. Incoming
+API-SSL access is optional for push monitoring; normal collection needs no
+interactive API login.
+
+Use `--router-id`, `--name`, `--carrier`, `--management-ip`,
+`--management-interface`, `--interval-seconds` and `--chr-lab` for optional
+inventory policy. `--bind-source` is opt-in for fixed sources; it is omitted
+for NAT or dynamic addresses. `--replace-existing` explicitly authorizes
+re-enrollment of an existing active identity. `revoke-enrollment-token`
+revokes an unused authorization. No bootstrap token or device secret belongs
+in command arguments, source control, logs or public inventory JSON.
+
+The enrollment endpoint requires verified HTTPS even in simulation mode,
+strict JSON, fresh timestamps, independent persistent rate limits, expiry
+and atomic single-use consumption. Token hashes are stored in
+`router_enrollment.json`; HMAC secrets use owner-only environment storage
+and load on demand. A small journal recovers interrupted registry commits
+without making a used token valid again. If the initial response is lost
+after a successful claim, authorize a fresh trusted bootstrap rather than
+reusing the consumed token. Backup and restore the enrollment ledger,
+registry and private environment at the same stopped restore point.
+
+Future TLS configurations can expose the enrollment path explicitly with
+`setup-controller-tls --allow-enrollment`. Existing proxies need their own
+approved route configuration. The browser application never exposes the
+enrollment endpoint.
 
 ## Current focus
 
-Existing registered routers are preserved. New storage starts with an empty inventory: startup creates no example carrier or aggregation routers. The configured MikroTik for this workspace is `SDR-CHR-LAB-01`; its selected outbound monitoring interface is `ether1` (TX only).
+Existing registered routers are preserved. New storage starts with an empty inventory: startup creates no example carrier or aggregation routers. This workspace monitors the original `SDR-CHR-LAB-01` plus the separately enrolled `SDR-MTN-01` and `SDR-GLO-01`, each using `ether1` (TX only). MTN and Glo represent virtual carrier links, but their measurements come from actual CHR counters. The operator confirmed MTN at 8 Gbps, Glo at 4 Gbps, and their ability to carry the same outbound traffic. These limits, names and interfaces are inventory settings, not runtime defaults. Fresh complete TX windows are required for recommendations.
+
+In **Routers**, check **Confirmed WAN capacity** only after establishing the real WAN limit. Unconfirmed entries remain editable and do not drive utilization or recommendations, even if a routing path already has an entered limit. A virtual Ethernet adapter's link speed does not establish WAN capacity.
 
 The **Add router** button opens **Router connection** at `/routers/connect`. It shows the configured device polling endpoint, request method, authentication requirements, and setup status. Manual browser registration and the old `POST /routers/add` route are removed. Opening this page does not register or authenticate a device.
 
@@ -61,7 +121,9 @@ The optional RouterOS API diagnostic requires a management IP, API port, TLS/net
 
 For the existing MikroTik, run `.venv/bin/python manage.py configure-router-api --router-id SDR-CHR-LAB-01` in the project terminal to save its API login. Both username and password prompts are hidden. The command writes an owner-only `.env`, generates and saves the credential reference automatically, and does not contact or configure the router. Refresh **Routers** afterward; managed API credentials reload without a server restart. Saving router settings preserves the managed reference, including when the form was opened before credential setup or rotation. Use the same terminal command to change that login. No credentials are accepted as command-line arguments or returned in HTML/JSON/logs. The API port and API-SSL checkbox must match **WinBox → IP → Services**; selecting the checkbox does not enable TLS on RouterOS. The page lists missing local requirements together before enabling the optional diagnostic button.
 
-Open **Routing paths** to create the links used by your network. Select the aggregation router and carrier router from the inventory, then enter their interfaces, the confirmed path capacity and any applicable limits. Paths can be edited or removed. No connections or congestion thresholds are assumed.
+Open **Routing paths** to create the links used by your network. Select the aggregation router and carrier router from the inventory, then enter their interfaces, the confirmed path capacity and any applicable limits. For carrier-side dry-run analysis, an unknown aggregation interface can remain blank; it must be established before any future routing deployment. Carrier labels come from the configured inventory. Paths can be edited or removed. No connections or congestion thresholds are assumed at startup.
+
+**Optimization** displays the current allocation automatically, with the same read-only result at `GET /api/optimization`. Saved snapshots remain separate and optional. Signed fresh TX measurements establish readiness independently of optional API diagnostics. This workspace uses utilization balancing with an editable 80% ceiling and a 120-second hold-down for saved recommendations. No financial price is invented and no routing change is executed.
 
 The supplied network PDF is a reference for entering these settings. The application does not embed a topology image or derive executable router changes from the drawing. Saving routers or paths changes local settings only; it does not contact a device or alter its configuration.
 
@@ -86,6 +148,7 @@ data/
 ├── router_communication.json
 ├── router_communication_v2.json
 ├── router_traffic_v2.json
+├── router_enrollment.json
 ├── traffic_history.json
 ├── traffic_segments/
 ├── averages.json

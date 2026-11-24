@@ -17,7 +17,7 @@
       <h2 id="history-title">Outbound monitoring</h2>
       <span class="category-pill">{{ status.monitoring | replace('_', ' ') | capitalize }}</span>
     </div>
-    <p>Monitoring stays disabled until you enable it for each router. Select one outbound interface in <a href="{{ url_for('pages.routers') }}">Router details</a> first. Enabling monitoring allows readings from an approved collector; it does not install one on the router.</p>
+    <p>A trusted bootstrap can register a router and enable collection in one authorized setup. Routers without monitoring authorization stay disabled. Once configured, collectors reconnect and submit readings automatically. You can also manage the selected interface in <a href="{{ url_for('pages.routers') }}">Router details</a>.</p>
     <p class="text-secondary">Only outbound TX is collected. Rates are shown in {{ unit }} (1 Mbps = 1,000 Kbps). Two increasing sample times are needed to calculate bandwidth. A counter reset or a long gap requires a fresh baseline. Routing changes are off.</p>
     {% set labels = {'disabled': 'Disabled', 'not_configured': 'Interface not configured', 'authentication_required': 'Authentication required', 'awaiting': 'Awaiting first sample', 'baseline': 'Awaiting second sample', 'measured': 'Receiving', 'counter_reset': 'Counter reset; awaiting next sample', 'gap_reset': 'Gap; awaiting next sample', 'stale': 'Stale'} %}
     <div class="table-responsive">

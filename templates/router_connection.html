@@ -4,9 +4,21 @@
 {% block title %}Router connection{% endblock %}
 
 {% block content %}
-  {{ heading('Router connection', 'The router contacts this controller to authenticate and request its configuration.') }}
+  {{ heading('Router connection', 'Authorize initial trust once. The router then registers itself and sends outbound TX readings automatically.') }}
 
-  <section class="surface panel" aria-labelledby="endpoint-title">
+  <section class="surface panel" aria-labelledby="enrollment-title">
+    <div class="panel-heading"><h2 id="enrollment-title">Zero-touch provisioning</h2><span class="category-pill">{{ 'Enabled' if connection.enrollment_enabled else 'Disabled' }}</span></div>
+    <p>Authorize a short-lived, single-use bootstrap bundle with the selected outbound interface and the controller's trusted public CA. Deliver it using an approved initial setup method.</p>
+    <ol>
+      <li>Provide initial network connectivity, a valid clock and a trusted bootstrap configuration.</li>
+      <li>The router verifies the controller's TLS certificate and exchanges its single-use token for a unique identity and private monitoring credentials.</li>
+      <li>When monitoring is explicitly authorized, its read-only collector starts automatically. Real TX readings and history appear on the dashboard.</li>
+    </ol>
+    <dl class="status-list"><div><dt>Enrollment endpoint</dt><dd><code>{{ connection.enrollment_endpoint_url or connection.enrollment_path }}</code></dd></div><div><dt>Routing changes</dt><dd>Disabled</dd></div></dl>
+    <p class="form-text mb-0">Initial trust cannot be obtained securely from an unknown server. Use the local setup command documented in README to authorize a bootstrap; keep the private bundle out of logs and source control. Incoming RouterOS API access is optional for TX collection.</p>
+  </section>
+
+  <section class="surface panel section-gap" aria-labelledby="endpoint-title">
     <div class="panel-heading">
       <div>
         <h2 id="endpoint-title">Controller endpoint</h2>
@@ -62,8 +74,8 @@
   <section class="surface panel section-gap" aria-labelledby="connection-steps-title">
     <div class="panel-heading">
       <div>
-        <h2 id="connection-steps-title">Connect a router</h2>
-        <p>Manual router registration is disabled in the website.</p>
+        <h2 id="connection-steps-title">Existing polling clients</h2>
+        <p>Existing V1/V2 polling and acknowledgement continue to use their provisioned identities.</p>
       </div>
     </div>
     <ol class="mb-0">

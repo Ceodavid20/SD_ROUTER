@@ -79,9 +79,7 @@ class RouterService:
             "last_error", "detected_model", "detected_routeros_version",
             "management_interface", "deployment_kind", "integration_status",
             "traffic_origin", "enrolled_at",
-            "enrolled_at", "traffic_origin",
-            "management_interface", "traffic_source_ip", "deployment_kind",
-            "integration_status",
+            "traffic_source_ip",
         )
         result = {key: router.get(key) if isinstance(router.get(key), str) else ""
                   for key in text_fields}
@@ -119,6 +117,9 @@ class RouterService:
             except OverflowError:
                 finite = False
             result[key] = value if finite else None
+        result["capacity_confirmed"] = (
+            router.get("capacity_confirmed", True) is True and result["capacity_mbps"] is not None
+        )
         state = router.get("connection_status", "untested")
         result["connection_status"] = state if state in ("untested", "blocked", "connected", "disconnected") else "untested"
         return result
@@ -179,7 +180,7 @@ class RouterService:
             raise RouterValidationError("SNMP interface index must be a positive integer.") from exc
         if snmp_ifindex is not None and not 1 <= snmp_ifindex <= 2**31 - 1:
             raise RouterValidationError("SNMP interface index must be a positive integer.")
-        return {
+        record = {
             "router_id": router_id,
             "name": _string(form, "name", required=True),
             "ip_address": str(address) if address is not None else "",
@@ -207,6 +208,12 @@ class RouterService:
             "last_checked_at": None,
             "last_error": None,
         }
+        if form.get("capacity_confirmation_present") == "true":
+            confirmed = form.get("capacity_confirmed") in (True, "1", "on", "true")
+            if confirmed and record["capacity_mbps"] is None:
+                raise RouterValidationError("Enter a positive WAN capacity before confirming it.")
+            record["capacity_confirmed"] = confirmed
+        return record
 
     def add_router(self, form: Mapping[str, Any]) -> dict[str, Any]:
         record = self._validated(form, allow_pending_address=True)
@@ -240,6 +247,7 @@ class RouterService:
             "api_tls": True, "ssh_port": "22",
         })
         record.update(carrier=carrier, router_role="carrier",
+                      capacity_confirmed=False,
                       management_interface=management_interface,
                       deployment_kind="chr_lab" if chr_lab else "router",
                       integration_status="awaiting_router_setup")

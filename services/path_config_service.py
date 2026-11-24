@@ -55,6 +55,14 @@ def _configured(path: dict[str, Any]) -> str:
     )) else "not_configured"
 
 
+def analysis_path_ready(path: Mapping[str, Any]) -> bool:
+    """Carrier-side analysis needs no invented aggregation interface mapping."""
+    if path.get("configuration_status") == "configured":
+        return True
+    return bool(path.get("monitor_router_id") == path.get("carrier_router_id")
+                and path.get("carrier_interface") and path.get("path_capacity_bps"))
+
+
 def _policy_status(policy: dict[str, Any]) -> str:
     return "configured" if all(policy.get(key) is not None for key in (
         "utilization_limit_percent", "minimum_hold_down_seconds", "overload_policy"
@@ -85,8 +93,8 @@ def validate_routing_paths(value: Any) -> None:
             path["aggregation_router_id"], path["carrier_router_id"],
         )):
             raise ValidationError("Select a path endpoint as its outbound measurement source.")
-        if path["carrier"] not in ("MTN", "GLO"):
-            raise ValidationError("Select MTN or Glo.")
+        if _text(path["carrier"], "carrier", maximum=64, required=True) != path["carrier"]:
+            raise ValidationError("Enter a valid carrier label.")
         if not isinstance(path["route_role"], str) or path["route_role"] not in _ROLES:
             raise ValidationError("Select a valid route role.")
         if not isinstance(path["relationship_status"], str) or path["relationship_status"] not in _STATES:
@@ -158,6 +166,7 @@ class PathConfigService:
             path["display_name"] = " → ".join(names.get(path[key], path[key]) for key in (
                 "aggregation_router_id", "carrier_router_id"
             ))
+            path["analysis_ready"] = analysis_path_ready(path)
         return paths
 
     def _path(self, path_id: str, form: Mapping[str, Any]) -> dict[str, Any]:
@@ -165,7 +174,7 @@ class PathConfigService:
             "path_id": path_id,
             "aggregation_router_id": _text(form.get("aggregation_router_id"), "aggregation router", required=True),
             "carrier_router_id": _text(form.get("carrier_router_id"), "carrier router", required=True),
-            "carrier": _text(form.get("carrier"), "carrier", required=True),
+            "carrier": _text(form.get("carrier"), "carrier", maximum=64),
             "aggregation_interface": _text(form.get("aggregation_interface"), "aggregation interface"),
             "carrier_interface": _text(form.get("carrier_interface"), "carrier interface"),
             "path_capacity_bps": _integer(form, "path_capacity_bps"),
@@ -178,6 +187,8 @@ class PathConfigService:
             if path[key] not in inventory:
                 raise ValidationError("Select routers registered in the inventory.")
         assigned_carrier = inventory[path["carrier_router_id"]].get("carrier")
+        if not path["carrier"]:
+            path["carrier"] = assigned_carrier
         if assigned_carrier and assigned_carrier != path["carrier"]:
             raise ValidationError("Carrier must match the selected carrier router.")
         path["configuration_status"] = _configured(path)

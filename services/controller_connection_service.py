@@ -41,6 +41,8 @@ def connection_details(config: Mapping[str, Any]) -> dict[str, Any]:
         "poll_path": ROUTEROS_POLL_PATH, "ack_path": ROUTEROS_ACK_PATH,
         "ack_endpoint_url": None, "traffic_path": ROUTEROS_TRAFFIC_PATH,
         "traffic_endpoint_url": None, "method": "POST",
+        "enrollment_path": "/api/controller/v2/enroll", "enrollment_endpoint_url": None,
+        "enrollment_enabled": config.get("ENROLLMENT_ENABLED") is True,
         "protocol_version": "2.0", "authentication": "HMAC-SHA512",
         "poll_interval": config.get("ROUTER_POLL_INTERVAL", 60),
     }
@@ -65,6 +67,8 @@ def connection_details(config: Mapping[str, Any]) -> dict[str, Any]:
             details["endpoint_url"] = urlunsplit((parts.scheme, parts.netloc, ROUTEROS_POLL_PATH, "", ""))
             details["ack_endpoint_url"] = urlunsplit((parts.scheme, parts.netloc, ROUTEROS_ACK_PATH, "", ""))
             details["traffic_endpoint_url"] = urlunsplit((parts.scheme, parts.netloc, ROUTEROS_TRAFFIC_PATH, "", ""))
+            if parts.scheme == "https":
+                details["enrollment_endpoint_url"] = urlunsplit((parts.scheme, parts.netloc, details["enrollment_path"], "", ""))
             details["scope"] = "local" if _is_loopback(host) else "configured"
             return details
         except (ValueError, TypeError):

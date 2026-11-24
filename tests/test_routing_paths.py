@@ -62,6 +62,18 @@ def test_default_paths_have_no_hardcoded_links_or_interfaces(store):
     }
 
 
+def test_paths_accept_inventory_carrier_labels_without_provider_specific_code(store):
+    store.update_json("routers.json", lambda rows: [
+        {**row, "carrier":"Fiber West"} if row["router_id"] == "TEST-MTN" else row for row in rows])
+    path = PathConfigService(store).add_path({
+        "aggregation_router_id":"TEST-AGG-1", "carrier_router_id":"TEST-MTN",
+        "carrier_interface":"uplink", "path_capacity_bps":"123000000",
+        "monitor_router_id":"TEST-MTN", "route_role":"alternate"})
+    assert path["carrier"] == "Fiber West" and path["aggregation_interface"] is None
+    public = PathConfigService(store).list_paths()[0]
+    assert public["analysis_ready"] is True and public["configuration_status"] == "not_configured"
+
+
 def test_path_and_policy_settings_persist_after_restart_without_enabling_changes(store, tmp_path):
     service = PathConfigService(store)
     added = service.add_path({

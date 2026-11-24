@@ -29,6 +29,18 @@ TOKEN = re.compile(r"([0-9a-f]{32})\.([A-Za-z0-9_-]{43})\Z")
 REQUEST_FIELDS = {"protocol_version", "request_type", "request_id", "timestamp", "router_name", "device_id", "interface"}
 
 
+def render_bootstrap(token, origin, interface, ca_name):
+    if not isinstance(token, str) or TOKEN.fullmatch(token) is None:
+        raise ValueError("Invalid private bootstrap authorization.")
+    validate_interface(interface)
+    if not isinstance(ca_name, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", ca_name):
+        raise ValueError("Use a safe bootstrap CA file name.")
+    template = (Path(__file__).resolve().parents[1] / "scripts/routeros/controller_bootstrap.rsc").read_text()
+    values = {"__ENROLLMENT_TOKEN__": token, "__CONTROLLER_ORIGIN__": _https_origin(origin),
+              "__OUTBOUND_INTERFACE__": interface, "__CA_FILENAME__": ca_name}
+    return re.sub(r"__[A-Z_]+__", lambda m: _routeros_string(values[m.group()]), template)
+
+
 def _request(raw):
     try:
         if not isinstance(raw, bytes) or not 1 <= len(raw) <= 8192:
@@ -99,10 +111,7 @@ def create_enrollment_grant(storage, config, output_dir, ca_file, *, interface,
         "enrolled_router_id": None, "used_request_id": None}
     target = _new_private_directory(output_dir)
     ca_name = "sdr-bootstrap-ca-" + token_id + ".pem"
-    template = (Path(__file__).resolve().parents[1] / "scripts/routeros/controller_bootstrap.rsc").read_text()
-    values = {"__ENROLLMENT_TOKEN__": token, "__CONTROLLER_ORIGIN__": origin,
-              "__OUTBOUND_INTERFACE__": interface, "__CA_FILENAME__": ca_name}
-    script = re.sub(r"__[A-Z_]+__", lambda m: _routeros_string(values[m.group()]), template)
+    script = render_bootstrap(token, origin, interface, ca_name)
     _private_file(target / ca_name, ca_bytes)
     _private_file(target / "bootstrap.rsc", script)
     def save(state):
@@ -175,6 +184,7 @@ class EnrollmentService:
                 "ip_address": grant["management_ip"], "interface_name": grant["outbound_interface"],
             }, allow_pending_address=True)
             router = {**record, **(existing or {})}
+            router.setdefault("capacity_confirmed", existing is not None and existing.get("capacity_mbps") is not None)
             reference = "SDR_ENROLL_" + secrets.token_hex(10).upper()
             key_id, secret = "E" + secrets.token_hex(10).upper(), secrets.token_hex(32)
             collector = render_traffic_script(router_id, key_id, secret,

@@ -1,0 +1,853 @@
+{
+  "started_at": "2026-11-24T09:01:57.595256+00:00",
+  "duration_limit_seconds": 420,
+  "traffic_scope": "Existing isolated host-only inter-CHR lab links",
+  "streams": [
+    {
+      "source": "SDR-CHR-LAB-01",
+      "destination": "SDR-MTN-01",
+      "tx_limit_bps": 350000
+    },
+    {
+      "source": "SDR-CHR-LAB-01",
+      "destination": "SDR-GLO-01",
+      "tx_limit_bps": 350000
+    },
+    {
+      "source": "SDR-MTN-01",
+      "destination": "SDR-CHR-LAB-01",
+      "tx_limit_bps": 750000
+    },
+    {
+      "source": "SDR-GLO-01",
+      "destination": "SDR-CHR-LAB-01",
+      "tx_limit_bps": 200000
+    }
+  ],
+  "interfaces": {
+    "SDR-CHR-LAB-01": {
+      "interface": "ether2",
+      "previous_collector_interface": "ether1",
+      "management_ip": "192.168.56.10"
+    },
+    "SDR-MTN-01": {
+      "interface": "ether3",
+      "previous_collector_interface": "ether1",
+      "management_ip": "192.168.56.11"
+    },
+    "SDR-GLO-01": {
+      "interface": "ether3",
+      "previous_collector_interface": "ether1",
+      "management_ip": "192.168.56.12"
+    }
+  },
+  "license_limit_mbps_per_interface": 1,
+  "rx_collected": false,
+  "routing_changes_made": false,
+  "bandwidth_server_authentication_disabled": false,
+  "controller_simulation_mode": true,
+  "live_routing_enabled": false,
+  "observations": [
+    {
+      "elapsed_seconds": 0,
+      "status": "blocked",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 4,
+        "SDR-MTN-01": 2,
+        "SDR-GLO-01": 3
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "warming_up",
+          "sample_count": 4,
+          "window_size": 5,
+          "current_mbps": 0.037473066666666666,
+          "average_mbps": null
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "warming_up",
+          "sample_count": 4,
+          "window_size": 5,
+          "current_mbps": 0.0005385333333333333,
+          "average_mbps": null
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "warming_up",
+          "sample_count": 4,
+          "window_size": 5,
+          "current_mbps": 0.023522933333333336,
+          "average_mbps": null
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 29,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 13,
+        "SDR-MTN-01": 11,
+        "SDR-GLO-01": 1
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.17375066666666666,
+          "average_mbps": 0.10632309333333334
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.1302828,
+          "average_mbps": 0.047927493333333335
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.07940960000000001,
+          "average_mbps": 0.05539264000000001
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 57,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 10,
+        "SDR-MTN-01": 8,
+        "SDR-GLO-01": 3
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.17375066666666666,
+          "average_mbps": 0.10632309333333334
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.1302828,
+          "average_mbps": 0.047927493333333335
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.07940960000000001,
+          "average_mbps": 0.05539264000000001
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 84,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 12,
+        "SDR-MTN-01": 5,
+        "SDR-GLO-01": 9
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7634146666666666,
+          "average_mbps": 0.24852698666666667
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.8592109333333333,
+          "average_mbps": 0.21259405333333334
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.22207413333333334,
+          "average_mbps": 0.09026341333333333
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 112,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 17,
+        "SDR-MTN-01": 6,
+        "SDR-GLO-01": 3
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7634146666666666,
+          "average_mbps": 0.24852698666666667
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.8592109333333333,
+          "average_mbps": 0.21259405333333334
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.22207413333333334,
+          "average_mbps": 0.09026341333333333
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 139,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 12,
+        "SDR-MTN-01": 16,
+        "SDR-GLO-01": 5
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7624128,
+          "average_mbps": 0.3547704
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.8592109333333333,
+          "average_mbps": 0.21259405333333334
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.221584,
+          "average_mbps": 0.11402112
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 167,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 68,
+        "SDR-MTN-01": 14,
+        "SDR-GLO-01": 10
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7624128,
+          "average_mbps": 0.3547704
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.8251142666666668,
+          "average_mbps": 0.36311842666666666
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.221584,
+          "average_mbps": 0.11402112
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 197,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 41,
+        "SDR-MTN-01": 26,
+        "SDR-GLO-01": 13
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7614432,
+          "average_mbps": 0.49969887999999996
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.8251142666666668,
+          "average_mbps": 0.36311842666666666
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.221584,
+          "average_mbps": 0.11402112
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 226,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 19,
+        "SDR-MTN-01": 7,
+        "SDR-GLO-01": 6
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7614432,
+          "average_mbps": 0.49969887999999996
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7556550666666666,
+          "average_mbps": 0.51416032
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.2202624,
+          "average_mbps": 0.15337061333333332
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 253,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 15,
+        "SDR-MTN-01": 6,
+        "SDR-GLO-01": 2
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7614432,
+          "average_mbps": 0.49969887999999996
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7556550666666666,
+          "average_mbps": 0.51416032
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.2202624,
+          "average_mbps": 0.15337061333333332
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 281,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 11,
+        "SDR-MTN-01": 10,
+        "SDR-GLO-01": 1
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7621461333333333,
+          "average_mbps": 0.6446334933333333
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7819769333333334,
+          "average_mbps": 0.670448
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.22207586666666668,
+          "average_mbps": 0.1930812
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 308,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 18,
+        "SDR-MTN-01": 14,
+        "SDR-GLO-01": 1
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7621461333333333,
+          "average_mbps": 0.6446334933333333
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7819769333333334,
+          "average_mbps": 0.670448
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.22207586666666668,
+          "average_mbps": 0.1930812
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 335,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 11,
+        "SDR-MTN-01": 8,
+        "SDR-GLO-01": 3
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7632181333333333,
+          "average_mbps": 0.7625269866666666
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7307002666666668,
+          "average_mbps": 0.7905314933333334
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.22226813333333334,
+          "average_mbps": 0.22165290666666668
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 362,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 14,
+        "SDR-MTN-01": 5,
+        "SDR-GLO-01": 0
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7632181333333333,
+          "average_mbps": 0.7625269866666666
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7307002666666668,
+          "average_mbps": 0.7905314933333334
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.22226813333333334,
+          "average_mbps": 0.22165290666666668
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 390,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 16,
+        "SDR-MTN-01": 12,
+        "SDR-GLO-01": 3
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7618533333333334,
+          "average_mbps": 0.76221472
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.8341994666666667,
+          "average_mbps": 0.7855292
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.2221910666666667,
+          "average_mbps": 0.22167629333333333
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 417,
+      "status": "ready",
+      "cpu_load": {
+        "SDR-CHR-LAB-01": 15,
+        "SDR-MTN-01": 5,
+        "SDR-GLO-01": 7
+      },
+      "tx": [
+        {
+          "router_id": "SDR-CHR-LAB-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.7618533333333334,
+          "average_mbps": 0.76221472
+        },
+        {
+          "router_id": "SDR-MTN-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.8341994666666667,
+          "average_mbps": 0.7855292
+        },
+        {
+          "router_id": "SDR-GLO-01",
+          "state": "ready",
+          "sample_count": 5,
+          "window_size": 5,
+          "current_mbps": 0.2221910666666667,
+          "average_mbps": 0.22167629333333333
+        }
+      ]
+    }
+  ],
+  "client_exit_codes": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "stopped_at": "2026-11-24T09:09:25.415753+00:00",
+  "sessions_after": {
+    "SDR-CHR-LAB-01": 0,
+    "SDR-MTN-01": 0,
+    "SDR-GLO-01": 0
+  },
+  "measured_native_tx_deltas": {
+    "SDR-CHR-LAB-01": {
+      "tx_octets_increase": 40484016,
+      "interval_seconds": 444
+    },
+    "SDR-MTN-01": {
+      "tx_octets_increase": 41256197,
+      "interval_seconds": 442
+    },
+    "SDR-GLO-01": {
+      "tx_octets_increase": 11790151,
+      "interval_seconds": 444
+    }
+  },
+  "sustained_load_calculation": {
+    "action": "none",
+    "allocations": [
+      {
+        "aggregation_router_id": "SDR-CHR-LAB-01",
+        "allowed_mbps": 6400.0,
+        "capacity_mbps": 8000.0,
+        "carrier": "MTN",
+        "carrier_router_id": "SDR-MTN-01",
+        "change_mbps": -0.11405887111111113,
+        "cost_per_gb": null,
+        "currency": null,
+        "current_cost_per_hour": null,
+        "current_mbps": 0.7855292,
+        "interface": "ether3",
+        "monitor_router_id": "SDR-MTN-01",
+        "path_id": "45556669-3443-4e03-82b2-f45515ff6571",
+        "recommended_cost_per_hour": null,
+        "recommended_mbps": 0.6714703288888889,
+        "route_role": "primary"
+      },
+      {
+        "aggregation_router_id": "SDR-CHR-LAB-01",
+        "allowed_mbps": 3200.0,
+        "capacity_mbps": 4000.0,
+        "carrier": "GLO",
+        "carrier_router_id": "SDR-GLO-01",
+        "change_mbps": 0.11405887111111113,
+        "cost_per_gb": null,
+        "currency": null,
+        "current_cost_per_hour": null,
+        "current_mbps": 0.22167629333333333,
+        "interface": "ether3",
+        "monitor_router_id": "SDR-GLO-01",
+        "path_id": "4d6c42b2-25a9-4e23-9966-df4800ed7baf",
+        "recommended_cost_per_hour": null,
+        "recommended_mbps": 0.33573516444444446,
+        "route_role": "alternate"
+      }
+    ],
+    "analysis": [
+      {
+        "average_mbps": 0.76221472,
+        "capacity_mbps": 1e-06,
+        "change_percent": -0.040951556092679184,
+        "cost_per_gb": 10000000.0,
+        "cost_per_hour": null,
+        "currency": null,
+        "current_mbps": 0.7618533333333334,
+        "interface": "ether2",
+        "name": "MikroTik CHR Lab",
+        "observed_gb": 0.028583051999999998,
+        "previous_average_mbps": 0.7625269866666666,
+        "router_id": "SDR-CHR-LAB-01",
+        "sample_count": 5,
+        "sampled_at": "2026-11-24T09:08:00.000000Z",
+        "state": "ready",
+        "traffic_share_percent": null,
+        "utilization_percent": 76221472.00000001,
+        "window_size": 5
+      },
+      {
+        "average_mbps": 0.7855292,
+        "capacity_mbps": 8000.0,
+        "change_percent": -0.6327759710420668,
+        "cost_per_gb": null,
+        "cost_per_hour": null,
+        "currency": null,
+        "current_mbps": 0.8341994666666667,
+        "interface": "ether3",
+        "name": "MTN CHR lab",
+        "observed_gb": 0.029457345000000003,
+        "previous_average_mbps": 0.7905314933333334,
+        "router_id": "SDR-MTN-01",
+        "sample_count": 5,
+        "sampled_at": "2026-11-24T09:08:00.000000Z",
+        "state": "ready",
+        "traffic_share_percent": 77.99095668157065,
+        "utilization_percent": 0.009819115,
+        "window_size": 5
+      },
+      {
+        "average_mbps": 0.22167629333333333,
+        "capacity_mbps": 4000.0,
+        "change_percent": 0.010551030897069524,
+        "cost_per_gb": null,
+        "cost_per_hour": null,
+        "currency": null,
+        "current_mbps": 0.2221910666666667,
+        "interface": "ether3",
+        "name": "Glo CHR lab",
+        "observed_gb": 0.008312861,
+        "previous_average_mbps": 0.22165290666666668,
+        "router_id": "SDR-GLO-01",
+        "sample_count": 5,
+        "sampled_at": "2026-11-24T09:08:00.000000Z",
+        "state": "ready",
+        "traffic_share_percent": 22.009043318429345,
+        "utilization_percent": 0.005541907333333334,
+        "window_size": 5
+      }
+    ],
+    "currency": null,
+    "current_cost_per_hour": null,
+    "estimated_savings_per_hour": null,
+    "evaluation_id": "fff56820329febbd7ea2fbd860a38435349f7252af8dd9c846aa6352e34f939d",
+    "groups": [
+      {
+        "aggregation_router_id": "SDR-CHR-LAB-01",
+        "available_mbps": 9600.0,
+        "demand_mbps": 1.0072054933333334,
+        "state": "ready"
+      }
+    ],
+    "hold_until": null,
+    "issues": [],
+    "mode": "dry_run",
+    "objective": "balance_utilization",
+    "policy_fingerprint": "f81da30f8381c22ed2249c85d7ab910ffff18e02d4cdae13e93b798d24fff03f",
+    "recommendations": [
+      {
+        "action": "none",
+        "api_connection_status": "connected",
+        "average_mbps": 0.7855292,
+        "capacity_mbps": 8000.0,
+        "change_mbps": -0.11405887111111113,
+        "current_mbps": 0.8341994666666667,
+        "execution_status": "Dry Run",
+        "expected_benefit": {
+          "description": "Estimated capacity allocation only; no routing has been executed.",
+          "is_estimate": true,
+          "resulting_utilization_percent": 0.008393379111111113
+        },
+        "interface": "ether3",
+        "mode": "dry_run",
+        "monitor_router_id": "SDR-MTN-01",
+        "monitoring_state": "ready",
+        "reason": "The configured objective was evaluated against fresh TX measurements and confirmed path limits.",
+        "recommended_action": "Consider shifting eligible outbound traffic to another confirmed path.",
+        "router_id": "SDR-MTN-01",
+        "status": "ready",
+        "utilization_percent": 0.009819115
+      },
+      {
+        "action": "none",
+        "api_connection_status": "connected",
+        "average_mbps": 0.22167629333333333,
+        "capacity_mbps": 4000.0,
+        "change_mbps": 0.11405887111111113,
+        "current_mbps": 0.2221910666666667,
+        "execution_status": "Dry Run",
+        "expected_benefit": {
+          "description": "Estimated capacity allocation only; no routing has been executed.",
+          "is_estimate": true,
+          "resulting_utilization_percent": 0.008393379111111113
+        },
+        "interface": "ether3",
+        "mode": "dry_run",
+        "monitor_router_id": "SDR-GLO-01",
+        "monitoring_state": "ready",
+        "reason": "The configured objective was evaluated against fresh TX measurements and confirmed path limits.",
+        "recommended_action": "Consider increasing eligible outbound allocation within the confirmed path group.",
+        "router_id": "SDR-GLO-01",
+        "status": "ready",
+        "utilization_percent": 0.005541907333333334
+      }
+    ],
+    "recommended_cost_per_hour": null,
+    "routing_changes_enabled": false,
+    "source_fingerprint": "42eb92a4d4a32c78d588372f1a67b0359d3f6f72c61e1a14ef705c1b247a62bb",
+    "status": "ready",
+    "timestamp": "2026-11-24T09:09:00.364068Z",
+    "workflow_version": 1
+  },
+  "isolated_policy_checks": {
+    "scope": "IN-MEMORY policy checks using the actual signed TX history; no settings or traffic data written",
+    "overload_at_test_limits_0_2_mbps_per_link": "infeasible",
+    "missing_carrier_measurements": "blocked",
+    "stale_measurements": "blocked",
+    "all_unavailable_recommendations_withheld": true,
+    "configured_8000_4000_mbps_limits_preserved": true
+  },
+  "peak_current_tx_mbps": {
+    "SDR-CHR-LAB-01": 0.7634146666666666,
+    "SDR-MTN-01": 0.8592109333333333,
+    "SDR-GLO-01": 0.22226813333333334
+  },
+  "cooldown_tx": [
+    {
+      "router_id": "SDR-CHR-LAB-01",
+      "current_mbps": 0.03676586666666667,
+      "average_mbps": 0.45392368000000005,
+      "sampled_at": "2026-11-24T09:11:00.000000Z",
+      "state": "ready"
+    },
+    {
+      "router_id": "SDR-MTN-01",
+      "current_mbps": 0.0005385333333333333,
+      "average_mbps": 0.4301401066666667,
+      "sampled_at": "2026-11-24T09:11:00.000000Z",
+      "state": "ready"
+    },
+    {
+      "router_id": "SDR-GLO-01",
+      "current_mbps": 0.02383266666666667,
+      "average_mbps": 0.13362797333333334,
+      "sampled_at": "2026-11-24T09:11:00.000000Z",
+      "state": "ready"
+    }
+  ],
+  "result": "PASSED",
+  "finished_at": "2026-11-24T09:11:43.967149+00:00",
+  "all_native_test_sessions_stopped": true,
+  "actual_tx_counters_and_signed_history_only": true,
+  "production_capacity_settings_unchanged": true
+}

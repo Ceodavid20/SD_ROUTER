@@ -409,3 +409,102 @@ def test_corrupt_calculation_returns_safe_json_and_is_not_reset(setup, config):
     assert response.status_code == 503 and response.get_json() == {"error": "Calculation storage is unavailable."}
     assert "synthetic-corrupt-result" not in response.get_data(as_text=True)
     assert json.loads(path.read_text()) == corrupt
+
+
+@pytest.mark.parametrize("api_state", ["untested", "blocked", "disconnected"])
+def test_optional_api_diagnostic_cannot_block_fresh_authenticated_tx_analysis(setup, api_state):
+    populate(setup)
+    change_router(setup[1], "SIM-MTN", connection_status=api_state)
+    result = setup[2].calculate(now=NOW)
+    assert result["status"] == "ready"
+    assert "connection_unavailable" not in {item["code"] for item in result["issues"]}
+
+
+def test_confirmed_8_and_4_gbps_links_balance_without_prices_and_conserve_demand(setup):
+    populate(setup, (6000, 6000, 6000), (0, 0, 0))
+    for router_id, capacity in (("SIM-MTN", 8000), ("SIM-GLO", 4000)):
+        change_router(setup[1], router_id, capacity_mbps=capacity, capacity_confirmed=True,
+                      cost_per_gb=None, currency="")
+    setup[1].update_json("routing_paths.json", lambda routing: {**routing, "paths": [
+        {**path, "path_capacity_bps": (8000 if path["carrier"] == "MTN" else 4000) * 1_000_000}
+        for path in routing["paths"]]})
+    setup[2].save_settings({"optimization_objective":"balance_utilization", "averaging_window":"3",
+                            "monitoring_interval_seconds":"10"})
+    result = setup[2].calculate(now=NOW)
+    assert result["status"] == "ready" and result["currency"] is None
+    allocations = {r["carrier"]: r for r in result["allocations"]}
+    assert allocations["MTN"]["recommended_mbps"] == pytest.approx(4000)
+    assert allocations["GLO"]["recommended_mbps"] == pytest.approx(2000)
+    assert sum(r["change_mbps"] for r in result["allocations"]) == pytest.approx(0)
+    assert result["groups"][0]["available_mbps"] == 9600
+    assert result["mode"] == "dry_run" and result["action"] == "none"
+    assert result["routing_changes_enabled"] is False
+
+
+def test_carrier_side_analysis_does_not_require_an_invented_aggregation_interface(setup):
+    populate(setup)
+    setup[1].update_json("routing_paths.json", lambda routing: {**routing, "paths": [
+        {**path, "aggregation_interface":None, "configuration_status":"not_configured"}
+        for path in routing["paths"]]})
+    before = setup[1].read_json("routing_paths.json")
+    result = setup[2].calculate(now=NOW)
+    assert result["status"] == "ready"
+    assert all(r["interface"] == "synthetic-egress" for r in result["allocations"])
+    assert setup[1].read_json("routing_paths.json") == before
+
+
+def test_missing_carrier_measurement_interface_still_blocks_analysis(setup):
+    populate(setup)
+    setup[1].update_json("routing_paths.json", lambda routing: {**routing, "paths": [
+        {**path, "carrier_interface":None, "configuration_status":"not_configured"}
+        for path in routing["paths"]]})
+    result = setup[2].calculate(now=NOW)
+    assert result["status"] == "blocked"
+    assert "path_incomplete" in {r["code"] for r in result["issues"]}
+
+
+def test_carrier_recommendation_uses_selected_aggregation_side_counter(setup):
+    populate(setup)
+    setup[1].update_json("routers.json", lambda rows: [*rows, {
+        "router_id":"NEW-CARRIER", "name":"Measured at aggregation", "carrier":"MTN",
+        "capacity_mbps":100, "capacity_confirmed":True, "cost_per_gb":2, "currency":"NGN"}])
+    setup[1].update_json("routing_paths.json", lambda routing: {**routing, "paths": [
+        {**path, "aggregation_router_id":"SIM-MTN", **(
+            {"carrier_router_id":"NEW-CARRIER", "aggregation_interface":"synthetic-egress"}
+            if path["carrier"] == "MTN" else {})} for path in routing["paths"]]})
+    preview = setup[2].preview(now=NOW)
+    recommendation = next(row for row in preview["recommendations"] if row["router_id"] == "NEW-CARRIER")
+    assert preview["status"] == "ready" and recommendation["status"] == "ready"
+    assert recommendation["monitor_router_id"] == "SIM-MTN"
+    assert recommendation["average_mbps"] == 60
+
+
+def test_current_optimization_page_and_api_work_without_saving_a_snapshot(setup, config):
+    populate(setup)
+    storage = setup[1]
+    before = {name:storage.read_json(name) for name in storage.DEFAULTS}
+    client = create_app(config).test_client()
+    response = client.get("/api/optimization")
+    assert response.status_code == 200 and response.cache_control.no_store
+    assert response.get_json()["calculation"]["status"] == "ready"
+    page = client.get("/optimization").get_data(as_text=True)
+    assert 'id="current-allocation"' in page and "Save calculation snapshot" in page
+    assert "Updates every 15 seconds" in page and "Historical snapshot" not in page
+    assert SECRET not in page + response.get_data(as_text=True)
+    assert {name:storage.read_json(name) for name in storage.DEFAULTS} == before
+
+
+def test_optimization_does_not_round_small_actual_allocations_or_negative_changes_to_zero(setup, config):
+    populate(setup, (0.0006, 0.0006, 0.0006), (0.0001, 0.0001, 0.0001))
+    setup[2].save_settings({"optimization_objective":"balance_utilization", "averaging_window":"3",
+                            "monitoring_interval_seconds":"10"})
+    page = create_app(config).test_client().get("/optimization").get_data(as_text=True)
+    assert "0.00035" in page and "-0.00025" in page
+    assert "-0.000</td>" not in page
+
+
+def test_current_optimization_api_keeps_browser_authentication_and_device_isolation(config):
+    browser = create_app({**config, "AUTH_ENABLED":True, "ADMIN_USERNAME":"test-admin",
+                          "ADMIN_PASSWORD_HASH":"synthetic-test-hash", "SECRET_KEY":"synthetic-session-key-for-optimization-test"})
+    assert browser.test_client().get("/api/optimization").status_code == 401
+    assert create_device_app(config).test_client().get("/api/optimization").status_code == 404
