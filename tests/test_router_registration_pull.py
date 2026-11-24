@@ -160,4 +160,4 @@ def test_router_page_keeps_management_ip_optional_and_api_diagnostic_separate(tm
     assert 'name="controller_auth_key_ids"' not in page
     ip_input = page.split('id="edit-EXISTING-R1-address"', 1)[1].split(">", 1)[0]
     assert "required" not in ip_input
-    assert 'action="/routers/add"' not in page
+    assert 'action="/routers/add"' in page

@@ -65,7 +65,7 @@ class RouterAuthService:
             item for item in self.storage.read_json("routers.json")
             if item.get("router_id") == decoded["router_id"]
         ), None)
-        if router is None or router.get("controller_auth_enabled") is not True:
+        if router is None or router.get("active", True) is not True or router.get("controller_auth_enabled") is not True:
             raise AuthenticationError()
         reference = router.get("controller_auth_ref")
         if not isinstance(reference, str) or not _REFERENCE.fullmatch(reference):

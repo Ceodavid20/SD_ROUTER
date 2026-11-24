@@ -1,0 +1,1377 @@
+{
+  "started_at": "2026-11-24T11:17:43.547938+00:00",
+  "scope": "Actual TX from the existing main CHR to isolated carrier VLAN handoffs",
+  "rx_collected": false,
+  "default_ospf_pcc_changes": false,
+  "live_routing_enabled": false,
+  "execution_authorized": false,
+  "configured_capacities_bps": {
+    "SDR-MTN-01": 8000000000,
+    "SDR-GLO-01": 4000000000
+  },
+  "observations": [
+    {
+      "elapsed_seconds": 3,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 10,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 259.8095238095238,
+            "sample_count": 1,
+            "sampled_at": "2026-11-24T11:17:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 234.66666666666666,
+            "sample_count": 1,
+            "sampled_at": "2026-11-24T11:17:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 20,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 2,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 84442.93333333333,
+            "sample_count": 2,
+            "sampled_at": "2026-11-24T11:18:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 119407.73333333334,
+            "sample_count": 2,
+            "sampled_at": "2026-11-24T11:18:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 38,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 3,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 84442.93333333333,
+            "sample_count": 2,
+            "sampled_at": "2026-11-24T11:18:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 119407.73333333334,
+            "sample_count": 2,
+            "sampled_at": "2026-11-24T11:18:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 55,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 15,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 84442.93333333333,
+            "sample_count": 2,
+            "sampled_at": "2026-11-24T11:18:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 119407.73333333334,
+            "sample_count": 2,
+            "sampled_at": "2026-11-24T11:18:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 72,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 2,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 145214.13333333333,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 345587.4666666667,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 89,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 6,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 145214.13333333333,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 345587.4666666667,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 107,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 3,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 145214.13333333333,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 345587.4666666667,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 124,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 3,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 145214.13333333333,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 345587.4666666667,
+            "sample_count": 3,
+            "sampled_at": "2026-11-24T11:19:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 141,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 7,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 147976.26666666666,
+            "sample_count": 4,
+            "sampled_at": "2026-11-24T11:20:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 349671.868852459,
+            "sample_count": 4,
+            "sampled_at": "2026-11-24T11:20:02.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 159,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 6,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 147976.26666666666,
+            "sample_count": 4,
+            "sampled_at": "2026-11-24T11:20:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 349671.868852459,
+            "sample_count": 4,
+            "sampled_at": "2026-11-24T11:20:02.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 176,
+      "status": "blocked",
+      "condition": "insufficient_samples",
+      "main_cpu_percent": 5,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 147976.26666666666,
+            "sample_count": 4,
+            "sampled_at": "2026-11-24T11:20:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "warming_up"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": null,
+          "utilization_percent": null,
+          "calculated_cost": null,
+          "recommended_weight": null,
+          "measurement": {
+            "average_bps": null,
+            "current_bps": 349671.868852459,
+            "sample_count": 4,
+            "sampled_at": "2026-11-24T11:20:02.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "warming_up"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 193,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 2,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 225024.15839743847,
+          "utilization_percent": 0.0013066021904761904,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 104528.17523809524,
+            "current_bps": 144747.73333333334,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 112512.0791987192,
+          "utilization_percent": 0.005825201558951561,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 233008.06235806242,
+            "current_bps": 350138.57627118647,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 211,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 2,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 225024.15839743847,
+          "utilization_percent": 0.0013066021904761904,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 104528.17523809524,
+            "current_bps": 144747.73333333334,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 112512.0791987192,
+          "utilization_percent": 0.005825201558951561,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 233008.06235806242,
+            "current_bps": 350138.57627118647,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 228,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 9,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 225024.15839743847,
+          "utilization_percent": 0.0013066021904761904,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 104528.17523809524,
+            "current_bps": 144747.73333333334,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 112512.0791987192,
+          "utilization_percent": 0.005825201558951561,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 233008.06235806242,
+            "current_bps": 350138.57627118647,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 246,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 1,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 225024.15839743847,
+          "utilization_percent": 0.0013066021904761904,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 104528.17523809524,
+            "current_bps": 144747.73333333334,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 112512.0791987192,
+          "utilization_percent": 0.005825201558951561,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 233008.06235806242,
+            "current_bps": 350138.57627118647,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:21:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 263,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 1,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 291306.49490537494,
+          "utilization_percent": 0.001673826,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 133906.08,
+            "current_bps": 147149.33333333334,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:22:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 145653.24745268747,
+          "utilization_percent": 0.00757634155895156,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 303053.6623580624,
+            "current_bps": 350462.6666666667,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:22:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 283,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 4,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 291306.49490537494,
+          "utilization_percent": 0.001673826,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 133906.08,
+            "current_bps": 147149.33333333334,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:22:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 145653.24745268747,
+          "utilization_percent": 0.00757634155895156,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 303053.6623580624,
+            "current_bps": 350462.6666666667,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:22:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 301,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 10,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 291306.49490537494,
+          "utilization_percent": 0.001673826,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 133906.08,
+            "current_bps": 147149.33333333334,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:22:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 145653.24745268747,
+          "utilization_percent": 0.00757634155895156,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 303053.6623580624,
+            "current_bps": 350462.6666666667,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:22:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 318,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 1,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 330216.64601648605,
+          "utilization_percent": 0.00182699,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 146159.19999999998,
+            "current_bps": 145708.53333333333,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 165108.32300824302,
+          "utilization_percent": 0.008729144225618227,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 349165.7690247291,
+            "current_bps": 349968.26666666666,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 336,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 7,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 330216.64601648605,
+          "utilization_percent": 0.00182699,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 146159.19999999998,
+            "current_bps": 145708.53333333333,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 165108.32300824302,
+          "utilization_percent": 0.008729144225618227,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 349165.7690247291,
+            "current_bps": 349968.26666666666,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 353,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 3,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 330216.64601648605,
+          "utilization_percent": 0.00182699,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 146159.19999999998,
+            "current_bps": 145708.53333333333,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 165108.32300824302,
+          "utilization_percent": 0.008729144225618227,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 349165.7690247291,
+            "current_bps": 349968.26666666666,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 371,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 11,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 330216.64601648605,
+          "utilization_percent": 0.00182699,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 146159.19999999998,
+            "current_bps": 145708.53333333333,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 165108.32300824302,
+          "utilization_percent": 0.008729144225618227,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 349165.7690247291,
+            "current_bps": 349968.26666666666,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:23:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 389,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 5,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 331085.054905375,
+          "utilization_percent": 0.0018314893333333338,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 146519.1466666667,
+            "current_bps": 147013.86666666667,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:24:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 165542.5274526875,
+          "utilization_percent": 0.008752710892284896,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 350108.4356913958,
+            "current_bps": 350300.8,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:24:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 406,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 8,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 331085.054905375,
+          "utilization_percent": 0.0018314893333333338,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 146519.1466666667,
+            "current_bps": 147013.86666666667,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:24:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 165542.5274526875,
+          "utilization_percent": 0.008752710892284896,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 350108.4356913958,
+            "current_bps": 350300.8,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:24:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    },
+    {
+      "elapsed_seconds": 423,
+      "status": "ready",
+      "condition": "balanced",
+      "main_cpu_percent": 8,
+      "carrier_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "links": [
+        {
+          "carrier": "MTN",
+          "interface": "sdr-to-mtn",
+          "target_bps": 331085.054905375,
+          "utilization_percent": 0.0018314893333333338,
+          "calculated_cost": 13,
+          "recommended_weight": 0.6666666666666666,
+          "measurement": {
+            "average_bps": 146519.1466666667,
+            "current_bps": 147013.86666666667,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:24:00.000000Z",
+            "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+            "state": "ready"
+          }
+        },
+        {
+          "carrier": "GLO",
+          "interface": "sdr-to-glo",
+          "target_bps": 165542.5274526875,
+          "utilization_percent": 0.008752710892284896,
+          "calculated_cost": 26,
+          "recommended_weight": 0.3333333333333333,
+          "measurement": {
+            "average_bps": 350108.4356913958,
+            "current_bps": 350300.8,
+            "sample_count": 5,
+            "sampled_at": "2026-11-24T11:24:01.000000Z",
+            "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+            "state": "ready"
+          }
+        }
+      ]
+    }
+  ],
+  "verified_routing_improvement": null,
+  "counter_isolation_pilots": [
+    {
+      "destination": "SDR-MTN-01",
+      "tx_octets_on_expected_interface": 473993,
+      "tx_octets_on_other_interface": 616,
+      "client_exit_code": 0
+    },
+    {
+      "destination": "SDR-GLO-01",
+      "tx_octets_on_expected_interface": 475273,
+      "tx_octets_on_other_interface": 682,
+      "client_exit_code": 0
+    }
+  ],
+  "load_duration_seconds": 420,
+  "requested_stream_limits_bps": {
+    "SDR-MTN-01": 150000,
+    "SDR-GLO-01": 350000
+  },
+  "client_exit_codes": [
+    0,
+    0
+  ],
+  "sessions_after": {
+    "SDR-MTN-01": 0,
+    "SDR-GLO-01": 0
+  },
+  "actual_sustained_calculation": {
+    "action": "none",
+    "adaptive": {
+      "algorithm": "adaptive_mlu",
+      "execution_authorized": false,
+      "groups": [
+        {
+          "aggregation_router_id": "SDR-CHR-LAB-01",
+          "available_bandwidth_bps": 11999503372.417643,
+          "decision_changed": false,
+          "decision_id": "b331bb4ca3a840b5448e62941bcb4b1b4e9267abc5435fdb248a4ca84ef5b7bd",
+          "decision_version": 1,
+          "demand_bps": 496627.5823580625,
+          "excess_demand_bps": 0,
+          "execution_authorized": false,
+          "expires_at": "2026-11-24T11:27:00.000000Z",
+          "generated_at": "2026-11-24T11:22:51.017219Z",
+          "healthy_capacity_bps": 12000000000.0,
+          "imbalance_percent": 0.006921221558951561,
+          "links": [
+            {
+              "actual_routing_metric": null,
+              "adjustment_bps": 184565.9082387083,
+              "applied_weight": null,
+              "availability": "unknown",
+              "calculated_cost": 13,
+              "capacity_bps": 8000000000,
+              "carrier": "MTN",
+              "carrier_router_id": "SDR-MTN-01",
+              "eligible": true,
+              "interface": "sdr-to-mtn",
+              "measurement": {
+                "average_bps": 146519.1466666667,
+                "current_bps": 147013.86666666667,
+                "sample_count": 5,
+                "sampled_at": "2026-11-24T11:24:00.000000Z",
+                "series_id": "12ed2925-8ad6-4aff-be60-91c9198b3a74",
+                "state": "ready"
+              },
+              "monitor_router_id": "SDR-CHR-LAB-01",
+              "path_id": "45556669-3443-4e03-82b2-f45515ff6571",
+              "pcc": {
+                "bucket_count": 200,
+                "first_bucket": 0,
+                "last_bucket": 199
+              },
+              "recommended_weight": 0.6666666666666666,
+              "target_bps": 331085.054905375,
+              "target_utilization_percent": 0.004138563186317188,
+              "utilization_percent": 0.0018314893333333338
+            },
+            {
+              "actual_routing_metric": null,
+              "adjustment_bps": -184565.90823870827,
+              "applied_weight": null,
+              "availability": "unknown",
+              "calculated_cost": 26,
+              "capacity_bps": 4000000000,
+              "carrier": "GLO",
+              "carrier_router_id": "SDR-GLO-01",
+              "eligible": true,
+              "interface": "sdr-to-glo",
+              "measurement": {
+                "average_bps": 350108.4356913958,
+                "current_bps": 350300.8,
+                "sample_count": 5,
+                "sampled_at": "2026-11-24T11:24:01.000000Z",
+                "series_id": "cc18804f-18e4-4cf1-aae9-2fa769e1ecc1",
+                "state": "ready"
+              },
+              "monitor_router_id": "SDR-CHR-LAB-01",
+              "path_id": "4d6c42b2-25a9-4e23-9966-df4800ed7baf",
+              "pcc": {
+                "bucket_count": 100,
+                "first_bucket": 200,
+                "last_bucket": 299
+              },
+              "recommended_weight": 0.3333333333333333,
+              "target_bps": 165542.5274526875,
+              "target_utilization_percent": 0.004138563186317188,
+              "utilization_percent": 0.008752710892284896
+            }
+          ],
+          "next_eligible_at": "2026-11-24T11:24:51.017219Z",
+          "pcc_buckets": 300,
+          "predicted_imbalance_reduction_percent": 0.006921221558951561,
+          "predicted_max_utilization_reduction_percent": 0.004614147705967708,
+          "safe_capacity_bps": 9600000000.0,
+          "status": "balanced",
+          "target_utilization_percent": 0.004138563186317188,
+          "total_capacity_bps": 12000000000.0,
+          "unmet_demand_bps": 0,
+          "verified_improvement": null,
+          "weight_basis": "capacity_initialization_unverified"
+        }
+      ],
+      "mode": "advisory",
+      "settings": {
+        "congestion_alpha": 4.0,
+        "feedback_gain": 0.1,
+        "hold_down_seconds": 120,
+        "imbalance_tolerance_percent": 5.0,
+        "max_weight_adjustment": 0.05,
+        "pcc_buckets": 300,
+        "reference_bandwidth_bps": 100000000000,
+        "safe_utilization_percent": 80.0
+      }
+    },
+    "allocations": [
+      {
+        "aggregation_router_id": "SDR-CHR-LAB-01",
+        "allowed_mbps": 8000.0,
+        "capacity_mbps": 8000.0,
+        "carrier": "MTN",
+        "carrier_router_id": "SDR-MTN-01",
+        "change_mbps": 0.1845659082387083,
+        "cost_per_gb": null,
+        "currency": null,
+        "current_cost_per_hour": null,
+        "current_mbps": 0.14651914666666668,
+        "interface": "sdr-to-mtn",
+        "monitor_router_id": "SDR-CHR-LAB-01",
+        "path_id": "45556669-3443-4e03-82b2-f45515ff6571",
+        "recommended_cost_per_hour": null,
+        "recommended_mbps": 0.331085054905375,
+        "route_role": "primary"
+      },
+      {
+        "aggregation_router_id": "SDR-CHR-LAB-01",
+        "allowed_mbps": 4000.0,
+        "capacity_mbps": 4000.0,
+        "carrier": "GLO",
+        "carrier_router_id": "SDR-GLO-01",
+        "change_mbps": -0.18456590823870828,
+        "cost_per_gb": null,
+        "currency": null,
+        "current_cost_per_hour": null,
+        "current_mbps": 0.35010843569139577,
+        "interface": "sdr-to-glo",
+        "monitor_router_id": "SDR-CHR-LAB-01",
+        "path_id": "4d6c42b2-25a9-4e23-9966-df4800ed7baf",
+        "recommended_cost_per_hour": null,
+        "recommended_mbps": 0.1655425274526875,
+        "route_role": "alternate"
+      }
+    ],
+    "analysis": [
+      {
+        "average_mbps": 0.14651914666666668,
+        "capacity_mbps": null,
+        "change_percent": 0.24627027697653928,
+        "cost_per_gb": null,
+        "cost_per_hour": null,
+        "currency": null,
+        "current_mbps": 0.14701386666666666,
+        "interface": "sdr-to-mtn",
+        "name": "MikroTik CHR Lab",
+        "observed_gb": 0.005494468,
+        "previous_average_mbps": 0.1461592,
+        "router_id": "SDR-CHR-LAB-01",
+        "sample_count": 5,
+        "sampled_at": "2026-11-24T11:24:00.000000Z",
+        "state": "ready",
+        "traffic_share_percent": null,
+        "utilization_percent": null,
+        "window_size": 5
+      },
+      {
+        "average_mbps": 0.0038310666666666665,
+        "capacity_mbps": 8000.0,
+        "change_percent": -0.17510092622832318,
+        "cost_per_gb": null,
+        "cost_per_hour": null,
+        "currency": null,
+        "current_mbps": 0.004147066666666667,
+        "interface": "ether3",
+        "name": "MTN CHR lab",
+        "observed_gb": 0.000143665,
+        "previous_average_mbps": 0.003837786666666667,
+        "router_id": "SDR-MTN-01",
+        "sample_count": 5,
+        "sampled_at": "2026-11-24T11:24:00.000000Z",
+        "state": "ready",
+        "traffic_share_percent": null,
+        "utilization_percent": 4.788833333333333e-05,
+        "window_size": 5
+      },
+      {
+        "average_mbps": 0.02536744,
+        "capacity_mbps": 4000.0,
+        "change_percent": 8.710518286237365,
+        "cost_per_gb": null,
+        "cost_per_hour": null,
+        "currency": null,
+        "current_mbps": 0.020309733333333333,
+        "interface": "ether3",
+        "name": "Glo CHR lab",
+        "observed_gb": 0.000951279,
+        "previous_average_mbps": 0.023334853333333332,
+        "router_id": "SDR-GLO-01",
+        "sample_count": 5,
+        "sampled_at": "2026-11-24T11:24:00.000000Z",
+        "state": "ready",
+        "traffic_share_percent": null,
+        "utilization_percent": 0.000634186,
+        "window_size": 5
+      }
+    ],
+    "currency": null,
+    "current_cost_per_hour": null,
+    "estimated_savings_per_hour": null,
+    "evaluation_id": "83d3d107ba7565dca33e8d19a40061b061740b07932d374940071f2f234794af",
+    "groups": [
+      {
+        "aggregation_router_id": "SDR-CHR-LAB-01",
+        "available_mbps": 12000.0,
+        "demand_mbps": 0.4966275823580625,
+        "state": "ready"
+      }
+    ],
+    "hold_until": null,
+    "issues": [],
+    "mode": "dry_run",
+    "objective": "adaptive_mlu",
+    "policy_fingerprint": "d4e746031b5e86cbd7f7a921e887cc8e36eaee3f6c2e5f2b8d86d1499e1a7e9f",
+    "recommendations": [],
+    "recommended_cost_per_hour": null,
+    "routing_changes_enabled": false,
+    "source_fingerprint": "f11497f1e604aae29ff230ccc32b09eb790e52577f95892f2b7c1cf8eccd0176",
+    "status": "ready",
+    "timestamp": "2026-11-24T11:25:42.877750Z",
+    "workflow_version": 2
+  },
+  "outcome": "PASSED: real independent main-router TX, full fresh averages, conserved demand and capacity-proportional advisory targets. No routing application.",
+  "finished_at": "2026-11-24T11:26:00.145569+00:00"
+}

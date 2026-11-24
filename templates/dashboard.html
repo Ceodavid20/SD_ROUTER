@@ -1,135 +1,26 @@
 {% extends "base.html" %}
-{% from "_components.html" import activity_table, bandwidth_value %}
+{% from "_components.html" import bandwidth_value %}
 {% block title %}Dashboard{% endblock %}
-{% block head_extra %}<meta http-equiv="refresh" content="15">{% endblock %}
+{% block head_extra %}<script defer src="{{ url_for('static', filename='js/optimization-charts.js') }}"></script>{% endblock %}
 {% block content %}
-  {% set outbound_unit = 'Kbps' if status.outbound_mbps is not none and status.outbound_mbps < 1 else 'Mbps' %}
-  <div class="page-heading page-heading--with-action">
-    <div>
-      <h1>Dashboard</h1>
-      <p>Routers, outbound traffic and service status.</p>
-    </div>
-    <a class="btn btn-primary controller-button" href="{{ url_for('pages.router_connection') }}">Add router</a>
+  <div class="page-heading page-heading--with-action compact-heading">
+    <h1>Dashboard</h1>
+    <a class="btn btn-primary" href="{{ url_for('pages.router_connection') }}">Add router</a>
   </div>
-
-  <section class="overview-banner" aria-labelledby="overview-title">
-    <div>
-      <h2 id="overview-title">Network overview</h2>
-      {% if status.traffic_monitoring.measured %}
-        <p>{{ status.traffic_monitoring.measured }} of {{ status.traffic_monitoring.enabled }} enabled routers are reporting authenticated TX measurements.</p>
-      {% elif router_counts.authenticated %}
-        <p>{{ router_counts.authenticated }} of {{ router_counts.registered }} routers have recent authenticated controller check-ins.</p>
-      {% elif status.controller_polling.awaiting or status.controller_polling.stale %}
-        <p>Waiting for current authenticated router check-ins.</p>
-      {% else %}
-        <p>Set up router communication to begin authenticated check-ins.</p>
-      {% endif %}
-    </div>
-    <div class="overview-status">
-      <span>Routers</span>
-      <strong>{{ router_counts.registered }}</strong>
-    </div>
-  </section>
-
-  <div class="row g-3 metric-row" aria-label="Network overview">
-    <div class="col-6 col-xl-3">
-      <div class="surface metric-card">
-        <div class="metric-label">Routers</div>
-        <div class="metric-value">{{ router_counts.registered }}</div>
-        <p>Saved in this controller</p>
-      </div>
-    </div>
-    <div class="col-6 col-xl-3">
-      <div class="surface metric-card">
-        <div class="metric-label">Controller polling</div>
-        <div class="metric-value">{{ router_counts.authenticated }}</div>
-        <p>Recent authenticated check-ins</p>
-      </div>
-    </div>
-    <div class="col-6 col-xl-3">
-      <div class="surface metric-card">
-        <div class="metric-label">No recent check-in</div>
-        <div class="metric-value">{{ router_counts.no_recent_checkin }}</div>
-        <p>Awaiting, stale or not enabled</p>
-      </div>
-    </div>
-    <div class="col-6 col-xl-3">
-      <div class="surface metric-card">
-        <div class="metric-label">Outbound bandwidth</div>
-        <div class="metric-value">{% if status.outbound_mbps is not none %}{{ bandwidth_value(status.outbound_mbps, outbound_unit) }}{% else %}<span aria-label="Unavailable">—</span>{% endif %} <small>{{ outbound_unit }}</small></div>
-        <p>{% if status.traffic_monitoring.enabled %}{{ status.traffic_monitoring.measured }} / {{ status.traffic_monitoring.enabled }} enabled routers reporting{% else %}Collection not started{% endif %}</p>
-      </div>
-    </div>
+  <div class="live-metrics" aria-label="Network status">
+    <div class="surface live-metric"><span>Total TX</span><strong><span data-live-total>{{ bandwidth_value(live.summary.total_mbps) }}</span> <small>Mbps</small></strong></div>
+    <div class="surface live-metric"><span>Links reporting</span><strong data-live-reporting>{{ live.summary.reporting }} / {{ live.summary.links }}</strong></div>
+    <div class="surface live-metric"><span>Optimization</span><strong class="metric-status" data-live-status>{{ live.summary.optimization_status | replace('_',' ') | capitalize }}</strong></div>
   </div>
-
-  <div class="row g-3 dashboard-panels">
-    <div class="col-lg-7">
-      <section class="surface panel h-100" aria-labelledby="traffic-title">
-        <div class="panel-heading">
-          <div>
-          <h2 id="traffic-title">Outbound traffic</h2>
-          <p>Network total</p>
-          </div>
-          <a class="panel-link" href="{{ url_for('pages.monitoring') }}">Traffic monitoring <span aria-hidden="true">↗</span></a>
-        </div>
-        <div class="chart-empty">
-          <span class="empty-mark nav-icon--monitoring" aria-hidden="true"></span>
-          {% if status.outbound_mbps is not none %}
-            <strong>{{ bandwidth_value(status.outbound_mbps, outbound_unit) }} {{ outbound_unit }} outbound</strong>
-            <p>Current TX from all {{ status.traffic_monitoring.enabled }} enabled routers.</p>
-          {% elif status.traffic_monitoring.enabled %}
-            <strong>Waiting for current TX readings</strong>
-            <p>{{ status.traffic_monitoring.measured }} of {{ status.traffic_monitoring.enabled }} enabled routers have a current measured rate.</p>
-          {% else %}
-            <strong>No traffic readings</strong>
-            <p>Enable one outbound interface per router in Traffic monitoring.</p>
-          {% endif %}
-        </div>
-      </section>
-    </div>
-    <div class="col-lg-5">
-      <section class="surface panel h-100" aria-labelledby="services-title">
-        <div class="panel-heading"><h2 id="services-title">Service status</h2></div>
-        <dl class="status-list">
-          <div><dt>Optional API diagnostics</dt><dd>{{ router_counts.connected }} / {{ router_counts.registered }} passed</dd></div>
-          <div><dt>Traffic collection</dt><dd>{{ status.monitoring | replace('_', ' ') | capitalize }}</dd></div>
-          <div><dt>Live recommendations</dt><dd>{{ live_preview.status | replace('_', ' ') | capitalize }} · Dry Run</dd></div>
-          <div><dt>Automation</dt><dd>{{ status.automation | capitalize }}</dd></div>
-          <div><dt>Last result (UTC)</dt><dd>{{ status.last_calculation_at or 'None' }}</dd></div>
-        </dl>
-      </section>
-    </div>
-  </div>
-
-  <section class="surface panel section-gap" aria-labelledby="router-traffic-title">
-    <div class="panel-heading"><h2 id="router-traffic-title">Router TX connections</h2><a class="panel-link" href="{{ url_for('pages.monitoring', unit='Mbps') }}">Traffic history</a></div>
-    <p class="form-text">TX connections update from authenticated router samples. API diagnostics are optional. CHR lab carrier labels represent virtual links; the counters are measured on RouterOS.</p>
+  {% include '_live_tx.html' %}
+  <section class="surface panel section-gap" aria-labelledby="routers-title">
+    <div class="panel-heading"><h2 id="routers-title">Routers</h2><a class="panel-link" href="{{ url_for('pages.routers') }}">Manage</a></div>
     <div class="table-responsive"><table class="table align-middle mb-0">
-      <thead><tr><th scope="col">Router / interface</th><th scope="col">TX connection</th><th scope="col">Current TX (Mbps)</th><th scope="col">Average TX (Mbps)</th><th scope="col">Utilization</th><th scope="col">Last sample (UTC)</th><th scope="col">Optional API check</th></tr></thead>
-      <tbody>{% for router in routers %}
-        {% set tx = router.traffic_monitoring %}{% set average = live_preview.analysis | selectattr('router_id', 'equalto', router.router_id) | first %}
-        <tr>
-          <th scope="row"><a href="{{ url_for('pages.monitoring', router_id=router.router_id, unit='Mbps') }}">{{ router.name }}</a><small class="table-secondary-line">{{ router.router_id }} · {{ tx.interface or 'Not configured' }}</small>{% if router.deployment_kind == 'chr_lab' %}<small class="table-secondary-line">CHR lab · actual TX counters</small>{% endif %}</th>
-          <td>{{ tx.connection_state | capitalize }}<small class="table-secondary-line">{{ tx.state | replace('_', ' ') | capitalize }}</small></td>
-          <td>{{ bandwidth_value(tx.tx_mbps) }}</td>
-          <td>{{ bandwidth_value(average.average_mbps if average else none) }}{% if average %}<small class="table-secondary-line">{{ average.sample_count }} / {{ average.window_size }} readings</small>{% endif %}</td>
-          <td>{% if average and average.utilization_percent is not none %}{{ '%.2f' | format(average.utilization_percent) }}%{% else %}Unknown capacity{% endif %}</td>
-          <td>{{ tx.last_sample_at or 'Awaiting sample' }}</td>
-          <td>{{ router.connection_status | capitalize }}{% if router.last_error %}<small class="table-secondary-line">{{ router.last_error }}</small>{% endif %}</td>
-        </tr>
-      {% else %}<tr><td colspan="7">No routers enrolled. Authorize a trusted bootstrap to connect a new router.</td></tr>{% endfor %}</tbody>
+      <thead><tr><th>Router</th><th>TX collection</th><th>Last sample (UTC)</th></tr></thead>
+      <tbody data-live-routers>{% for router in routers %}<tr>
+        <th>{{ router.name }}<small class="table-secondary-line">{{ router.router_id }}</small></th>
+        <td>{{ router.traffic_monitoring.state | replace('_',' ') | capitalize }}</td><td>{{ router.traffic_monitoring.last_sample_at or '—' }}</td>
+      </tr>{% else %}<tr><td class="table-empty" colspan="3">No routers</td></tr>{% endfor %}</tbody>
     </table></div>
-  </section>
-
-  <section class="surface panel activity-panel" aria-labelledby="activity-title">
-    <div class="panel-heading">
-      <h2 id="activity-title">Recent activity</h2>
-      <a class="panel-link" href="{{ url_for('pages.logs') }}">View all <span aria-hidden="true">↗</span></a>
-    </div>
-    {% if activity %}
-      {{ activity_table(activity) }}
-    {% else %}
-      <p class="mb-0 text-secondary">No recent activity.</p>
-    {% endif %}
   </section>
 {% endblock %}

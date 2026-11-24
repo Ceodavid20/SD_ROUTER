@@ -12,10 +12,12 @@ from werkzeug.exceptions import HTTPException
 from config import load_config
 from controllers.router_poll_controller import router_poll
 from controllers.traffic_controller import router_traffic
+from controllers.optimization_controller import router_optimization
 from controllers.enrollment_controller import router_enrollment
 from services.json_storage import StorageError, StorageService
 from services.router_poll_service import PollError
 from services.router_protocol import MAX_REQUEST_BYTES, ProtocolError
+from services.deployment_service import validate_deployment
 
 
 def _loopback(address: str | None) -> bool:
@@ -34,6 +36,7 @@ def create_device_app(test_config: Mapping[str, Any] | None = None) -> Flask:
         raise ValueError("Live routing execution is not implemented; keep LIVE_ROUTING_ENABLED=false.")
     if type(app.config.get("SIMULATION_MODE")) is not bool:
         raise ValueError("SIMULATION_MODE must be true or false.")
+    validate_deployment(app.config)
     for key, minimum, maximum in (
         ("ROUTER_POLL_INTERVAL", 1, 86400),
         ("ROUTER_REQUEST_MAX_AGE_SECONDS", 1, 86400),
@@ -52,17 +55,19 @@ def create_device_app(test_config: Mapping[str, Any] | None = None) -> Flask:
     app.extensions["json_storage"] = storage
     app.register_blueprint(router_poll)
     app.register_blueprint(router_traffic)
+    app.register_blueprint(router_optimization)
     app.register_blueprint(router_enrollment)
 
     @app.before_request
     def require_protected_transport():
-        if request.blueprint not in ("router_poll", "router_traffic"):
+        if request.blueprint not in ("router_poll", "router_traffic", "router_optimization"):
             return None
         # Waitress clears forwarded headers by default. Only an explicitly
         # configured local TLS proxy may supply the verified scheme/source.
         host = urlsplit(request.url_root).hostname
         local_simulation = (
-            app.config["SIMULATION_MODE"] and _loopback(request.remote_addr)
+            app.config.get("ENVIRONMENT") != "production"
+            and app.config["SIMULATION_MODE"] and _loopback(request.remote_addr)
             and (host == "localhost" or _loopback(host))
         )
         if not request.is_secure and not local_simulation:

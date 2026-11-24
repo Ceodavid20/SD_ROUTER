@@ -17,18 +17,47 @@ from services.router_protocol import parse_utc_timestamp, utc_text
 from services.traffic_service import project_traffic_status, stale_after_seconds
 
 
-OBJECTIVES = {"minimize_cost", "balance_utilization"}
+OBJECTIVES = {"minimize_cost", "balance_utilization", "adaptive_mlu"}
 _ROUTER_INPUTS = (
+    "active",
     "router_id", "name", "interface_name", "monitoring_enabled", "monitoring_generation",
     "capacity_mbps", "cost_per_gb", "currency", "controller_auth_enabled",
     "controller_auth_ref", "controller_auth_key_ids",
     "connection_status", "traffic_source_ip", "monitoring_interval_seconds",
     "capacity_confirmed",
+    "monitoring_interfaces",
 )
 
 
 class WorkflowError(ValueError):
     """A safe input/calculation error without private registry details."""
+
+
+def optimization_enabled(settings: Mapping[str, Any]) -> bool:
+    # Older installations already run the advisory optimizer. Preserve that
+    # behavior until the operator explicitly switches it off.
+    return settings.get("optimization_enabled", True) is True
+
+
+def _disabled_result(inputs, analysis, now):
+    objective = inputs["automation_settings.json"].get("optimization_objective", "not_configured")
+    policy = policy_fingerprint(inputs)
+    result = {
+        "workflow_version": 2 if objective == "adaptive_mlu" else 1,
+        "evaluation_id": _digest({"policy": policy, "status": "disabled"}),
+        "timestamp": utc_text(now), "source_fingerprint": source_fingerprint(inputs),
+        "policy_fingerprint": policy, "status": "disabled", "objective": objective,
+        "mode": "dry_run", "action": "none", "routing_changes_enabled": False,
+        "analysis": analysis, "allocations": [], "groups": [], "issues": [],
+        "hold_until": None, "currency": None, "current_cost_per_hour": None,
+        "recommended_cost_per_hour": None, "estimated_savings_per_hour": None,
+    }
+    if objective == "adaptive_mlu":
+        from services.adaptive_routing import DEFAULT_SETTINGS
+        result["adaptive"] = {"algorithm": "adaptive_mlu", "mode": "advisory",
+            "execution_authorized": False, "settings": {**DEFAULT_SETTINGS,
+                **inputs["automation_settings.json"].get("adaptive_optimization", {})}, "groups": []}
+    return result
 
 
 def _digest(value: Any) -> str:
@@ -60,15 +89,17 @@ def policy_fingerprint(inputs: dict) -> str:
     return _digest({
         "routers": [{key: row.get(key) for key in _ROUTER_INPUTS} for row in inputs["routers.json"]],
         "paths": inputs["routing_paths.json"],
-        "settings": {key: settings.get(key) for key in (
+        "settings": {key: settings.get(key, True if key == "optimization_enabled" else None) for key in (
             "averaging_window", "monitoring_interval_seconds", "optimization_objective",
+            "adaptive_optimization", "optimization_enabled",
         )},
     })
 
 
 def source_fingerprint(inputs: dict) -> str:
     return _digest({"policy": policy_fingerprint(inputs),
-                    "counters": inputs["router_traffic_v2.json"]["routers"]})
+                    "counters": {key: inputs["router_traffic_v2.json"].get(key, {})
+                                 for key in ("routers", "interfaces")}})
 
 
 def _analyze(inputs, windows, config, now):
@@ -154,6 +185,17 @@ def allocate_parallel_paths(paths: list[dict], objective: str) -> list[float] | 
 
 def evaluate(inputs, windows, results, config, now):
     analysis = _analyze(inputs, windows, config, now)
+    if not optimization_enabled(inputs["automation_settings.json"]):
+        return _disabled_result(inputs, analysis, now)
+    if inputs["automation_settings.json"].get("optimization_objective") == "adaptive_mlu":
+        from services.adaptive_routing import evaluate_adaptive
+        aggregation_ids = {p["aggregation_router_id"] for p in inputs["routing_paths.json"]["paths"]}
+        for row in analysis:
+            row.update(cost_per_gb=None, currency=None, cost_per_hour=None)
+            if row["router_id"] in aggregation_ids:
+                # An aggregate/management port capacity is not a carrier WAN capacity.
+                row.update(capacity_mbps=None, utilization_percent=None)
+        return evaluate_adaptive(inputs, windows, results, config, now, analysis)
     by_router = {row["router_id"]: row for row in analysis}
     inventory = {row["router_id"]: row for row in inputs["routers.json"]}
     settings = inputs["automation_settings.json"]
@@ -298,9 +340,13 @@ class WorkflowService:
         current = now or datetime.now(UTC)
         if current.utcoffset() is None:
             raise WorkflowError("A timezone-aware calculation time is required.")
-        return self.storage.calculate_workflow(
-            lambda inputs, windows, results: evaluate(inputs, windows, results, self.config, current),
-        )
+        def calculate(inputs, windows, results):
+            # This check runs under the same cross-process lock as publication.
+            # A worker with an older settings read cannot publish after Off.
+            if not optimization_enabled(inputs["automation_settings.json"]):
+                raise WorkflowError("Optimization is off.")
+            return evaluate(inputs, windows, results, self.config, current)
+        return self.storage.calculate_workflow(calculate)
 
     def preview(self, *, now: datetime | None = None) -> dict:
         """Current analysis and advisory conditions; no device I/O or JSON writes."""
@@ -309,6 +355,9 @@ class WorkflowService:
             raise WorkflowError("A timezone-aware calculation time is required.")
         inputs, windows, results = self.storage.read_monitoring_snapshot()
         preview = evaluate(inputs, windows, results, self.config, current)
+        if preview["workflow_version"] == 2 or preview["status"] == "disabled":
+            preview["recommendations"] = []
+            return preview
         inventory = {row["router_id"]: row for row in inputs["routers.json"]}
         by_router = {row["router_id"]: row for row in preview["analysis"]}
         recommendations = []
@@ -363,7 +412,7 @@ class WorkflowService:
 
     def read_latest(self, *, now: datetime | None = None) -> dict | None:
         inputs, results = self.storage.read_workflow_snapshot()
-        latest = next((row for row in reversed(results) if row.get("workflow_version") == 1), None)
+        latest = next((row for row in reversed(results) if row.get("workflow_version") in (1, 2)), None)
         if latest is None:
             return None
         latest = dict(latest)
@@ -381,7 +430,45 @@ class WorkflowService:
                                 and bool(times) and all(-skew <= (current - at).total_seconds()
                                     <= stale_after_seconds(inputs["automation_settings.json"], inventory.get(router_id))
                                     for router_id, at in times))
+        if latest["workflow_version"] == 2:
+            latest["is_current"] = (latest["policy_fingerprint"] == policy_fingerprint(inputs)
+                and any(group["decision_id"] for group in latest["adaptive"]["groups"])
+                and all(not group["expires_at"] or current < parse_utc_timestamp(group["expires_at"])
+                        for group in latest["adaptive"]["groups"]))
+        if not optimization_enabled(inputs["automation_settings.json"]):
+            latest["is_current"] = False
         return latest
+
+    def set_optimization_enabled(self, enabled: bool) -> bool:
+        if type(enabled) is not bool:
+            raise WorkflowError("Select On or Off for optimization.")
+        changed = False
+        def save(settings):
+            nonlocal changed
+            changed = optimization_enabled(settings) != enabled
+            return {**settings, "optimization_enabled": enabled}
+        self.storage.update_json("automation_settings.json", save)
+        if not enabled:
+            def revoke_scopes(state):
+                for entry in state["routers"].values():
+                    entry["authorization"] = None
+                return state
+            self.storage.update_json("router_onboarding.json", revoke_scopes)
+        if changed:
+            self.storage.append_activity("optimization_control",
+                "Optimization enabled." if enabled else "Optimization paused.")
+        return changed
+
+    def pull_status(self):
+        state = self.storage.read_json("optimization_communication.json")
+        return {rid: {"last_pull_at": record["last_authenticated_at"],
+            "last_result": next((d["result"] for d in reversed(state["deliveries"])
+                if d["router_id"] == rid and d["result"] is not None), None)}
+            for rid, record in state["routers"].items()}
+
+    def graph_data(self):
+        from services.optimization_graphs import graph_data
+        return graph_data(self.storage)
 
     def save_settings(self, form: Mapping[str, Any]) -> None:
         objective = form.get("optimization_objective")
@@ -395,4 +482,18 @@ class WorkflowService:
             values[key] = int(raw)
         self.storage.update_json("automation_settings.json", lambda settings: {
             **settings, **values, "optimization_objective": objective,
+            **self._adaptive_settings(form, settings),
         })
+
+    @staticmethod
+    def _adaptive_settings(form, settings):
+        from services.adaptive_routing import DEFAULT_SETTINGS, validate_settings
+        updated = {**DEFAULT_SETTINGS, **settings.get("adaptive_optimization", {})}
+        try:
+            for key in DEFAULT_SETTINGS:
+                if key in form:
+                    updated[key] = int(form[key]) if type(DEFAULT_SETTINGS[key]) is int else float(form[key])
+            validate_settings(updated)
+        except (ValueError, TypeError, OverflowError) as exc:
+            raise WorkflowError("Enter valid adaptive optimization settings.") from exc
+        return {"adaptive_optimization": updated}

@@ -16,14 +16,14 @@
     </dl>
   </section>
   <section class="surface panel section-gap" aria-labelledby="calculation-settings-title">
-    <div class="panel-heading"><h2 id="calculation-settings-title">Local analysis and recommendations</h2></div>
+    <div class="panel-heading"><h2 id="calculation-settings-title">Optimization settings</h2></div>
     <form method="post" action="{{ url_for('workflow.save_settings') }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="row g-3">
         <div class="col-md-6">
           <label class="form-label" for="objective">Recommendation objective</label>
           <select class="form-select" id="objective" name="optimization_objective" required>
-            {% for value, label in [('not_configured', 'Choose an objective'), ('minimize_cost', 'Minimize estimated financial cost'), ('balance_utilization', 'Balance utilization across eligible paths')] %}
+            {% for value, label in [('not_configured', 'Choose an objective'), ('adaptive_mlu', 'Adaptive MLU with routing cost and feedback'), ('minimize_cost', 'Legacy cost calculation'), ('balance_utilization', 'Balance utilization across eligible paths')] %}
               <option value="{{ value }}" {% if status.optimization_objective == value %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
           </select>
@@ -37,7 +37,21 @@
           <input class="form-control" id="sample-interval" name="monitoring_interval_seconds" type="number" min="1" max="86400" step="1" value="{{ status.monitoring_interval_seconds }}" required>
         </div>
       </div>
-      <p class="form-text">Calculations run when requested. Set path roles, utilization limits and hold-down time in Routing paths. Match the expected interval to the collector's approved schedule.</p>
+      <div class="row g-3 section-gap">
+      {% for key, label, step, minimum, maximum in [
+        ('safe_utilization_percent','Safe utilization target (%)','any',0.01,100),
+        ('imbalance_tolerance_percent','Imbalance tolerance (percentage points)','any',0,100),
+        ('hold_down_seconds','Hold-down (seconds)',1,0,86400),
+        ('feedback_gain','Feedback gain','any',0,1),
+        ('max_weight_adjustment','Maximum weight adjustment (fraction)','any',0.000001,0.05),
+        ('reference_bandwidth_bps','Routing cost reference (bits/second)',1,1,9007199254740991),
+        ('congestion_alpha','Congestion sensitivity alpha','any',0,1000),
+        ('pcc_buckets','PCC buckets',1,3,10000)] %}
+        <div class="col-md-6"><label class="form-label" for="{{ key }}">{{ label }}</label>
+        <input class="form-control" id="{{ key }}" name="{{ key }}" type="number" step="{{ step }}" min="{{ minimum }}" max="{{ maximum }}" value="{{ adaptive_settings[key] }}" required></div>
+      {% endfor %}
+      </div>
+      <p class="form-text">The advisory worker calculates automatically while running. The utilization target is a soft warning threshold; physical capacity remains the hard limit. Set path roles, utilization limits and hold-down time in Routing paths. Match the expected interval to the collector's approved schedule.</p>
       <button class="btn btn-primary" type="submit">Save calculation settings</button>
     </form>
   </section>
@@ -46,7 +60,7 @@
     <dl class="status-list">
       <div><dt>Router connections</dt><dd>Set on each router</dd></div>
       <div><dt>Traffic collection</dt><dd>{{ status.monitoring | replace('_', ' ') | capitalize }} · {{ status.traffic_monitoring.enabled }} routers enabled</dd></div>
-      <div><dt>Analysis</dt><dd>Moving average, path traffic share and estimated cost per hour</dd></div>
+      <div><dt>Optimization</dt><dd>TX moving averages, capacity-weighted targets and routing metrics</dd></div>
       <div><dt>Routing changes</dt><dd>Off</dd></div>
     </dl>
   </section>

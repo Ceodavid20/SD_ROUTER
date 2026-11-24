@@ -7,6 +7,20 @@
       <input class="form-control" id="{{ prefix }}-name" name="name" value="{{ router.get('name', '') }}" required maxlength="128" autocomplete="off">
     </div>
     <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-role">Router role</label>
+      <input class="form-control" id="{{ prefix }}-role" name="router_role" value="{{ router.get('router_role') or 'unassigned' }}" list="router-roles" pattern="[a-z][a-z0-9_-]{0,63}" maxlength="64">
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-kind">Deployment</label>
+      <select class="form-select" id="{{ prefix }}-kind" name="deployment_kind">
+        {% for kind in ('unspecified', 'physical', 'virtual', 'chr_lab', 'router') %}<option value="{{ kind }}" {% if router.get('deployment_kind', 'unspecified') == kind %}selected{% endif %}>{{ kind | replace('_', ' ') | capitalize }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-carrier">Carrier label</label>
+      <input class="form-control" id="{{ prefix }}-carrier" name="carrier" value="{{ router.get('carrier', '') }}" maxlength="64">
+    </div>
+    <div class="col-md-6">
       <label class="form-label" for="{{ prefix }}-address">Management IP address</label>
       <input class="form-control" id="{{ prefix }}-address" name="ip_address" value="{{ router.get('ip_address', '') }}" maxlength="45" aria-describedby="{{ prefix }}-address-help" autocomplete="off">
       <div id="{{ prefix }}-address-help" class="form-text">Optional for controller polling. Needed for direct management checks.</div>
@@ -59,7 +73,7 @@
     </div>
     <div class="col-md-6">
       <label class="form-label" for="{{ prefix }}-snmp-credentials">SNMP credential reference</label>
-      <input class="form-control" id="{{ prefix }}-snmp-credentials" name="snmp_credential_ref" value="{{ router.get('snmp_credential_ref') or '' }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="SNMP_MTN_LAGOS" autocomplete="off">
+      <input class="form-control" id="{{ prefix }}-snmp-credentials" name="snmp_credential_ref" value="{{ router.get('snmp_credential_ref') or '' }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="SNMP_ROUTER_REFERENCE" autocomplete="off">
     </div>
     <div class="col-md-4">
       <label class="form-label" for="{{ prefix }}-api-port">API port</label>
@@ -78,6 +92,11 @@
       <div class="form-text">This must match the router's enabled service. Checking it does not enable API-SSL on the MikroTik.</div>
     </div>
     <div class="col-12">
+      <label class="form-label" for="{{ prefix }}-ca">Router API trusted CA file</label>
+      <input class="form-control" id="{{ prefix }}-ca" name="api_ca_file" value="{{ router.get('api_ca_file') or '' }}" maxlength="1024" autocomplete="off">
+      <div class="form-text">Optional controller-side CA path for this router. Blank uses the profile's trusted CA or system trust. Production paths must stay inside its profile.</div>
+    </div>
+    <div class="col-12">
       <label class="form-label" for="{{ prefix }}-controller-auth">Controller authentication reference</label>
       <input class="form-control" id="{{ prefix }}-controller-auth" name="controller_auth_ref" value="{{ router.get('controller_auth_ref', '') }}" maxlength="64" pattern="[A-Z][A-Z0-9_]*" placeholder="CONTROLLER_R1" aria-describedby="{{ prefix }}-controller-auth-help" autocomplete="off">
       <div id="{{ prefix }}-controller-auth-help" class="form-text">Reference only. Controller secrets are configured outside this form. Saving a reference does not enable authentication.</div>
@@ -92,6 +111,17 @@
 {% block title %}Routers{% endblock %}
 {% block content %}
   {{ heading('Routers', 'Router identities, interface details and optional API diagnostics.') }}
+  <datalist id="router-roles"><option value="main"><option value="distribution"><option value="carrier"><option value="upstream"></datalist>
+  <details class="surface panel section-gap">
+    <summary>Register physical or virtual router</summary>
+    <form method="post" action="{{ url_for('router_management.add_router') }}" class="section-gap">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="form-label" for="new-router-id">Unique router ID</label>
+      <input class="form-control mb-3" id="new-router-id" name="router_id" required pattern="[A-Za-z0-9][A-Za-z0-9_-]{0,63}" maxlength="64">
+      {{ router_fields({'api_tls': true, 'capacity_mbps': none, 'cost_per_gb': none}, 'new') }}
+      <button class="btn btn-primary section-gap" type="submit">Register router</button>
+    </form>
+  </details>
   <section class="surface panel" aria-labelledby="inventory-title">
     <div class="panel-heading">
       <h2 id="inventory-title">Router inventory</h2>
@@ -122,6 +152,8 @@
   {% for router in routers %}
     <details class="surface panel section-gap router-details" id="router-{{ router.router_id }}">
       <summary>{{ router.name }} <span class="text-secondary">· Router details</span></summary>
+      <a class="btn btn-primary section-gap" href="{{ url_for('router_management.setup_router', router_id=router.router_id) }}">Router setup and discovery</a>
+      <span class="category-pill">{{ 'Active' if router.active else 'Deactivated' }}</span>
       <dl class="status-list section-gap">
         {% set polling = router.controller_polling %}
         <div><dt>Controller polling</dt><dd>{{ polling.state | capitalize }}</dd></div>

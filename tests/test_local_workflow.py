@@ -489,7 +489,7 @@ def test_current_optimization_page_and_api_work_without_saving_a_snapshot(setup,
     assert response.get_json()["calculation"]["status"] == "ready"
     page = client.get("/optimization").get_data(as_text=True)
     assert 'id="current-allocation"' in page and "Save calculation snapshot" in page
-    assert "Updates every 15 seconds" in page and "Historical snapshot" not in page
+    assert 'data-endpoint="/api/optimization/live"' in page and 'http-equiv="refresh"' not in page
     assert SECRET not in page + response.get_data(as_text=True)
     assert {name:storage.read_json(name) for name in storage.DEFAULTS} == before
 
@@ -508,3 +508,14 @@ def test_current_optimization_api_keeps_browser_authentication_and_device_isolat
                           "ADMIN_PASSWORD_HASH":"synthetic-test-hash", "SECRET_KEY":"synthetic-session-key-for-optimization-test"})
     assert browser.test_client().get("/api/optimization").status_code == 401
     assert create_device_app(config).test_client().get("/api/optimization").status_code == 404
+
+
+def test_legacy_objectives_respect_optimization_off_without_losing_measurements(setup,monkeypatch):
+    from services.workflow_state import validate_workflow_result
+    populate(setup)
+    setup[2].set_optimization_enabled(False)
+    monkeypatch.setattr('services.workflow_service.allocate_parallel_paths',lambda *a:pytest.fail('Legacy optimizer ran while off'))
+    preview=setup[2].preview(now=NOW)
+    assert preview['status']=='disabled' and not preview['allocations'] and not preview['recommendations']
+    assert preview['analysis'] and any(r['current_mbps'] is not None for r in preview['analysis'])
+    validate_workflow_result({k:v for k,v in preview.items() if k!='recommendations'})

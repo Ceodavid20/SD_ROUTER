@@ -626,7 +626,10 @@ def test_frontend_shows_live_tx_history_and_disabled_by_default_without_network(
     assert "synthetic-hidden-registry-value" not in page
     status = client.get("/api/system/status").get_json()
     assert status["outbound_mbps"] == 8 and status["monitoring"] == "receiving"
-    assert "8.000 Mbps outbound" in client.get("/").get_data(as_text=True)
+    dashboard = client.get("/").get_data(as_text=True)
+    assert 'data-live-tx' in dashboard
+    # An unassigned router counter is not a confirmed main-to-carrier path.
+    assert client.get("/api/optimization/live").get_json()["series"] == []
     assert client.get("/api/routers").get_json()["routers"][0]["traffic_monitoring"]["tx_mbps"] == 8
     registry(app, monitoring_enabled=False)
     assert client.get("/api/system/status").get_json()["outbound_mbps"] is None
@@ -644,7 +647,10 @@ def test_small_tx_rates_are_visible_in_current_reading_and_history(app, config, 
     page = client.get("/monitoring").get_data(as_text=True)
     assert "Receiving" in page
     assert page.count(f"<td>{displayed}</td>") == 2
-    assert f"{displayed} Kbps outbound" in client.get("/").get_data(as_text=True)
+    dashboard = client.get("/").get_data(as_text=True)
+    assert 'data-live-tx' in dashboard
+    assert client.get("/api/optimization/live").get_json()["summary"]["total_mbps"] is None
+    assert client.get("/api/monitoring").get_json()["history"][-1]["tx_mbps"] == pytest.approx(delta * 8 / 60 / 1_000_000)
     assert client.get("/api/system/status").get_json()["outbound_mbps"] == pytest.approx(delta * 8 / 60 / 1_000_000)
 
 

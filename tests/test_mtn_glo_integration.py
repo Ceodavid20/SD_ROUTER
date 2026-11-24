@@ -154,8 +154,9 @@ def test_live_frontend_separates_carriers_and_supports_units_and_history_filter(
         sample(fleet, router_id, ip, now, 7_501_000)
     client = app.test_client()
     dashboard = client.get("/").get_data(as_text=True)
-    assert "Router TX connections" in dashboard and "SDR-MTN-01" in dashboard and "SDR-GLO-01" in dashboard
-    assert "Current TX (Mbps)" in dashboard and "Unknown capacity" in dashboard
+    assert "Routers" in dashboard and "SDR-MTN-01" in dashboard and "SDR-GLO-01" in dashboard
+    assert "Outbound TX" in dashboard and 'data-live-tx' in dashboard
+    assert all(r["capacity_mbps"] is None for r in client.get("/api/routers").get_json()["routers"] if r["carrier"])
     page = client.get("/monitoring?unit=Mbps&router_id=SDR-MTN-01").get_data(as_text=True)
     assert "Current outbound (Mbps)" in page and "Average TX (Mbps)" in page
     data = client.get("/api/monitoring?router_id=SDR-MTN-01").get_json()

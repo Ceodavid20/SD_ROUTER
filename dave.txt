@@ -1,0 +1,1498 @@
+SD_ROUTER: DAVE'S PROJECT GUIDE
+Prepared: 24 November 2026, Africa/Lagos (UTC+1)
+
+This guide explains the current project in plain language, with technical
+details where they help you understand or operate it. It is a dated snapshot
+of the source code, saved configuration and completed tests. It is not a
+continuous health report. No passwords, signing secrets, enrollment tokens
+or private keys are included.
+
+The essential point is this: SD_ROUTER already enrolls authorized routers,
+collects real outbound counters, calculates traffic rates, stores history
+and produces advisory allocations. Automatic application of routing changes
+is a future development stage. A displayed recommendation does not move
+traffic by itself.
+
+READING MAP
+
+  1. Purpose and intended outcome
+  2. What works today and what simulation mode means
+  3. Your three-router lab and the correct interfaces
+  4. How the controller, routers and browser communicate
+  5. Technology and source-code map
+  6. Identities, credentials and certificates
+  7. Zero-Touch Provisioning, step by step
+  8. Polling, acknowledgements and the device endpoints
+  9. Security protections around incoming data
+ 10. How TX octets become Mbps
+ 11. Sampling, clocks, resets and missing readings
+ 12. Traffic analysis and its formulas
+ 13. Routing paths and the allocation model
+ 14. How utilization balancing and cost minimization work
+ 15. Readiness, snapshots and hold-down
+ 16. What each dashboard page and browser API does
+ 17. JSON storage, active directories and backups
+ 18. Starting and administering the project
+ 19. What has actually been tested
+ 20. Troubleshooting common problems
+ 21. What remains before automatic live routing
+ 22. Operating boundaries and a sensible development sequence
+ 23. Glossary
+ 24. References and suggested reading order
+
+
+1. PURPOSE AND INTENDED OUTCOME
+
+SD_ROUTER is your Flask-based controller for MikroTik RouterOS devices. Its
+intended network scope includes outbound traffic on alternative carrier
+paths, represented in this project by MTN and Glo. Earlier project material
+describes a Lagos-Abuja network; that description is background for entering
+the actual topology, not a topology automatically discovered by the program.
+
+The intended sequence is:
+
+  authorize initial trust
+    -> enroll a router
+    -> receive authenticated TX counters
+    -> calculate rates and averages
+    -> evaluate confirmed paths and operating limits
+    -> recommend an allocation
+    -> eventually apply, verify and, if necessary, roll back changes
+
+Everything through advisory allocation is implemented. The final apply,
+verify and rollback stages are not implemented as a live routing system.
+
+The Flask application is the management and analysis component. Normal
+customer traffic travels through routers according to their existing
+configuration; it does not travel through Flask. Flask receives small
+measurement messages, not copies of all the packets on your network.
+
+An aggregation router is the router at which traffic can use different
+upstream paths. A carrier router represents an upstream option. To move
+traffic safely, those options must actually be usable alternatives for the
+same traffic, with correct next hops, return paths and any required NAT.
+Labels such as MTN, Glo, primary and alternate do not create those network
+relationships on the devices.
+
+
+2. WHAT WORKS TODAY AND WHAT SIMULATION MODE MEANS
+
+Implemented features include:
+
+  - Persistent inventory for existing and enrolled routers.
+  - Preserved authenticated V1 polling and native RouterOS V2 polling/ACKs.
+  - A separate authenticated V2 traffic endpoint.
+  - Secure, expiring, single-use enrollment authorizations.
+  - Trusted bootstrap installation of a restricted TX collector.
+  - One selected monitored interface per router.
+  - TX rate calculation, counter history, fresh-window averages and analysis.
+  - Configurable paths, capacities, roles and operating limits.
+  - Current advisory allocations and optional saved snapshots.
+  - Optional certificate-verified, read-only RouterOS API diagnostics.
+  - Browser authentication support, CSRF protection and automated tests.
+
+The current safety settings are:
+
+  SIMULATION_MODE=true
+  LIVE_ROUTING_ENABLED=false
+  saved automation=off
+  saved routing_changes_enabled=false
+
+SIMULATION_MODE does not mean that router measurements are invented. In the
+device application it permits a narrow localhost HTTP development exception
+for existing polling/traffic paths. It does not create routers, generate
+traffic or enable routing commands. Enrollment still requires HTTPS.
+
+The saved automation mode and the device application's SIMULATION_MODE are
+separate settings. Neither turns a recommendation into an executed change.
+The device application currently refuses to start if live routing is enabled,
+because the live executor has not been written. Flipping a flag cannot add it.
+
+Startup creates no example routers. New storage starts with an empty
+inventory. Synthetic routers and keys used by automated tests exist only in
+isolated temporary test storage.
+
+The latest local configuration enables enrollment. Browser login remains
+disabled for localhost development, while forms retain CSRF checks. This
+local access configuration must be hardened before wider deployment.
+
+
+3. YOUR THREE-ROUTER LAB AND THE CORRECT INTERFACES
+
+The project currently uses your existing VirtualBox CHR virtual machines:
+
+  Controller router ID   Management address   Interface for latest lab test
+  --------------------  -------------------  -----------------------------
+  SDR-CHR-LAB-01        192.168.56.10         ether2
+  SDR-MTN-01           192.168.56.11         ether3
+  SDR-GLO-01           192.168.56.12         ether3
+
+The VirtualBox labels are MikroTik-CHR-Lab, MikroTik-CHR-Lab MTN and
+MikroTik-CHR-Lab GLO. A VM label, a RouterOS system identity and a controller
+router ID are different identifiers. The original router's system identity
+can be CHR while its controller ID is SDR-CHR-LAB-01.
+
+These routers are virtual devices, but their RouterOS counters and generated
+test packets are real. The carrier names represent lab upstream links; they
+do not establish physical ISP services or guaranteed carrier throughput.
+
+The shared lab network is 192.168.56.0/24. The controller host is
+192.168.56.1. The monitored test link is:
+
+                  shared VirtualBox lab network
+  original ether2 -------- MTN ether3
+          |
+          +--------------- Glo ether3
+
+The CHRs also have ether1 interfaces associated with their VirtualBox NAT
+uplinks. Each isolated NAT attachment may show 10.0.2.15; those independent
+NAT environments are separate from the shared management network.
+
+The latest test deliberately measured the shared inter-CHR interfaces. An
+ether3 TX reading on a carrier router is traffic leaving ether3. It is not
+automatically an Internet-upload measurement on ether1. For a deployment
+that measures Internet egress, select the verified WAN egress interface.
+
+During test preparation, the dashboard selections already referred to the
+lab interfaces, but the installed collectors still read ether1. The collector
+settings, controller selections and path interfaces were aligned. The
+physical Ethernet interfaces were not renamed by that operation.
+
+Current saved path settings use the original router's ether2 and each
+carrier's ether3. MTN is labeled primary; Glo is labeled alternate. You
+confirmed that they can serve as alternatives for the same outbound traffic.
+
+Your configured carrier capacities are:
+
+  MTN: 8 Gbps = 8,000 Mbps
+  Glo: 4 Gbps = 4,000 Mbps
+
+Those are configured inputs, not measured throughput results. All three CHRs
+were inspected and have free licenses, which limit TX to 1 Mbps per interface.
+Changing an application field cannot increase a CHR license limit.
+
+Before using the model for actual routing, reconcile configured WAN limits
+with usable device, license, interface and shared-link limits. The current
+model does not automatically discover and enforce every physical bottleneck.
+
+The original router also retains a legacy capacity entry of 0.000001 Mbps,
+equivalent to 1 bit per second. It should be reviewed as a test-era setting,
+not treated as a verified production limit. The present carrier allocation
+uses the selected MTN/Glo measurement sources, not that original-router entry.
+
+
+4. HOW THE CONTROLLER, ROUTERS AND BROWSER COMMUNICATE
+
+There are two Flask applications and a router-facing TLS proxy:
+
+  your browser
+       |
+       v
+  127.0.0.1:8000  browser/dashboard application
+       |
+       +---------- shared validated JSON storage
+                                ^
+                                |
+  routers -- HTTPS --> TLS proxy --> 127.0.0.1:8001 device application
+
+The current approved router-facing origin is:
+
+  https://192.168.56.1:18443
+
+The browser address is:
+
+  http://127.0.0.1:8000/
+
+The two listeners have separate responsibilities. The browser application
+renders pages and accepts guarded local settings/snapshot actions. The
+device application accepts authenticated router messages and exposes no
+dashboard administration pages.
+
+Waitress runs both Flask applications. The device listener binds to loopback;
+the approved Apache TLS proxy provides the HTTPS address that routers reach.
+The proxy forwards only the intended device paths. Its TLS identity and
+network access policy must be administered separately from ordinary page use.
+
+When explicitly configured, the backend trusts the local proxy's forwarded
+scheme and source address. This is what allows it to recognize HTTPS and
+apply source-based controls correctly. It does not trust arbitrary forwarded
+headers from any client.
+
+Normal measurement collection is a push flow: the router sends its selected
+TX counter to Flask on a schedule. Flask does not log in to WinBox each time
+a reading is needed. Optional API diagnostics are a separate connection in
+the opposite direction, from the controller to a router's API-SSL service.
+
+Opening a browser page reads current state. It does not discover unknown
+routers, generate test traffic or install router configuration.
+
+
+5. TECHNOLOGY AND SOURCE-CODE MAP
+
+Python provides the application logic. Flask handles HTTP routes; Jinja
+renders HTML templates; Bootstrap and local CSS provide the interface;
+small JavaScript supports navigation. Waitress serves the applications.
+python-dotenv loads private local environment settings. Pytest runs tests.
+
+Requirements also declare packages such as NumPy, SciPy, PySNMP, APScheduler
+and Requests. Their presence does not establish a running SNMP collector,
+background optimizer or machine-learning engine. The current allocation
+solver is deterministic Python logic, and normal collection is RouterOS push
+telemetry. There is no active SNMP RX collection.
+
+Important files and folders:
+
+  app.py / serve.py
+    Browser application factory and Waitress startup.
+
+  device_app.py / serve_devices.py
+    Isolated device application and loopback/proxy transport boundary.
+
+  config.py
+    Environment-derived settings and defaults.
+
+  manage.py
+    Local setup, credential, enrollment and provisioning commands.
+
+  controllers/
+    HTTP boundaries for pages, authentication, routers, paths, monitoring,
+    saved calculations, polling, traffic and enrollment.
+
+  services/router_service.py
+    Inventory validation, monitoring selection and optional API diagnostics.
+
+  services/router_protocol.py / services/routeros_protocol.py
+    Strict V1/V2 request and response contracts and signature construction.
+
+  services/router_poll_service.py / services/routeros_poll_service.py
+    Authentication, polling, receipts and communication-state updates.
+
+  services/traffic_protocol.py / services/traffic_service.py
+    Strict TX payload validation, baselines, rates and measurement states.
+
+  services/enrollment_service.py / services/enrollment_state.py
+    Enrollment grants, private bundles, single-use claims and validation.
+
+  services/path_config_service.py
+    Operator-defined path relationships and congestion settings.
+
+  services/workflow_service.py / services/workflow_state.py
+    Analysis, constrained allocation, snapshots and strict result validation.
+
+  services/json_storage.py
+    Locking, validation, atomic files, traffic segments and recovery journals.
+
+  services/api_credentials_service.py / services/env_storage.py
+    Private credential lookup and serialized environment-file updates.
+
+  services/routeros_api.py
+    Restricted API client: authentication and basic system-resource reads.
+
+  services/security_service.py
+    Browser sessions, CSRF validation and login throttling.
+
+  scripts/routeros/
+    Native polling, TX collector and trusted bootstrap templates.
+
+  templates/ and static/
+    Dashboard pages, shared display components and local presentation assets.
+
+  tests/
+    Isolated automated protocol, storage, security, setup and workflow tests.
+
+  docs/
+    Detailed implementation notes and operational contracts.
+
+  private/
+    Protected commissioning material and operational test tooling. Some
+    files contain secrets; do not treat this folder as public documentation.
+
+  output/
+    Guarded legacy router-output storage and generated review/test artifacts.
+
+Routine runtime behavior is driven by saved inventory and settings. Router
+IDs, carrier labels, selected interfaces, capacities and optional fixed-source
+restrictions are configuration data. The program does not need a new code
+branch each time a different router or provider is enrolled. A lab test tool
+may deliberately restrict its targets to the authorized lab peers; that is
+a safety boundary for that operation, not an application-wide router list.
+
+
+6. IDENTITIES, CREDENTIALS AND CERTIFICATES
+
+There are several separate kinds of identity and access. Keeping them
+separate explains many apparently confusing setup messages.
+
+Router ID:
+  A stable controller identifier for a device. It is not its password, IP,
+  VirtualBox VM name or necessarily its RouterOS display name.
+
+Controller HMAC credentials:
+  Per-router signing secrets and active key IDs. These authorize router-to-
+  controller polling and traffic requests. Enrollment provisions distinct
+  credentials, so cloned devices must not keep submitting as one identity.
+
+RouterOS API credentials:
+  A username/password for the optional controller-to-router API diagnostic.
+  MTN and Glo received dedicated read-only API accounts. These are separate
+  from the collector's HMAC credentials and browser administrator access.
+
+Browser administrator access:
+  Login for the website's administrative functions. It does not authenticate
+  a router's traffic request or enable WinBox/API access on a device.
+
+Enrollment token:
+  Temporary authorization to claim a router identity and obtain monitoring
+  credentials through a trusted bootstrap. It is not a permanent login.
+
+A credential reference in JSON is a lookup name, not the credential itself.
+Managed secrets are stored in the protected environment file, with owner-only
+permissions. Public projections and calculation outputs omit private values.
+
+There are also two distinct TLS directions:
+
+  Router -> controller:
+    The router verifies the controller's HTTPS server certificate using the
+    trusted public CA supplied with its bootstrap. HMAC authenticates its
+    telemetry messages to the controller.
+
+  Controller -> optional RouterOS API-SSL service:
+    The controller verifies the router's API server certificate against its
+    configured trusted CA, then uses the separate API account.
+
+The implemented enrollment flow does not issue a distinct mutual-TLS client
+certificate for every router. Its certificate-based transport is verified
+server-side HTTPS trust combined with unique HMAC device authentication.
+
+A CA certificate is public trust material. A CA private key is secret signing
+authority. A router API server certificate is different from a controller CA
+certificate. A filename such as ca.pem, or an imported RouterOS display name
+ending in _0, is not sufficient proof that it is the correct certificate.
+Check identity, issuer, validity and the trusted chain.
+
+The current router API service is API-SSL on port 8729. Plain API commonly
+uses 8728 and is blocked by the project's current policy. A checkbox in Flask
+does not turn a plaintext RouterOS service into TLS or select its certificate.
+
+Managed API credentials and newly enrolled managed HMAC secrets can be read
+on demand, enabling their supported updates without a process restart.
+Legacy environment-only credentials may still require process reloads.
+Follow the specific setup/rotation command rather than assuming every kind
+of environment change is hot-reloaded.
+
+
+7. ZERO-TOUCH PROVISIONING, STEP BY STEP
+
+ZTP means that, after initial trust and connectivity are supplied, normal
+registration and monitoring setup run automatically on the router.
+
+The necessary initial conditions are:
+
+  - The router can reach the approved controller HTTPS address.
+  - Its clock is sufficiently correct for certificates and fresh requests.
+  - It receives the correct public CA through a trusted delivery method.
+  - It receives its own short-lived, single-use enrollment authorization.
+  - Its bootstrap has installation privileges for the certificate, script
+    and scheduler setup.
+
+An entirely unconfigured router cannot securely learn which unknown server
+to trust just because that server is reachable. An approved management
+channel, controlled initial configuration or Netinstall workflow supplies
+that initial trust. The project provides a bootstrap bundle; it does not
+automatically create your entire provisioning network or Netinstall service.
+
+The sequence after trusted delivery is:
+
+  1. Bootstrap checks the selected interface and imports its supplied CA.
+  2. It verifies the controller's HTTPS certificate.
+  3. It sends its enrollment request with its private token.
+  4. Flask validates JSON, timestamp, policy scope, token and rate limits.
+  5. Under a storage lock, one request consumes the authorization.
+  6. A distinct controller ID is assigned or the authorized existing ID used.
+  7. A unique HMAC identity is stored privately for the registered router.
+  8. The bootstrap receives its restricted collector configuration over TLS.
+  9. It installs a collector and scheduler with read,test permissions.
+ 10. If monitoring was explicitly authorized, collection starts immediately
+     and the scheduler retries on subsequent intervals.
+ 11. Accepted real samples make the router appear in dashboard monitoring.
+
+The bootstrap does not configure Internet routes, NAT, DHCP or OSPF. Normal
+collection has no write or routing permission and does not bypass script
+permission checks. The generic bootstrap does not provision an inbound
+API-SSL server/account; those are optional, separate commissioning work.
+
+Enrollment is disabled by default in new controller configuration. It is
+enabled in the current lab. Monitoring is also disabled by default unless
+the grant explicitly authorizes it, such as with --enable-monitoring.
+
+Tokens have a 256-bit random secret component. The ledger stores a SHA-256
+hash, not the usable token. The default lifetime is 900 seconds; supported
+grant lifetimes are bounded. A claimed token cannot register another router,
+including after a backend restart. Concurrent claims produce one success.
+The storage journal completes an interrupted registry commit without making
+a consumed token usable again.
+
+If a router loses the first successful response before receiving its
+credentials, replaying the consumed token is not a recovery mechanism.
+Authorize a fresh trusted bootstrap. Unused grants can be revoked, and
+re-enrollment of an active identity requires explicit replacement authority.
+
+Device MAC/name information is descriptive, not an independent security
+root. Clones can copy MACs and files. Distinct authorized credentials and
+controlled token delivery establish identity; an optional fixed-source IP
+binding adds a restriction where the network supports it. For NAT or dynamic
+addresses, source binding must be chosen deliberately rather than assumed.
+
+
+8. POLLING, ACKNOWLEDGEMENTS AND DEVICE ENDPOINTS
+
+Polling asks the controller for its current response. The existing V2 client
+then acknowledges receipt of a particular response. This demonstrates
+authenticated communication, not successful application of a routing rule.
+
+The device-only application exposes:
+
+  POST /api/controller/v1/poll
+    Preserved V1 compatibility contract. Uses HMAC-SHA256 and UTC text
+    timestamps. It remains a separate protocol from native V2.
+
+  POST /api/controller/v2/poll
+    Native RouterOS polling with HMAC-SHA512 and integer Unix timestamps.
+
+  POST /api/controller/v2/ack
+    Native V2 receipt referring to an issued response ID.
+
+  POST /api/controller/v2/traffic
+    Separate V2 cumulative TX-counter submission.
+
+  POST /api/controller/v2/enroll
+    HTTPS-only single-use bootstrap claim. This bootstrap step uses its
+    bearer enrollment token; subsequent device traffic uses HMAC credentials.
+
+The paths live under the approved router-facing HTTPS origin. They do not
+use the browser login session. The browser application does not expose the
+device enrollment route.
+
+Current device responses carry dry-run/no-action semantics. Polling returns
+no executable routing configuration, even when the optimization page has a
+ready local recommendation. The native client validates response identity,
+schema, expiry and the expected action.
+
+A successful ACK means, in effect, "I received that response." Future route
+application would need a separate verified result such as "this exact plan
+was applied, these checks passed, and this previous state can be restored."
+
+MTN/Glo can send TX successfully without running the original polling client.
+The count of recent polls and the count of routers sending fresh TX can
+therefore differ. Check the relevant status rather than treating them as
+one connection indicator.
+
+The legacy /router-config/<router_id> browser-side delivery path is also
+guarded. It does not turn a saved proposal into an active command during
+this stage; live delivery remains locked.
+
+
+9. SECURITY PROTECTIONS AROUND INCOMING DATA
+
+HTTPS encrypts transport and lets the router verify the server. HMAC proves
+knowledge of that router's signing secret and protects the message contents.
+A hash alone would not authenticate a sender; HMAC includes a secret.
+
+For V2, the signature covers the HTTP method, exact approved path, key ID and
+SHA-512 digest of the exact raw request body. The canonical form is:
+
+  SDR-POLL-V2
+  POST
+  /api/controller/v2/traffic
+  <ACTIVE_KEY_ID>
+  <LOWERCASE_SHA512_HEX_OF_EXACT_BODY_BYTES>
+
+The HMAC-SHA512 result is represented as 128 lowercase hexadecimal characters.
+The example uses placeholders and contains no working key. Poll and ACK use
+their own paths in the same V2 construction. Whitespace changes to a signed
+body change its digest, so clients must transmit exactly what they signed.
+The indentation above is for readability; the actual canonical text has no
+leading spaces and no trailing newline.
+
+The traffic body contains exactly:
+
+  protocol_version, router_id, request_id, timestamp, request_type,
+  interface, tx_octets
+
+The protocol version is 2.0; request_type is traffic. The request ID is a new
+canonical UUID4. The timestamp is a whole UTC epoch value. tx_octets is an
+unsigned 64-bit integer. The interface must exactly match the configured
+selection. The controller calculates Mbps; the client cannot submit its own
+rate as a replacement for the counter.
+
+Validation rejects extra/missing fields, RX metrics, duplicate JSON keys,
+invalid UTF-8, non-finite numbers, wrong types and oversized requests.
+For example, a boolean is not accepted as an integer counter. Device bodies
+are limited to 8192 bytes, and unsupported query parameters or content
+encodings are rejected.
+
+Additional protections include:
+
+  - Active authorization and key IDs are checked per router.
+  - Authentication comparisons use constant-time comparison where relevant.
+  - Freshness checks reject old requests and excessive future clock skew.
+  - Accepted request IDs are persisted to reject replay after restart.
+  - Source rate limits bound request attempts.
+  - Traffic and enrollment have independent budgets from polling.
+  - Optional fixed-source bindings reject a different sender IP.
+  - Authorization is checked again when a traffic update is committed, so
+    concurrent revocation/settings changes cannot silently reuse old authority.
+  - Public projections exclude secrets and unknown private legacy fields.
+
+Default request limits allow 120 seconds of age and 30 seconds of future
+skew. Default source quotas are 30 attempts per 60 seconds. These are
+validated configuration defaults; deployment settings and shared NAT sources
+must be considered when choosing quotas for a larger fleet.
+
+Common HTTP outcomes are 400 for malformed input, 401 for authentication or
+freshness failure, 403 for transport/authorization/interface policy, 409 for
+replay or ordering conflicts, 413 for oversized bodies, 415 for content type,
+429 for rate limiting and 503 for unavailable or exhausted bounded storage.
+A generic error deliberately avoids echoing credentials or signed headers.
+
+Browser settings actions have a different boundary: administrator policy
+and CSRF checks. Disabling login for localhost development does not remove
+CSRF protection from forms or device-message authentication from the backend.
+
+
+10. HOW TX OCTETS BECOME MBPS
+
+TX means transmitted traffic leaving the selected interface. RX means traffic
+received by an interface. This project collects TX only. Routers naturally
+receive network packets, but the monitoring system does not read or store RX
+traffic counters or use RX as an optimization input.
+
+The collector reads RouterOS's cumulative tx-byte counter. One octet is one
+byte, and a byte has eight bits. A cumulative counter is the total transmitted
+amount so far; it is not itself a speed.
+
+For two valid samples in the same uninterrupted series:
+
+  delta_octets = current_tx_octets - previous_tx_octets
+  delta_seconds = current_timestamp - previous_timestamp
+
+  outbound_Mbps = delta_octets * 8 / delta_seconds / 1,000,000
+
+An explanatory example, not an inserted router reading:
+
+  First counter:   10,000,000 octets
+  Second counter:  17,500,000 octets
+  Time elapsed:           60 seconds
+
+  Difference = 7,500,000 octets
+  Rate = 7,500,000 * 8 / 60 / 1,000,000 = 1 Mbps
+
+With only one sample, the controller has a baseline and cannot calculate a
+rate yet. A measured zero is valid if the counter did not increase during a
+valid interval. An unavailable measurement is different from zero.
+
+Units in this application are decimal:
+
+  1 Mbps = 1,000,000 bits/second
+  1 Mbps = 1,000 Kbps
+  1 Gbps = 1,000 Mbps
+  1 decimal GB = 1,000,000,000 bytes
+
+GB of data allowance is a volume; Gbps is a speed. An 8 GB bundle does not
+mean an 8 Gbps connection. The earlier capacity clarification explicitly
+selected 8 Gbps for MTN and 4 Gbps for Glo as configured speed inputs.
+
+Changing a capacity field changes utilization and allocation calculations;
+it does not change the measured Mbps formula. Changing display units changes
+formatting, not stored readings. Monitoring and current optimization retain
+useful precision for small nonzero values.
+For example, 0.000184 Mbps is 0.184 Kbps, not necessarily zero traffic.
+
+Interface counters include traffic using that interface, potentially including
+management, protocol and test traffic. They are not a measurement of only
+customer browsing. Summing several routers' counters can count multiple
+transmissions of the same forwarded traffic; choose measurement points
+carefully before treating a sum as unique end-user demand.
+
+
+11. SAMPLING, CLOCKS, RESETS AND MISSING READINGS
+
+The current collectors run every 60 seconds, and analysis uses five valid
+rates. A fresh series normally needs a baseline plus five subsequent samples,
+roughly five minutes after its first baseline, before an average is ready.
+
+Dashboard/optimization pages refresh every 15 seconds. That does not create
+a new router sample every 15 seconds. Several page refreshes can correctly
+show the same latest measurement.
+
+The controller separates several situations:
+
+  baseline       First usable counter in a new series; no rate yet.
+  measured       Valid counter difference and elapsed time produced a rate.
+  warming_up     Fresh rates exist but the averaging window is incomplete.
+  counter_reset  The cumulative counter fell, for example after a restart.
+  gap_reset      The interval is too long to treat as a normal measurement.
+  stale          The latest sample is too old to present as current.
+  awaiting       No matching current-series sample has arrived.
+  disabled       Monitoring is not authorized/enabled for this router.
+
+Other configuration/authentication/history states may also be displayed.
+They withhold a usable rate or average rather than fabricating zero.
+
+Every baseline/reset/gap or monitoring generation change separates counter
+series. Old and new series are not mixed into one average. Changing the
+selected interface therefore cannot turn its unrelated counter into a huge
+traffic spike by subtracting the old interface's counter.
+
+The normal stale/gap threshold is the larger of 180 seconds and three times
+the expected interval. A valid per-router interval overrides the global
+fallback. With a 60-second interval, that threshold is 180 seconds.
+
+Router and controller clocks are security inputs. Timestamps are stored as
+UTC. Africa/Lagos is UTC+1; a displayed UTC time is one hour behind local
+Lagos time. Changing display timezone does not fix an incorrect absolute
+clock. During commissioning, two router clocks were about 13 hours behind.
+Their samples were correctly rejected until an approved clock-only correction.
+
+The approved repair corrected clocks; it did not configure permanent NTP.
+Verify/configure trusted time synchronization to prevent drift after VM
+suspension or other disruptions. Correct clocks using an approved source;
+do not disable freshness or certificate checks to work around drift. A
+correction can require a new baseline and fresh averaging window.
+
+
+12. TRAFFIC ANALYSIS AND ITS FORMULAS
+
+For the latest N measured rates in the current series:
+
+  average_Mbps = sum(latest N rates) / N
+
+This is an arithmetic moving average. It reduces the influence of one short
+spike, at the cost of a delayed response to a new load or sudden stop. It is
+not a prediction of future traffic.
+
+The previous average uses the N rates ending one reading earlier. It needs
+one additional valid rate. If that previous average is positive:
+
+  change_percent = (average - previous_average) / previous_average * 100
+
+If it is zero or unavailable, percentage change is unavailable instead of
+dividing by zero.
+
+For a confirmed usable capacity:
+
+  utilization_percent = average_Mbps / capacity_Mbps * 100
+
+An unconfirmed capacity remains unavailable for this calculation. A saved
+path limit does not override an explicitly unconfirmed WAN capacity. A NIC
+link speed or label is not proof of an ISP service's usable limit.
+
+Within one configured path group:
+
+  demand_Mbps = sum(selected path averages)
+  traffic_share_percent = path_average / group_demand * 100
+
+Each selected router/interface counter can supply only one active path. This
+prevents the same measurement being entered twice as two different demands.
+It does not remove the need to design non-overlapping measurement points.
+
+For a confirmed marginal price p per decimal GB:
+
+  projected_GB_per_hour = average_Mbps * 0.45
+  estimated_cost_per_hour = average_Mbps * 0.45 * p
+
+The factor comes from converting Mbps to bytes, seconds to an hour, and bytes
+to decimal GB. Actual window volume is calculated separately:
+
+  observed_window_GB = sum(rate_Mbps * interval_seconds / 8,000)
+
+The volume integration uses each actual interval; the average remains the
+documented arithmetic mean. Cost figures are estimates under a marginal
+volume-price model. Flat-rate contracts, allowances, tiers, tax, commitments
+and currency conversion are not modeled automatically.
+
+Financial price per GB is different from an OSPF routing cost. The program
+must not infer one from the other. Current MTN/Glo prices and currency are
+not configured, so balancing can work while financial comparisons remain
+unavailable.
+
+
+13. ROUTING PATHS AND THE ALLOCATION MODEL
+
+A saved path identifies its aggregation router, carrier router, endpoint
+interfaces, TX measurement source, capacity, role and confirmation status.
+The measurement source must be an endpoint and its selected interface must
+match the path's measurement interface.
+
+Carrier-side dry-run analysis can leave an unknown aggregation interface
+blank when its required carrier interface, capacity and measurement source
+are supplied. That allows analysis without inventing a physical port. Actual
+deployment would still require the physical mapping. For the latest lab test,
+the endpoint mappings have now been verified and entered for both paths.
+
+Only operator-confirmed participating paths enter a recommendation. Pending
+or disabled relationships do not establish interchangeable traffic paths.
+Provider labels come from inventory; they are not restricted to a fixed
+MTN/Glo list by the runtime path service.
+
+The effective path limit is the minimum of the confirmed path capacity and
+applicable confirmed measured/carrier interface capacities. The utilization
+ceiling reduces that effective limit to the permitted allocation.
+
+  allowed_Mbps = effective_capacity_Mbps * ceiling_percent / 100
+
+A standby path has a proposed allocation of zero. Primary and alternate
+labels describe intended roles; the selected optimization objective governs
+the allocation. They do not themselves implement failover or force a primary
+path to carry everything before any alternate receives traffic.
+
+Demand remains inside its own aggregation group. The solver does not move
+traffic between independent aggregation routers. Its model is parallel-path
+allocation, not a complete physical network simulation.
+
+Shared uplink bottlenecks, device/license ceilings not entered as constraints,
+per-flow hashing, NAT behavior, return-path symmetry, end-to-end reachability
+and routing-protocol cost mapping require further network-specific work.
+The current lab license limits are a concrete example of why saved WAN
+capacities alone cannot certify that a physical allocation is achievable.
+
+
+14. HOW UTILIZATION BALANCING AND COST MINIMIZATION WORK
+
+The current objective is balance_utilization. It distributes eligible demand
+in proportion to permitted path capacities:
+
+  target_for_path = group_demand * path_allowed_capacity /
+                    sum(all_eligible_allowed_capacities)
+
+The current utilization ceiling is 80%. With the configured 8,000/4,000 Mbps
+capacities, permitted capacities are 6,400 and 3,200 Mbps. Their ratio is 2:1,
+so an otherwise feasible allocation targets two thirds of demand on MTN and
+one third on Glo. Those percentages describe a recommendation, not a report
+that the routers have already changed their traffic distribution.
+
+The minimize_cost objective instead fills lower-priced eligible paths first,
+within permitted capacity. It requires confirmed marginal prices in a shared
+currency. Deterministic tie-breaking makes equal-price results repeatable.
+Utilization balancing does not require invented prices.
+
+Every ready result must preserve demand and respect path bounds:
+
+  sum(proposed allocations) = sum(measured path averages)
+  0 <= proposed allocation <= permitted allocation
+
+If demand exceeds available permitted capacity, the result is infeasible.
+The solver does not silently discard the excess or present a partial plan
+as a complete solution. Zero measured demand is valid and can yield zero
+allocations. An unavailable measurement is not converted to zero demand.
+
+The saved congestion policy also has an intended overload-handling label.
+The current solver's objective and capacity ceiling govern its calculations;
+that label does not activate a separate automatic failover mechanism.
+
+No RouterOS route weights, OSPF costs, queues or NAT rules are generated from
+these numbers yet. A future network-specific translator must decide which
+supported routing mechanism can implement an intended allocation. Per-flow
+hashing and session behavior can prevent a routing weight from producing an
+exact packet-by-packet split.
+
+
+15. READINESS, SNAPSHOTS AND HOLD-DOWN
+
+The main optimization result states are:
+
+  ready       Required inputs and fresh windows support a feasible proposal.
+  blocked     Required configuration or measurements are unavailable.
+  infeasible  Eligible permitted capacity cannot carry the measured demand.
+  hold_down   A prior saved ready result temporarily withholds a new proposal.
+
+The result includes specific issues such as an unknown capacity, missing
+objective, incomplete path, wrong measurement interface or stale source.
+Optional API diagnostics cannot block otherwise valid authenticated TX
+analysis. A router being unavailable as a fresh measurement source still can.
+
+The current result is calculated on page/API reads from a consistent stored
+snapshot. Viewing it does not write calculation history or contact routers.
+There is no independent always-running server worker that applies decisions.
+The 15-second page refresh provides automatic viewing, not a routing daemon.
+
+Save calculation snapshot is optional. It publishes the analysis and
+allocation projections plus their authoritative result into existing JSON
+storage. Traffic analysis and Router output show the latest saved calculation;
+Optimization also shows the current unsaved result.
+
+Saved results have fingerprints covering relevant settings and input state.
+New samples, changed settings or expired measurements can make an older
+snapshot historical. Historical does not mean it was fabricated; it means
+it no longer represents the exact current inputs.
+
+The current hold-down is 120 seconds for saved recommendations. After a
+ready result is saved, changed measurements under the same policy can yield
+hold_down until its timer expires. Merely viewing a preview does not start
+that timer. Changing the policy establishes a different policy context.
+
+When the overall result is blocked, infeasible or held, proposed allocations
+are withheld. Demand is never transferred between separate groups, and the
+current implementation does not expose a partial overall plan as ready.
+
+
+16. WHAT EACH DASHBOARD PAGE AND BROWSER API DOES
+
+The browser starts at http://127.0.0.1:8000/.
+
+  Dashboard, /
+    Inventory counts, current TX status/rates, live averages, service status
+    and recent activity. Polling status and optional API status are separate.
+
+  Routers, /routers
+    Existing router settings, selected interface, confirmed capacity, optional
+    price/currency, authentication references and API diagnostic readiness.
+
+  Router connection, /routers/connect
+    ZTP explanation, approved endpoints and registered-device status. Add
+    router opens this page. It does not create an unauthenticated device row.
+
+  Traffic monitoring, /monitoring
+    Selected interface, collection state, current TX and actual history.
+    Supports Mbps/Kbps display and filtering history by router.
+
+  Traffic analysis, /mathematics
+    Latest saved calculation, average/change/share/utilization/cost fields.
+    Calculate analysis saves a calculation; this page can show a historical
+    snapshot while the current optimization view has newer inputs.
+
+  Optimization, /optimization
+    Current allocations, readiness issues and carrier recommendations,
+    refreshed every 15 seconds. Optional saved snapshots appear separately.
+
+  Router output, /json-output
+    Latest saved calculation JSON for review. No executable commands are
+    available or delivered by this stage.
+
+  Automation, /automation
+    Displays automation/routing status. There is no active routing schedule.
+
+  Settings, /settings
+    Objective, averaging-window size and fallback expected sample interval.
+    Editing the fallback interval does not reschedule an installed collector.
+
+  Activity, /logs
+    Recorded operational/security events, not raw credential-bearing scripts.
+
+Read-only browser API paths include:
+
+  GET /api/routers        Public inventory projection and status.
+  GET /api/system/status Operational summary; some fields describe saved state.
+  GET /api/monitoring     Current measurement analysis and filtered TX history.
+  GET /api/optimization   Current unsaved dry-run result, with no-store caching.
+  GET /api/workflow       Latest committed snapshot and its currentness marker.
+
+Browser administrator policy protects these routes when enabled. The device
+listener does not expose them as management APIs. Current local development
+has browser authentication switched off, so keep its localhost boundary.
+
+
+17. JSON STORAGE, ACTIVE DIRECTORIES AND BACKUPS
+
+This project currently has no SQL database. One storage service owns JSON
+validation, thread/process locking, atomic replacement and recovery.
+
+Project source directory:
+  /Users/mac1/Documents/SD_ROUTER
+
+Actual configured operational DATA_DIR in this workspace:
+  /Users/mac1/SD_ROUTER_CHR_LAB/data
+
+Current default OUTPUT_DIR:
+  /Users/mac1/Documents/SD_ROUTER/output
+
+Private local configuration and managed credential file:
+  /Users/mac1/Documents/SD_ROUTER/.env
+  Its contents are intentionally excluded from this guide.
+
+An inactive data/ folder inside the source checkout is not necessarily the
+running application's data. A wrong DATA_DIR can make an inventory look
+empty without the original records having been deleted.
+
+Storage responsibilities:
+
+  routers.json                 Inventory and credential references.
+  routing_paths.json           Confirmed paths, roles, capacities and policy.
+  automation_settings.json     Analysis settings and disabled execution state.
+  router_communication.json    V1 communication/replay and polling rate state.
+  router_communication_v2.json V2 communication, issued responses and receipts.
+  router_traffic_v2.json       TX baselines, series, replay and pending append.
+  router_enrollment.json       Grant hashes, consumption state and commit journal.
+  traffic_history.json         Manifest pointing to dated traffic segments.
+  traffic_segments/*.jsonl     Actual appended TX measurement records.
+  averages.json                Saved analysis projections.
+  routing_costs.json           Saved allocation/cost projections.
+  optimization_results.json   Authoritative saved calculation snapshots.
+  activity_logs.json           Operational and security events.
+  output/router_config.json   Guarded legacy output; not an active executor.
+
+JSONL means one JSON object per line. Traffic segments roll at 8 MiB, avoiding
+rewriting a growing measurement history for every sample. Other JSON documents
+have a 16 MiB limit. Saved calculation histories need a retention/archive
+strategy before high-frequency unattended publication is added.
+
+Atomic replacement prevents readers seeing a half-replaced JSON document.
+Locks coordinate the two local application processes and their threads.
+Recoverable journals handle interrupted traffic appends and enrollment commits.
+Previous document versions can exist as .json.bak files. They are not a
+substitute for coordinated operational backups.
+
+Use persistent local storage. This design is not a network-filesystem or
+multi-host clustering protocol. A future distributed deployment needs an
+appropriate transactional storage/coordination design.
+
+For recovery, stop request processing and both application processes, then
+restore a coordinated checkpoint of registry, state, history, output and
+private credentials. Treat the environment file and private key material as
+separate protected secrets, but keep their restore point consistent.
+
+Replay records and consumed-token state are security data, not disposable
+cache. An older enrollment backup can revive a token consumed after that
+backup. Keep enrollment closed during recovery and expire/revoke obsolete
+authorizations before reopening it. Review whether key rotation or fresh
+bootstrap authorization is needed. Do not delete these files to clear an
+error or blindly restore stale state while routers are submitting requests.
+
+
+18. STARTING AND ADMINISTERING THE PROJECT
+
+Use the existing virtual environment from the project directory. In one
+terminal, start the browser application:
+
+  cd /Users/mac1/Documents/SD_ROUTER
+  .venv/bin/python serve.py
+
+In a second terminal, start the device backend:
+
+  cd /Users/mac1/Documents/SD_ROUTER
+  .venv/bin/python serve_devices.py
+
+If those listeners already exist, do not start duplicate copies on the same
+ports. The approved TLS proxy must also be running for router-facing HTTPS.
+Starting a Flask backend does not itself start that proxy, reconfigure its
+certificate or change router/firewall settings.
+
+For a new environment, create a virtual environment and install the pinned
+requirements from requirements-dev.txt when tests are needed. Use the project's
+documented Python support range, currently 3.12-3.15, and verify installation
+on the intended platform. Configure local paths, trust and access for that
+deployment rather than copying secret files into a public repository.
+
+Discover local management options with:
+
+  .venv/bin/python manage.py --help
+  .venv/bin/python manage.py create-enrollment-token --help
+
+Relevant operations are:
+
+  configure-admin
+    Set browser administrator access locally. Enable SDR_AUTH_ENABLED and
+    appropriate HTTPS/cookie policy when deploying beyond localhost.
+
+  configure-router-api --router-id ROUTER_ID
+    Hidden username/password prompts for an existing router's optional API
+    login. Saves private credentials and a reference; does not contact the
+    router or change its API port/TLS setting.
+
+  create-enrollment-token
+    Write a private one-device bootstrap bundle and public CA copy. Prints
+    paths and expiry, not the usable token.
+
+  revoke-enrollment-token --enrollment-id ENROLLMENT_ID
+    Revoke an unused enrollment authorization.
+
+  provision-router / revoke-router-auth
+    Provision/rotate controller authorization for an existing identity or
+    revoke a key/authorization. Follow the command help and restore plan.
+
+  prepare-traffic-client
+    Prepare a separate disabled native TX client. Preparation alone does not
+    install it or activate monitoring on a router.
+
+  register-monitoring-router
+    Explicit local inventory registration, separate from device provisioning.
+    Normal new-device onboarding can use authorized ZTP instead.
+
+  setup-controller-tls
+    Generate private TLS/configuration material for review. It does not start
+    a listener or alter the live proxy/firewall. Existing trust must not be
+    replaced casually to solve a connection error.
+
+A generic enrollment example is:
+
+  .venv/bin/python manage.py create-enrollment-token \
+    --interface APPROVED_INTERFACE \
+    --ca-file /approved/controller-ca.pem \
+    --output-dir private/new-router-bootstrap \
+    --enable-monitoring
+
+APPROVED_INTERFACE and the CA path are placeholders for reviewed deployment
+values. The monitoring flag is explicit authorization. Deliver the bundle
+through the approved trust channel; never paste its contents into chat/logs.
+
+Selecting another monitored interface in Flask changes controller policy.
+It does not automatically rewrite an existing router's installed script.
+The deployed collector and scheduler must also match that selection through
+authorized setup. This mismatch was the cause of the latest lab display issue.
+
+No commands in this guide authorize production route changes. Use approved
+change procedures for operations that contact or modify live devices.
+
+
+19. WHAT HAS ACTUALLY BEEN TESTED
+
+The latest completed full automated suite reported 596 passing tests. That
+is the recorded implementation verification, not a new test run performed
+while writing this guide. Tests use temporary stores, synthetic credentials
+and mocked/forbidden router networking. Some setup tests generate isolated
+test certificates. They do not require company secrets or live routers.
+
+Coverage includes strict schemas, signature construction, authorization,
+timestamp boundaries, replay after restart, concurrent duplicate claims,
+independent rate limits, TLS policy, TX arithmetic, counter resets, interface
+selection, storage interruptions, enrollment recovery, browser CSRF/auth,
+cost/allocation constraints, group isolation, hold-down and precision.
+
+Run them deliberately from the project environment with:
+
+  .venv/bin/python -m pytest -q
+  .venv/bin/python -m pip check
+
+Native evidence is separate. The three current CHRs were verified on RouterOS
+7.25.1. Older notes describe 7.21.4 polling validation; that is historical
+evidence for that client, not a guarantee for every RouterOS version/device.
+
+The 24 November load test used four authenticated, transmit-only native
+bandwidth-test sessions, each with a maximum duration of 420 seconds:
+
+  original -> MTN: 350,000 bits/second requested limit
+  original -> Glo: 350,000 bits/second requested limit
+  MTN -> original: 750,000 bits/second requested limit
+  Glo -> original: 200,000 bits/second requested limit
+
+Traffic stayed on the private lab network. Bandwidth-server authentication
+remained enabled. Monitoring read only selected-interface TX counters; it
+did not collect RX results. Reported counter rates can differ from requested
+payload limits because they include the selected interface's other traffic
+and accounting overhead.
+
+Peak observed current TX rates were:
+
+  original: 0.763415 Mbps on ether2
+  MTN:      0.859211 Mbps on ether3
+  Glo:      0.222268 Mbps on ether3
+
+With a complete sustained window, MTN averaged approximately 0.785529 Mbps
+and Glo 0.221676 Mbps. Total modeled demand was approximately 1.007205 Mbps.
+The optimizer proposed approximately 0.671470 Mbps for MTN and 0.335735 Mbps
+for Glo: a proposed reduction of 0.114059 Mbps on MTN and matching increase
+on Glo. Demand was preserved, configured bounds were respected and the
+configured 8:4 weighting was observed. These were advisory outputs.
+
+The highest sampled CPU value was 68%; this was sampled monitoring, not a
+continuous measurement of the maximum CPU instant. All four test clients
+exited successfully and all bandwidth-test sessions were confirmed stopped.
+Current TX dropped after the generators stopped; averages decayed over the
+normal measurement window.
+
+Additional checks used an isolated in-memory copy of the actual signed TX
+history. Smaller test-only capacity limits produced infeasible; missing or
+stale measurements produced blocked. Proposed allocations were withheld.
+Those checks did not change the live 8,000/4,000 Mbps capacity settings or
+insert fabricated traffic.
+
+The review report is:
+
+  output/lab-tx-load-test-20261124T091143Z.json
+
+It was completed at about 10:11 Africa/Lagos on 24 November 2026. It validates
+real lab TX collection and advisory calculations within the free-CHR limits.
+It does not certify 8/4 Gbps throughput, production forwarding performance
+or successful application/rollback of routing changes.
+
+
+20. TROUBLESHOOTING COMMON PROBLEMS
+
+"The website opens, but no new traffic appears."
+  Browser reachability proves the browser listener is running. Check the
+  device backend, approved TLS proxy, VM power/network connection, installed
+  collector, schedule, correct clock and controller monitoring authorization.
+  A working page alone does not prove a router can reach the HTTPS endpoint.
+
+"The interface is selected, but the router is awaiting or rejected."
+  Compare the controller selection, native collector declaration and path
+  measurement interface. They must agree exactly. In the latest repair,
+  controller selections used ether2/ether3 while scripts still used ether1.
+  A selection field is not an automatic remote installation command. Also
+  distinguish the WAN egress interface from the inter-CHR lab interface.
+
+"I enabled monitoring, but nothing starts."
+  The controller's enable flag, the installed collector's local enablement
+  and the scheduler must all be appropriate. A bootstrap issued without
+  --enable-monitoring intentionally leaves collection disabled. Enabling a
+  website flag alone does not install or activate a missing/disabled client.
+
+"The value is 0.0, 0.000 or a dash."
+  A valid zero, rounded small nonzero value and unavailable reading are
+  different. Review the sample state, last timestamp and raw JSON value.
+  Use Kbps on Traffic monitoring for small rates. A baseline/reset is waiting
+  for more data; stale means old. Altering capacity does not create TX traffic
+  or change its calculated rate. Some older saved-analysis tables use fixed
+  decimal formatting; current monitoring/optimization have finer precision.
+
+"It says 5/5, but optimization is blocked."
+  A full count can belong to stale data. Other requirements include confirmed
+  capacities, eligible relationships, matching source interfaces, roles,
+  objective and operating policy. Read the specific issue text. Price and
+  shared currency are additionally required for cost minimization.
+
+"MTN/Glo have no recent poll count, but traffic is arriving."
+  Poll/ACK and TX telemetry are independent flows. A TX-only enrolled collector
+  need not run the original polling client. Check fresh signed TX status.
+
+"API port has not been entered" or "Configure a credential reference."
+  These refer to the optional incoming RouterOS API diagnostic. Supply its
+  actual management address/port/TLS policy and configure credentials privately
+  if that diagnostic is needed. These values are separate from HMAC telemetry.
+
+"Unencrypted API connections are blocked."
+  Current policy requires verified API-SSL. Check that RouterOS api-ssl is
+  enabled with the correct server certificate/port and that the controller
+  trusts its issuer. Switching a checkbox does not configure RouterOS TLS.
+  Keep the established plaintext-API block rather than weakening it to get
+  past a setup error.
+
+"Router API connection failed."
+  Inspect the address, actual service port, certificate identity/validity,
+  trusted CA, network access and account permissions. API diagnostics read
+  basic system resources; a success is a point-in-time check, not continuous
+  proof of link health. A diagnostic failure alone does not invalidate fresh
+  authenticated push measurements.
+
+"Requests fail after a VM restart or laptop sleep."
+  Recheck the absolute clock and certificate validity, then network reachability
+  and scheduler execution. Time drift previously caused real rejections.
+  Counter restart or a long gap can legitimately create a new baseline and
+  require another full fresh window. Permanent approved time sync is needed.
+
+"An enrollment token is used, expired or produces a conflict."
+  Check authorization scope and identity/address conflicts without exposing
+  the token. A used token is not reusable. Issue a fresh grant through the
+  trusted process when needed; active identities require explicit replacement
+  authority. Do not erase the ledger to make an old authorization work again.
+
+"A saved result is historical or the analysis page looks older."
+  Optimization has a current preview; Traffic analysis and Router output use
+  the latest committed snapshot. Save a new snapshot when you want that
+  historical record updated. A new sample can immediately make an old snapshot
+  historical while the current preview continues to work normally.
+
+"It is Ready, but traffic has not changed paths."
+  Ready describes a feasible advisory calculation. No live executor, route
+  application acknowledgement or rollback mechanism is currently installed.
+  A 2:1 target does not itself alter device forwarding.
+
+"Why is traffic still averaged high after a test stops?"
+  Current TX reacts to the next measured interval. A five-reading average
+  retains earlier high readings until they leave the window. That delayed
+  decay is expected smoothing, not proof that test generators are still active.
+
+"The new checkout has no routers" or "Changes to data/ have no effect."
+  Check SDR_DATA_DIR and SDR_OUTPUT_DIR. The current active data store is
+  outside this source checkout. Do not recreate a fleet or discard state
+  before checking which store the running processes actually use.
+
+"Storage is unavailable" or HTTP 503.
+  Check permissions, disk space, document validation/size limits and pending
+  recovery state. Preserve evidence and use coordinated recovery. Deleting
+  replay/baseline/grant files can damage both history and security guarantees.
+
+Safe information for diagnosis includes router ID, selected interface, port,
+TLS enabled/disabled status, measurement state, timestamps, error code and
+rates. Do not include actual passwords, usable tokens, private keys, complete
+environment files or collector source containing signing secrets.
+
+
+21. WHAT REMAINS BEFORE AUTOMATIC LIVE ROUTING
+
+A. Verify the forwarding topology and usable capacities.
+   Demonstrate client traffic traversing the aggregation and each alternative
+   WAN path, including required NAT and return paths. The native load test
+   terminated traffic on lab routers; it did not prove Internet forwarding
+   or failover. Reconcile WAN settings with free-CHR/device/shared-link limits
+   and select the correct actual WAN measurement points for deployment.
+
+B. Build a server-side decision cycle.
+   Consume fresh measurements on an operating schedule independent of page
+   visits. Apply eligibility, stability and hold-down rules, retain bounded
+   audit history and stop safely when data or authority is unavailable.
+   An installed scheduling dependency is not this implemented control loop.
+
+C. Translate allocations into limited, reviewable plans.
+   Define supported RouterOS mechanisms and their relationship to desired
+   traffic shares. Use an explicit command allowlist, device prerequisites,
+   version handling and plan identities. Keep analysis separate from applying
+   state; never accept arbitrary shell/router commands from an HTTP response.
+
+D. Apply, verify and roll back.
+   Capture the relevant prior state, apply only approved changes, verify the
+   actual resulting configuration and network health, and restore prior
+   state if checks fail. Preserve an independent management path. Add applied
+   state acknowledgements; current receipt ACKs are insufficient.
+
+E. Make operation durable and secure.
+   Run the existing services/proxy with supervision and automatic startup,
+   use a stable reachable HTTPS origin, enable browser authentication and
+   appropriate HTTPS cookie settings, configure trusted time synchronization,
+   maintain certificate/key rotation and protected backups, and add useful
+   health alerts and recovery procedures.
+
+F. Perform complete failure and acceptance tests.
+   Cover controller/router restarts, stale or missing data, lost connectivity,
+   link failover, partial application, duplicate plan delivery and verified
+   rollback. Test real forwarded client flows as well as router-generated TX.
+   Test the throughput supported by the intended hardware/licenses.
+
+The existing JSON design also needs a deliberate scaling/retention plan if
+fleet size, publication frequency or multiple-controller requirements grow.
+Current enrollment is not a full client-certificate/mutual-TLS lifecycle, and
+the website is not an enterprise multi-role administration platform.
+
+Keep live routing disabled while these missing capabilities are implemented
+and tested. The present startup guard deliberately enforces that boundary.
+
+
+22. OPERATING BOUNDARIES AND DEVELOPMENT SEQUENCE
+
+Routine authorized work should preserve working identities, polling/ACK
+behavior, existing histories, private credentials and the explicit TX-only
+measurement policy. Router-side collectors have restricted read/test access;
+optional diagnostics use their separate read-only API accounts.
+
+Saving inventory, paths or calculation settings is a local controller action.
+Installing a bootstrap, correcting clocks, changing installed collectors,
+running a load generator or applying routing rules are device operations
+with different effects. Obtain and respect the authorization for the actual
+operation; do not treat a dashboard edit as approval to change routing.
+
+For the load test, explicit authorization covered the real bounded test and
+correcting monitoring interfaces. The original/Glo clock-only correction was
+separately approved. No routing, NAT or firewall changes were executed by
+the controller during those tests. Temporary management helper/command files
+containing access material were removed after use; all test sessions ended.
+
+A sensible next implementation order is:
+
+  1. Document and validate the intended forwarding topology and constraints.
+  2. Finish durable deployment, authentication and trusted time sync.
+  3. Add an autonomous analysis/decision worker and bounded audit retention.
+  4. Build and test plan generation against a supported RouterOS profile.
+  5. Implement apply verification, application ACKs and rollback in the lab.
+  6. Run failure tests with real forwarded client traffic.
+  7. Authorize a limited, observed deployment only after its controls pass.
+
+This sequence builds on the functioning collection and mathematical model
+without confusing a successful advisory test with completed routing control.
+
+
+23. GLOSSARY
+
+ACK: Acknowledgement. Here, the existing V2 ACK confirms receipt of a response.
+
+API: A programmatic interface. Router-facing Flask endpoints and the native
+RouterOS API-SSL service are different interfaces with different credentials.
+
+Bootstrap: The initial trusted configuration that lets a device reach and
+authenticate the controller and install its monitoring client.
+
+CA: Certificate Authority. Its public certificate establishes a trust anchor;
+its private key is secret signing authority.
+
+CHR: Cloud Hosted Router, MikroTik RouterOS running as a virtual machine.
+
+Control plane: The management and decision logic. SD_ROUTER's analysis and
+future routing controller belong here.
+
+CSRF: Cross-Site Request Forgery protection for browser actions using a token
+associated with the browser session. It is separate from device HMAC signing.
+
+Data plane: The actual forwarding of packets by the network devices.
+
+Dry run: A reviewable calculation or plan with no routing application.
+
+HMAC: A keyed message authentication code. It proves knowledge of a shared
+secret and protects the signed message against alteration.
+
+Idempotency: Retrying an operation without duplicating its effect. Snapshot
+publication has deduplication; consumed bootstrap tokens deliberately cannot
+be replayed to obtain the enrollment response again.
+
+Interface: A particular router port or logical network connection. The name
+being monitored must identify the intended egress measurement point.
+
+JSON / JSONL: Structured text records; JSONL stores one record per line.
+
+Mbps / Gbps: Decimal millions/billions of bits per second, units of speed.
+
+NAT: Network Address Translation. Correct translation and return routing
+matter when real client sessions use an alternative Internet path.
+
+Nonce/request ID: A fresh unique value that helps identify and reject replay.
+
+NTP: Network Time Protocol, used with an approved source to keep clocks valid.
+
+OSPF: A routing protocol. A financial cost or Mbps allocation is not an OSPF
+metric, and their translation has not been implemented in this project.
+
+Replay: Resubmitting a previously accepted authenticated message or claim.
+
+RouterOS: MikroTik's router operating system.
+
+Snapshot: A saved result tied to the inputs/settings that produced it.
+
+TLS / HTTPS: Encrypted transport with certificate-based server authentication.
+Mutual TLS additionally authenticates the client by its own certificate.
+
+TX / RX: Transmitted/received traffic relative to a specific interface.
+
+UTC: The common time reference used for stored and signed timestamps.
+
+UUID4: A random-format unique identifier used for request and response IDs.
+
+WinBox: MikroTik's management application; it is not required for every normal
+monitoring update after a router's trusted setup.
+
+ZTP: Zero-Touch Provisioning after the required initial trust/connectivity.
+
+
+24. REFERENCES AND SUGGESTED READING ORDER
+
+For the project purpose and daily view, read sections 1-4 and 16 first.
+For monitoring and the mathematics, read sections 10-15 and the actual test
+in section 19. For onboarding/security, read sections 6-9. Before operating
+or deploying the system, read sections 17-18 and 20-22.
+
+Local sources used for this guide:
+
+  README.md
+  docs/local-workflow.md
+  docs/traffic-monitoring.md
+  docs/routeros-setup.md
+  docs/routeros-v2-protocol.md
+  docs/router-pull.md
+  docs/routeros-native-notes.md
+  app.py, device_app.py, config.py, manage.py
+  controllers/, services/, templates/, scripts/routeros/ and tests/
+  The selected non-secret operational configuration and completed test reports.
+
+Some earlier README/setup notes describe the preceding ether1 WAN-monitoring
+configuration or older native validation versions. This guide's interface
+table describes the latest inter-CHR test configuration verified on
+24 November 2026. Inspect the current registry and actual device mapping
+before applying any later operational change.
+
+Official background references:
+
+  MikroTik CHR licensing:
+  https://help.mikrotik.com/docs/spaces/ROS/pages/18350234/Cloud%20Hosted%20Router%20CHR
+
+  MikroTik native bandwidth testing:
+  https://help.mikrotik.com/docs/spaces/ROS/pages/7962644/Bandwidth%20Test
+
+  Flask deployment:
+  https://flask.palletsprojects.com/en/stable/deploying/
+
+  Flask application security:
+  https://flask.palletsprojects.com/en/stable/web-security/
+
+END OF GUIDE
+
+
+UPDATE — 24 NOVEMBER 2026: THE PAPER'S ADAPTIVE OPTIMIZER
+
+This update supersedes earlier descriptions of a separate Traffic analysis page
+and financial optimization in the primary workflow. Traffic analysis was removed
+from navigation; its old URL redirects to Optimization. Necessary averaging math
+still runs inside the optimizer.
+
+Optimization now shows actual TX/utilization graph panels and a separate predicted
+allocation chart. It uses capacity-weighted MLU, bounded proportional feedback,
+and congestion-aware ROUTING costs. For 9 Gbps demand with configured capacities
+8 and 4 Gbps, the mathematical target is 6 and 3 Gbps: both 75% utilized. The 80%
+operating target is a warning, not a physical capacity restriction. Above physical
+capacity, the controller reports excess demand and withholds the allocation.
+
+The independent serve_optimizer.py worker calculates without browser visits.
+New authenticated device endpoints publish advisory recommendations and receive
+separate application reports. Existing poll/ACK behavior remains intact. Neither
+an ACK nor a mathematical prediction is treated as proof of a routing change.
+Flask still cannot modify router routing. All execution stays disabled.
+
+Important current lab limitation: both paths still point at the same main-router
+ether2 counter and select carrier-side telemetry. Those readings cannot separately
+measure main-to-MTN and main-to-Glo demand. Optimization now explicitly blocks that
+mapping. Existing real MTN/Glo TX history remains visible in a separate carrier
+health chart. No traffic is invented, split by assumption, or counted twice.
+
+Next, an independently measurable main-side handoff for each carrier must be
+reviewed and authorized, mapped in the controller, and given its matching TX
+collector. Only then can the main demand graphs and valid advisory allocation
+populate. A future separately authorized router-local PCC actuator and measured
+after results are needed before claiming real routing improvement. No such live
+configuration was applied here.
+
+Full implementation/operating guide: docs/adaptive-optimization.txt
+Implementation report: output/adaptive-implementation-report-20261124.txt
+
+
+LATER UPDATE — APPROVED SEPARATE TX HANDOFFS
+The earlier shared-interface blocker has now been addressed with your explicit
+approval. The main router has two logical VLAN interfaces over its existing lab
+link: sdr-to-mtn (VLAN 2401) and sdr-to-glo (VLAN 2402). Each carrier has a matching
+VLAN interface. The main collector sends the actual cumulative TX counter of each
+logical interface independently to Flask. The optimizer can therefore use real
+main-to-carrier measurements instead of reverse-direction carrier health TX.
+The configured capacities remain MTN 8 Gbps and Glo 4 Gbps. Default routes, OSPF,
+PCC and live routing execution remain unchanged. Test-IP assignment added only
+the explicitly approved connected lab subnets. Generated load tests are finite
+and capped, and the optimization result remains advisory. A predicted target is
+not proof that an automatic routing change occurred.
+
+The real isolated TX test passed. Main traffic averaged about 0.15 Mbps toward
+MTN and 0.35 Mbps toward Glo; the model recommended about 0.33 and 0.17 Mbps.
+The main MikroTik successfully retrieved the advisory over HTTPS and reported
+not_applied. Test streams stopped; monitoring continues. Full suite: 643 passed.
+Read output/live-tx-optimization-test-20261124.txt for exact measured results
+and the limits of this advisory demonstration.
+
+
+LIVE DASHBOARD UPDATE — 24 NOVEMBER 2026
+The dashboard is now an operational view with one live outbound TX graph. It
+shows the main router toward MTN and Glo, and clicking a sample displays its
+reading and timestamp. Background refresh keeps a selected sample pinned while
+new readings arrive. The extra utilization, prediction and health graphs and
+long explanations have been removed from the dashboard and Optimization.
+Optimization has a compact recommendation table and a Recent changes sidebar.
+That list shows recorded monitoring changes, saved settings, advisories and
+router application reports with separate status labels. An advisory or receipt
+is never shown as an applied routing change. Monitoring and routing safeguards
+remain unchanged.
+The simplified interactive dashboard update passed 649 automated tests. Browser
+checks confirmed click-to-read values, pinned selections during refresh, new
+samples appearing without reload, keyboard controls and mobile layout. The
+completed UI update is itself recorded in Recent changes.
+
+OPTIMIZATION SWITCH
+Optimization now has an On/Off switch. Off pauses optimization and withholds new
+recommendations while TX monitoring and its graph keep running. The setting is
+saved, so restarting Flask does not turn it back on. On resumes advisory
+calculations with fresh readings. This switch never enables live routing or
+changes router policies. Recent changes records pause/resume actions.
+The On/Off control passed the full 666-test suite and browser checks. Off blocks
+manual and automatic optimization as well as device recommendation delivery;
+signed TX collection continues. The current enabled state was preserved.

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_components.html" import heading %}
+{% macro action_form(action, label, style='btn-outline-primary') %}
+  <form method="post" action="{{ url_for('router_management.setup_action', router_id=setup.router.router_id, action=action) }}" class="section-gap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn {{ style }}" type="submit">{{ label }}</button>
+  </form>
+{% endmacro %}
+{% block title %}{{ setup.router.name }} · Setup{% endblock %}
+{% block content %}
+{{ heading(setup.router.name, setup.router.router_id ~ ' · ' ~ (config.ENVIRONMENT | capitalize) ~ ' · Read-only onboarding') }}
+<div class="d-flex gap-2 mb-3"><a class="btn btn-outline-secondary" href="{{ url_for('pages.routers') }}#router-{{ setup.router.router_id }}">Edit connection, role and capacity</a><a class="btn btn-outline-secondary" href="{{ url_for('pages.routing_paths') }}">Configure outbound links</a></div>
+<section class="surface panel">
+  <div class="panel-heading"><h2>Connection</h2><span class="category-pill">{{ 'Active' if setup.router.active else 'Deactivated' }}</span></div>
+  <dl class="status-list"><div><dt>Management address</dt><dd>{{ setup.router.ip_address or 'Not configured' }} · {{ setup.router.api_port or 'No API port' }}</dd></div><div><dt>Role</dt><dd>{{ setup.router.router_role or 'Unassigned' }}</dd></div><div><dt>Transport</dt><dd>{{ 'API-SSL with certificate verification' if setup.router.api_tls else 'API TLS is not selected' }}</dd></div></dl>
+  <details class="section-gap"><summary>Save read-only API account</summary>
+    <form method="post" action="{{ url_for('router_management.setup_action', router_id=setup.router.router_id, action='credentials') }}" class="row g-3 section-gap" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-6"><label class="form-label" for="api-username">Username</label><input class="form-control" id="api-username" type="password" name="username" required maxlength="128" autocomplete="off"></div>
+      <div class="col-md-6"><label class="form-label" for="api-password">Password</label><input class="form-control" id="api-password" type="password" name="password" required maxlength="4096" autocomplete="new-password"></div>
+      <div class="col-12"><button class="btn btn-primary" type="submit">Save credentials privately</button></div>
+    </form>
+  </details>
+  {{ action_form('discover', 'Test authentication and discover router') }}
+  <details class="section-gap"><summary>Prepare private native polling bundle</summary>
+    <p class="form-text">Requires an authenticated HTTPS session and the profile's public controller CA. Deliver the bundle through the trusted initial setup channel. TX and advisory scripts are disabled until explicitly enabled. Nothing is installed on the router by this button.</p>
+    <form method="post" action="{{ url_for('router_management.private_bundle', router_id=setup.router.router_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="form-check"><input class="form-check-input" type="checkbox" name="confirm" value="true" required> I authorize a new router key and will deliver this private bundle securely.</label>
+      <button class="btn btn-outline-primary section-gap" type="submit">Prepare and download private bundle</button>
+    </form>
+  </details>
+  <form method="post" action="{{ url_for('router_management.setup_action', router_id=setup.router.router_id, action='active') }}" class="section-gap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="active" value="{{ 'false' if setup.router.active else 'true' }}">
+    <button class="btn btn-outline-secondary" type="submit">{{ 'Deactivate router' if setup.router.active else 'Activate for setup' }}</button>
+  </form>
+</section>
+{% if setup.discovery %}
+<section class="surface panel section-gap">
+  <div class="panel-heading"><h2>Discovered device</h2><span class="category-pill">{{ 'Current settings' if setup.discovery_current else 'Settings changed — rediscover' }}</span></div>
+  {% set resource = setup.discovery.snapshot.resource.rows[0] %}
+  <dl class="status-list"><div><dt>Model / architecture</dt><dd>{{ resource.get('board-name', 'Unknown') }} / {{ resource.get('architecture-name', 'Unknown') }}</dd></div><div><dt>RouterOS</dt><dd>{{ resource.version }}</dd></div><div><dt>Read at (UTC)</dt><dd>{{ setup.discovery.captured_at }}</dd></div></dl>
+  <form method="post" action="{{ url_for('router_management.setup_action', router_id=setup.router.router_id, action='interfaces') }}" class="section-gap">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label class="form-label" for="tx-interfaces">Outbound TX interfaces</label>
+    <select class="form-select" id="tx-interfaces" name="interfaces" multiple required size="5" {% if not setup.discovery_current %}disabled{% endif %}>
+      {% for interface in setup.discovery.snapshot.interfaces.rows %}<option value="{{ interface.name }}" {% if interface.name in setup.router.monitoring_interfaces %}selected{% endif %}>{{ interface.name }} · {{ interface.get('type', '') }} · {{ 'running' if interface.get('running') == 'true' else 'not running' }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-outline-primary section-gap" type="submit" {% if not setup.discovery_current %}disabled{% endif %}>Save TX selection</button>
+    <a class="btn btn-outline-secondary section-gap" href="{{ url_for('pages.monitoring', router_id=setup.router.router_id) }}">Monitoring On / Off</a>
+  </form>
+  <details class="section-gap"><summary>Capabilities and routing configuration</summary>
+    <div class="table-responsive section-gap"><table class="table"><thead><tr><th>Capability</th><th>Evidence</th><th>Result</th></tr></thead><tbody>{% for name, feature in setup.capabilities.items() %}<tr><th>{{ name | replace('_', ' ') | capitalize }}</th><td>{{ feature.status | capitalize }}</td><td>{{ feature.detail }}</td></tr>{% endfor %}</tbody></table></div>
+    {% for name in ('tables', 'ospf_instances', 'ospf_areas', 'ospf_templates', 'ospf_interfaces_v6', 'mangle', 'routes', 'fasttrack', 'bridge_ports', 'switches') %}
+      <details class="section-gap"><summary>{{ name | replace('_', ' ') | capitalize }} · {{ setup.discovery.snapshot[name].status }}</summary><pre class="section-gap">{{ setup.discovery.snapshot[name].rows | tojson(indent=2) }}</pre></details>
+    {% endfor %}
+  </details>
+</section>
+<section class="surface panel section-gap">
+  <div class="panel-heading"><h2>Routing baseline</h2><span class="category-pill">{{ 'Approved' if setup.baseline_current and setup.baseline.approved_at else 'Review required' }}</span></div>
+  <p class="form-text">This captures the projected routing fields shown above. Keep a separate trusted RouterOS backup before enabling any future executor.</p>
+  <form method="post" action="{{ url_for('router_management.setup_action', router_id=setup.router.router_id, action='capture') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for path in setup.paths %}
+      <label class="form-label section-gap" for="scope-{{ path.path_id }}">{{ path.carrier }} · {{ path.aggregation_interface or 'Interface required' }} · Managed resource</label>
+      <select class="form-select" id="scope-{{ path.path_id }}" name="scope_{{ path.path_id }}">
+        <option value="">Read-only baseline; no write scope</option>
+        {% for menu in ('ospf_templates', 'ospf_interfaces_v6', 'mangle') %}{% for resource in setup.discovery.snapshot[menu].rows %}{% if resource.get('.id') %}<option value="{{ menu }}:{{ resource['.id'] }}">{{ menu }} {{ resource['.id'] }} · {{ resource.get('interfaces') or resource.get('interface') or resource.get('out-interface') or 'Interface match required' }} · {{ resource.get('cost') or resource.get('per-connection-classifier') or 'No supported field' }}</option>{% endif %}{% endfor %}{% endfor %}
+      </select>
+    {% endfor %}
+    <button class="btn btn-outline-primary section-gap" type="submit" {% if not setup.discovery_current %}disabled{% endif %}>Capture baseline for review</button>
+  </form>
+  {% if setup.baseline %}
+    <dl class="status-list section-gap"><div><dt>Captured at (UTC)</dt><dd>{{ setup.baseline.captured_at }}</dd></div><div><dt>Baseline status</dt><dd>{{ 'Current' if setup.baseline_current else 'Stale — capture again' }}</dd></div><div><dt>Scoped fields</dt><dd>{{ setup.baseline.resources | length }}</dd></div></dl>
+    <a class="btn btn-outline-secondary" href="{{ url_for('router_management.baseline_download', router_id=setup.router.router_id) }}">Download baseline</a>
+    {% if setup.baseline.approved_at %}<a class="btn btn-outline-secondary" href="{{ url_for('router_management.rollback_download', router_id=setup.router.router_id) }}">Download rollback reference</a>{% endif %}
+    <form method="post" action="{{ url_for('router_management.setup_action', router_id=setup.router.router_id, action='approve-baseline') }}" class="section-gap">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="digest" value="{{ setup.baseline.digest }}">
+      <label class="form-check"><input class="form-check-input" type="checkbox" required> I reviewed this baseline and the outbound link mappings.</label>
+      <button class="btn btn-primary section-gap" type="submit" {% if not setup.baseline_current %}disabled{% endif %}>Approve baseline</button>
+    </form>
+  {% endif %}
+</section>
+{% endif %}
+<section class="surface panel section-gap">
+  <div class="panel-heading"><h2>Routing execution</h2><span class="category-pill">Disabled</span></div>
+  <p>{{ setup.execution_blocker }}</p>
+  <p class="form-text">Scope approval records the intended router and exact fields for a future executor. It does not apply recommendations, install commands or enable global routing.</p>
+  <dl class="status-list"><div><dt>Execution scope</dt><dd>{{ 'Approved until ' ~ setup.authorization.expires_at if setup.scope_approved else 'Not approved or no longer current' }}</dd></div></dl>
+  {% if setup.baseline_current and setup.baseline.approved_at and setup.baseline.resources %}
+    <form method="post" action="{{ url_for('router_management.setup_action', router_id=setup.router.router_id, action='authorize') }}" class="section-gap">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="digest" value="{{ setup.baseline.digest }}">
+      <label class="form-label" for="approval-duration">Scope approval duration (seconds)</label><input class="form-control" type="number" id="approval-duration" name="ttl_seconds" min="60" max="86400" value="3600" required>
+      <label class="form-check section-gap"><input class="form-check-input" type="checkbox" name="confirm" value="true" required> Approve only the selected baseline resources.</label>
+      <button class="btn btn-outline-primary section-gap" type="submit">Approve execution scope</button>
+    </form>
+  {% endif %}
+  {{ action_form('revoke', 'Revoke execution scope', 'btn-outline-danger') }}
+  <a class="btn btn-outline-secondary section-gap" href="{{ url_for('pages.optimization') }}">Review advisory recommendations</a>
+  <a class="btn btn-outline-secondary section-gap" href="{{ url_for('router_management.policy_preview', router_id=setup.router.router_id) }}">Review scoped policy JSON</a>
+</section>
+{% endblock %}

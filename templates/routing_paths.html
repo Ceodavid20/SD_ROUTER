@@ -43,7 +43,7 @@
     <div class="col-md-6">
       <label class="form-label" for="{{ prefix }}-aggregation-interface">Aggregation router interface</label>
       <input class="form-control" id="{{ prefix }}-aggregation-interface" name="aggregation_interface" value="{{ path.get('aggregation_interface') or '' }}" maxlength="128" autocomplete="off" placeholder="For example, ether1">
-      <div class="form-text">Optional for carrier-side dry-run analysis. Leave unknown physical mappings blank.</div>
+      <div class="form-text">Adaptive MLU requires a verified, distinct main-router TX interface for each carrier. Leave unknown mappings blank.</div>
     </div>
     <div class="col-md-6">
       <label class="form-label" for="{{ prefix }}-carrier-interface">Carrier router interface</label>
@@ -58,6 +58,13 @@
       </select>
     </div>
     <div class="col-md-6">
+      <label class="form-label" for="{{ prefix }}-availability">Carrier availability</label>
+      <select class="form-select" id="{{ prefix }}-availability" name="carrier_availability">
+        {% for value, label in [('unknown','Unknown — telemetry is not proof of failure'),('available','Confirmed available'),('unavailable','Confirmed unavailable')] %}
+        <option value="{{ value }}" {% if path.get('carrier_availability','unknown') == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <p class="form-text">Mark unavailable only after independent confirmation of carrier failure.</p>
       <label class="form-label" for="{{ prefix }}-relationship">Path status</label>
       <select class="form-select" id="{{ prefix }}-relationship" name="relationship_status" required>
         {% for value, label in [('pending_confirmation', 'Pending confirmation'), ('operator_selected', 'Confirmed by operator'), ('disabled', 'Disabled')] %}
@@ -106,7 +113,7 @@
                 <small class="table-secondary-line">{{ path.carrier_interface or 'Not set' }}</small>
               </td>
               <td>{% if path.path_capacity_bps %}{{ '{:,}'.format(path.path_capacity_bps) }} bps{% else %}Not set{% endif %}</td>
-              <td><span class="category-pill">{{ 'Analysis ready' if path.analysis_ready else 'Incomplete' }}</span>{% if path.analysis_ready and path.configuration_status != 'configured' %}<small class="table-secondary-line">Physical mapping incomplete</small>{% endif %}</td>
+              <td><span class="category-pill">{{ 'Measurement configured' if path.analysis_ready else 'Incomplete' }}</span>{% if path.analysis_ready and path.configuration_status != 'configured' %}<small class="table-secondary-line">Physical mapping incomplete</small>{% endif %}</td>
             </tr>
           {% else %}
             <tr><td class="table-empty" colspan="7">No routing paths are configured.</td></tr>

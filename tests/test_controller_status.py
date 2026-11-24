@@ -304,8 +304,8 @@ def test_router_page_and_dashboard_show_polling_independently_of_api_diagnostic(
     assert "test-only-hidden-registry-secret" not in content
     assert 'action="/routers/add"' not in content
     dashboard = client.get("/").get_data(as_text=True)
-    assert "1 of 1 routers have recent authenticated controller check-ins." in dashboard
-    assert "Optional API diagnostics" in dashboard
+    assert 'data-live-tx' in dashboard and "Optional API diagnostics" not in dashboard
+    assert client.get("/api/system/status").get_json()["controller_polling"]["authenticated"] == 1
     api_router = client.get("/api/routers").get_json()["routers"][0]
     assert api_router["controller_polling"]["state"] == "authenticated"
     assert api_router["connection_status"] == "disconnected"

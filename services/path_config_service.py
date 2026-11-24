@@ -78,7 +78,8 @@ def validate_routing_paths(value: Any) -> None:
         raise ValidationError("Routing paths must be a list.")
     ids, links = set(), set()
     for path in value["paths"]:
-        if not isinstance(path, dict) or set(path) not in (_PATH_FIELDS, _PATH_FIELDS | {"monitor_router_id"}):
+        if (not isinstance(path, dict) or not _PATH_FIELDS <= set(path)
+                or set(path) - _PATH_FIELDS - {"monitor_router_id", "carrier_availability"}):
             raise ValidationError("Invalid path fields.")
         for key in ("path_id", "aggregation_router_id", "carrier_router_id"):
             if not isinstance(path[key], str) or not _ID.fullmatch(path[key]):
@@ -88,6 +89,8 @@ def validate_routing_paths(value: Any) -> None:
         ids.add(path["path_id"])
         if path["aggregation_router_id"] == path["carrier_router_id"]:
             raise ValidationError("Select two different routers.")
+        if path.get("carrier_availability", "unknown") not in ("unknown", "available", "unavailable"):
+            raise ValidationError("Select an explicitly confirmed carrier availability state.")
         monitor = path.get("monitor_router_id")
         if monitor is not None and (not isinstance(monitor, str) or monitor not in (
             path["aggregation_router_id"], path["carrier_router_id"],
@@ -182,6 +185,8 @@ class PathConfigService:
             "relationship_status": _text(form.get("relationship_status", "operator_selected"), "path status", required=True),
             "monitor_router_id": _text(form.get("monitor_router_id"), "outbound measurement source"),
         }
+        if "carrier_availability" in form:
+            path["carrier_availability"] = form["carrier_availability"]
         inventory = {router["router_id"]: router for router in self.storage.read_json("routers.json")}
         for key in ("aggregation_router_id", "carrier_router_id"):
             if path[key] not in inventory:
@@ -211,6 +216,8 @@ class PathConfigService:
         def replace(config: dict[str, Any]) -> dict[str, Any]:
             for index, current in enumerate(config["paths"]):
                 if current["path_id"] == path_id:
+                    if "carrier_availability" not in form and "carrier_availability" in current:
+                        path["carrier_availability"] = current["carrier_availability"]
                     if "monitor_router_id" not in form:
                         path["monitor_router_id"] = current.get("monitor_router_id")
                     config["paths"][index] = path

@@ -1,0 +1,41 @@
+SD_ROUTER production-readiness implementation plan — 24 November 2026
+
+Preservation
+Keep the working CHR inventory, JSON history, TX graph, optimization switch,
+MLU controller, signed V1/V2 polling and acknowledgements. No live router
+commands, routing changes, data deletion, or Time ON/OFF scheduling in this work.
+A private source snapshot was saved before the audit.
+
+Stage 1: deployment configuration
+Introduce explicitly selected development, laboratory and production profiles.
+Isolate data, output, credential and certificate locations. Fail closed before
+opening storage if production is insecure or points at another profile.
+Make browser binding, timeouts and session duration configurable. Preserve
+existing development configuration without migrating or deleting lab data.
+
+Stage 2: read-only device discovery
+Extend the existing bounded native API client with a fixed allowlist of print
+operations and field projections. Discover model, architecture, version,
+interfaces, routing tables, OSPF, PCC and FastTrack/offload indicators. Never
+read RX counters, secrets, script sources or full configuration exports.
+Distinguish confirmed observations from unverified scripting/HTTPS capabilities.
+
+Stage 3: onboarding and approval
+Add a separate router setup page for credentials, discovery, TX selection,
+role, safe deactivation, baseline capture/review and scoped authorization.
+Bind approvals to inventory, topology and baseline fingerprints; configuration
+changes invalidate them. Preserve the global routing execution block.
+Provide configuration baseline backups and a reviewed rollback reference,
+without claiming a complete device backup or implementing unsafe live restore.
+
+Stage 4: topology, policy and regression checks
+Exercise arbitrary router names, addresses and interfaces; multiple independent
+main routers; at least three links per group; changing capacities; different
+RouterOS capabilities; secure production onboarding and unauthorized-write
+prevention. Preserve the existing device wire contracts. Run the full suite.
+
+Stage 5: migration and evidence
+Document defaults versus protocol/math/security constants, changed files,
+deployment and onboarding steps, capability strategy and measured test results.
+List the remaining physical-hardware and future execution/rollback validation
+explicitly. New physical routers must require configuration, not Python edits.

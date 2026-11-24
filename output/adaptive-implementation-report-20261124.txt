@@ -1,0 +1,246 @@
+LATEST UPDATE: The user subsequently approved isolated carrier VLAN handoffs.
+They are now installed and verified with real TX. The former measurement blocker
+is resolved; Optimization reached Ready. Read output/live-tx-optimization-test-20261124.txt
+for actual measured results, cleanup, the 643-test result, and remaining execution limits.
+
+SD_ROUTER — IMPLEMENTATION REPORT
+24 November 2026
+
+OUTCOME
+Implemented the paper-based adaptive optimizer within the existing Flask/JSON
+architecture. Removed the standalone Traffic analysis feature; Optimization now
+contains actual TX/utilization graph panels, predicted target bars and explicit
+verified-before/after status. Repaired the monitoring/dashboard/router-connection
+page regressions. Started the browser/device servers and independent advisory
+worker. Existing signed TX collectors continue working. No router configuration
+or routing changes were applied. No credentials or secrets are in this report.
+
+INITIAL LIVE STATUS BEFORE HANDOFF APPROVAL
+The optimizer reports configuration_required, rather than reusing the old,
+incorrect carrier-side demand. Both saved paths use the same main ether2 and
+select carrier TX as their measurement source. Main-router TX on that shared
+interface cannot be split into measured MTN and Glo demand. Per-carrier main
+charts and recommendations are withheld. Existing real MTN/Glo history is shown
+separately as carrier health. Configured total capacity is 12,000 Mbps; this is
+not a measured CHR throughput result.
+
+MATHEMATICS
+MLU minimizes maximum utilization for a parallel-link group. For fresh averaged
+main-egress demand D and eligible capacities c_i:
+  target_i = D * c_i / sum(c_i)
+Targets sum to D, stay nonnegative and within physical capacity, and equalize
+eligible utilization. Failed/standby links get zero; report unmet demand when
+healthy capacity cannot carry D. Above combined capacity, report physical excess
+and publish no infeasible allocation. The 80% default is a configurable soft
+target: 12 Gbps can still have a feasible 8+4 Gbps allocation, with congestion risk.
+
+Cost = ceil((reference_bps / capacity_bps) * (1 + alpha * utilization^2)).
+Defaults: reference=100 Gbps, alpha=4; both configurable. Decimal arithmetic
+avoids incorrect ceil at binary floating-point integer boundaries. Calculated
+cost is separate from actual OSPF metric, connection weight and actual TX.
+
+Feedback uses error=u_second-u_first and a proportional gain, bounded step,
+normalized weights, tolerance and hold-down. Initial weights follow capacity.
+Discrete PCC buckets obey the step bound as well. Larger groups use a bounded
+simplex projection. Unchanged decisions are deduplicated. Advisory weights never
+become confirmed applied weights; there is no advisory integration wind-up.
+A fully live closed loop still requires an authorized router-local actuator,
+verified applied control state and real measured response.
+
+TRAFFIC REDISTRIBUTION MECHANISM
+Read-only inspection found OSPF templates (main and MTN cost 10), no mangle
+rules, and one routing table on each lab router; Glo had no OSPF templates.
+Different OSPF metrics do not implement bandwidth-proportional balancing.
+Prepared weighted PCC bucket recommendations for new unmarked connections.
+Preserve existing connection marks and routing tables during any future approved
+application. For an 8:4 example, 3/0 and 3/1 select MTN, 3/2 selects Glo; the
+configurable default denominator 300 allows finer adjustments. Actual bytes per
+connection vary, so a connection percentage is never reported as measured traffic.
+Official reference: https://manual.mikrotik.com/docs/high-availability-solutions/load-balancing/per-connection-classifier/
+
+SECURITY AND COMPATIBILITY
+V1/V2 poll and receipt ACK no-action contracts remain unchanged. New independent
+POST /api/controller/v2/optimization and /optimization/result (under the same
+/api/controller/v2 prefix) reuse HMAC-SHA512 and existing router keys. They have
+strict JSON, verified HTTPS, timestamp/identity checks, source binding, independent
+persistent rate/replay state, atomic authorization recheck, scoped response IDs,
+versions and expiries. Extra fields, duplicate keys, NaN and RX counters are
+rejected. Only delivered unexpired decisions can receive an application report.
+An applied claim is rejected because execution was never authorized. Receipt
+ACKs do not create application evidence. Native responses are size bounded.
+
+Multi-interface TX extends the existing per-message contract: each authorized
+interface has an independent cumulative counter, baseline and averaging series.
+Nonce replay protection remains shared per identity. Changing the allowed list
+disables monitoring, rotates generation and requires explicit re-enabling. New
+routers stay disabled until authorized. Reset/stale/missing samples are not zero.
+
+Workflow version 2 reuses optimization_results.json and existing projections;
+legacy version 1 remains readable. New optimization_communication.json contains
+only bounded protocol metadata. Latest 256 adaptive snapshots are retained;
+legacy results and real segmented TX history are preserved. Actual plots are
+built from stored measurements and break across reset series or long gaps.
+
+VERIFICATION
+Final complete suite: 642 passed in 75.17 seconds.
+Command: .venv/bin/python -m pytest -q
+Additional checks: Python compile, JavaScript syntax, git diff --check, real
+local-page HTTP checks and verified HTTPS unsigned-request rejection (401).
+All eight checked local pages returned 200; Traffic analysis navigation is gone.
+Headless Chrome rendered the actual carrier-health graph on the real dashboard.
+An isolated temporary test app rendered main TX, utilization and prediction SVGs;
+its verified-after chart stayed empty. Test fixtures never entered production
+inventory or traffic history. The native advisory client is prepared privately,
+disabled and not installed or run on RouterOS. Target-device validation remains.
+
+BEFORE AND AFTER RESULTS
+No live routing decision has been applied, so there are NO verified real after
+measurements or claimed real improvement. Historical data was not rewritten.
+The requested mathematical cases passed:
+  demand 3/6/9/9.6/12 Gbps -> MTN 2/4/6/6.4/8, Glo 1/2/3/3.2/4 Gbps.
+Synthetic illustrative case (not production traffic): observed 4.0+3.8 Gbps
+on 8+4 Gbps gives 50% vs 95%; predicted target is 5.2+2.6 Gbps, both 65%.
+Predicted imbalance reduction is 45 percentage points; predicted maximum
+utilization reduction is 30 points. Calculated costs at those observed loads are
+25 and 116. This is a mathematical estimate, not an applied-router result.
+Feedback convergence is tested under an explicit equal-size new-connection model.
+
+REMAINING LAB WORK AND LIMITS
+1. Review/approve independently measurable main-router MTN and Glo handoffs.
+   Separate physical/virtual interfaces or verified VLAN handoffs are needed.
+   The controller cannot infer a carrier split on a shared management interface.
+2. Configure the approved local path mapping and TX interface authorization,
+   review/install matching collectors with permission, then collect full fresh
+   averaging windows. No interface name will be invented or silently assigned.
+3. Review tables, gateways, NAT, firewall exclusions, ownership and rollback
+   before implementing/enabling an authorized router-local PCC actuator.
+   This release has no live routing executor; changing a flag cannot activate it.
+4. Install/schedule the reviewed read/report-only advisory pull client only after
+   approval and RouterOS validation. No scheduler was modified by this change.
+5. Confirm real capacity and CHR throughput/licensing/resources before expecting
+   the configured gigabit model speeds. Configured capacity is not a speed test.
+6. Supervise browser, device and optimizer worker processes for reboot recovery.
+
+OPERATIONS AND SAFEGUARDS
+Browser: http://127.0.0.1:8000/optimization
+Device backend: existing loopback port 8001 behind the existing TLS proxy.
+Worker: .venv/bin/python serve_optimizer.py (or --once for one cycle).
+Only the known local app processes were restarted. The TLS proxy was untouched;
+its existing forwarding served the new authenticated route under verified TLS.
+Local automation settings were backed up privately before selecting adaptive_mlu.
+SIMULATION_MODE=true; LIVE_ROUTING_ENABLED=false; plaintext API policy unchanged.
+No router, clock, interface, firewall, route, OSPF, NAT, license or scheduler writes.
+
+FILES INSPECTED (ARCHITECTURE AND RELEVANT REGRESSIONS)
+  app.py
+  device_app.py
+  config.py
+  manage.py
+  serve.py
+  serve_devices.py
+  controllers/page_controller.py
+  controllers/workflow_controller.py
+  controllers/traffic_controller.py
+  controllers/monitoring_controller.py
+  controllers/router_poll_controller.py
+  controllers/api_controller.py
+  services/json_storage.py
+  services/workflow_service.py
+  services/workflow_state.py
+  services/traffic_service.py
+  services/traffic_state.py
+  services/traffic_protocol.py
+  services/router_service.py
+  services/path_config_service.py
+  services/routeros_protocol.py
+  services/routeros_poll_service.py
+  services/router_poll_service.py
+  services/router_communication_state.py
+  services/controller_status_service.py
+  services/status_service.py
+  services/traffic_setup_service.py
+  services/controller_setup_service.py
+  services/api_credentials_service.py
+  services/enrollment_service.py
+  services/enrollment_state.py
+  scripts/routeros/controller_poll_v2.rsc
+  scripts/routeros/controller_traffic_v2.rsc
+  templates/base.html
+  templates/dashboard.html
+  templates/monitoring.html
+  templates/mathematics.html (retired)
+  templates/optimization.html
+  templates/routing_paths.html
+  templates/routers.html
+  templates/settings.html
+  static/js/navigation.js
+  static/css/style.css
+  README.md
+  tests/test_local_workflow.py
+  tests/test_traffic_monitoring.py
+  tests/test_traffic_protocol.py
+  tests/test_traffic_setup.py
+  tests/test_mtn_glo_integration.py
+  tests/test_routeros_polling.py
+  tests/test_routing_paths.py
+  tests/test_foundation.py
+  tests/test_controller_setup.py
+  tests/test_router_connection_setup.py
+
+TRACKED FILES MODIFIED OR REMOVED BY THIS WORK
+  README.md
+  controllers/monitoring_controller.py
+  controllers/page_controller.py
+  controllers/workflow_controller.py
+  device_app.py
+  docs/local-workflow.md
+  docs/routeros-v2-protocol.md
+  docs/traffic-monitoring.md
+  manage.py
+  services/controller_setup_service.py
+  services/json_storage.py
+  services/path_config_service.py
+  services/router_service.py
+  services/routeros_protocol.py
+  services/status_service.py
+  services/traffic_service.py
+  services/traffic_setup_service.py
+  services/traffic_state.py
+  services/workflow_service.py
+  services/workflow_state.py
+  static/css/style.css
+  templates/base.html
+  templates/dashboard.html
+  templates/mathematics.html
+  templates/monitoring.html
+  templates/optimization.html
+  templates/routing_paths.html
+  templates/settings.html
+  tests/test_foundation.py
+
+NEW SOURCE/TEST/GUIDE FILES
+  controllers/optimization_controller.py
+  docs/adaptive-optimization.txt
+  scripts/routeros/controller_optimization_v2.rsc
+  serve_optimizer.py
+  services/adaptive_routing.py
+  services/optimization_graphs.py
+  services/optimization_protocol.py
+  services/optimization_pull_service.py
+  static/js/optimization-charts.js
+  templates/_adaptive_optimization.html
+  tests/test_adaptive_routing.py
+
+OTHER ARTIFACTS
+  dave.txt: appended update to the existing user-requested project guide.
+  output/adaptive-optimization-current.png: real browser verification screenshot.
+  output/adaptive-implementation-report-20261124.txt: this report.
+  Private disabled client, settings backup and sanitized read-only topology snapshot (git-ignored).
+
+The pre-existing whitespace-only diff in services/api_credentials_service.py was left alone.
+
+Operating guide: docs/adaptive-optimization.txt
+
+FINAL RELOAD SMOKE CHECK
+Optimization, monitoring and router connection pages returned 200 after the final reload.
+Current API reports adaptive_mlu/advisory; execution authorization and routing changes remain false.

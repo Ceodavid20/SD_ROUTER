@@ -277,3 +277,8 @@ key. Keep that source private; do not export it verbosely or commit it.
 The Flask applications continue to require a separate, explicitly enabled
 collector for any additional router. No routers or example traffic were
 added during commissioning.
+
+The adaptive optimizer additionally supports an explicit list of independently
+authorized TX interfaces on the main router. Each message retains the existing
+single-interface V2 schema. See `adaptive-optimization.txt` for configuration,
+generation/reset behavior and the distinction between main demand and carrier health.

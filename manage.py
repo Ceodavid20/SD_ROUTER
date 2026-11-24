@@ -78,6 +78,11 @@ def main() -> None:
     revoke = commands.add_parser("revoke-router-auth", help="Revoke one key or disable a router's controller authorization.")
     revoke.add_argument("--router-id", required=True)
     revoke.add_argument("--key-id")
+    optimizer = commands.add_parser("prepare-optimization-client", help="Prepare a disabled advisory pull/result client; no router connection.")
+    optimizer.add_argument("--router-id", required=True)
+    optimizer.add_argument("--key-id", required=True)
+    optimizer.add_argument("--controller-url", help="Approved HTTPS origin; defaults to CONTROLLER_BASE_URL.")
+    optimizer.add_argument("--output-dir", required=True)
     traffic = commands.add_parser("prepare-traffic-client", help="Prepare a separate disabled TX collector using an existing active key; no router connection.")
     traffic.add_argument("--router-id", required=True)
     traffic.add_argument("--key-id", required=True)
@@ -111,6 +116,12 @@ def main() -> None:
                 print("Public CA certificate:", result["ca_certificate"])
             else:
                 config = load_config()
+                from services.deployment_service import validate_deployment, profile_path
+                validate_deployment(config)
+                if getattr(args, "output_dir", None):
+                    profile_path(config, args.output_dir)
+                if getattr(args, "ca_file", None):
+                    profile_path(config, args.ca_file)
                 storage = StorageService(config["DATA_DIR"], config["OUTPUT_DIR"])
                 storage.initialize()
                 if args.command == "configure-router-api":
@@ -169,19 +180,26 @@ def main() -> None:
                     print("No router was contacted. Monitoring and controller keys were not automatically enabled.")
                 elif args.command == "provision-router":
                     result = provision_router(
-                        storage, PROJECT_ROOT / ".env", args.router_id,
+                        storage, config["CONTROLLER_CREDENTIALS_ENV_FILE"], args.router_id,
                         args.controller_url or config.get("CONTROLLER_BASE_URL", ""),
                         args.output_dir, key_id=args.key_id, ca_file=args.ca_file,
                     )
                     print("Private router bundle prepared:", result["output_dir"])
                     print("Restart the device server to load the new credential reference.")
                     print("No router was contacted. No routing configuration was applied.")
+                elif args.command == "prepare-optimization-client":
+                    from services.traffic_setup_service import prepare_optimization_client
+                    result = prepare_optimization_client(storage, args.router_id, args.key_id,
+                        args.controller_url or config.get("CONTROLLER_BASE_URL", ""), args.output_dir, config=config)
+                    print("Private disabled advisory client prepared:", result["output_dir"])
+                    print("No router was contacted. Routing execution remains disabled.")
                 elif args.command == "prepare-traffic-client":
                     from services.traffic_setup_service import prepare_traffic_client
 
                     result = prepare_traffic_client(
                         storage, args.router_id, args.key_id,
                         args.controller_url or config.get("CONTROLLER_BASE_URL", ""), args.output_dir,
+                        config=config,
                     )
                     print("Private disabled traffic client prepared:", result["output_dir"])
                     print("No router, polling client, monitoring setting or TLS proxy was changed.")
@@ -196,7 +214,11 @@ def main() -> None:
     if password != getpass("Confirm password: "):
         parser.error("Passwords did not match.")
     try:
-        configure_admin(PROJECT_ROOT / ".env", username, password)
+        from config import load_config
+        from services.deployment_service import validate_deployment
+        config = load_config()
+        validate_deployment(config, setup=True)
+        configure_admin(config["CONFIG_ENV_FILE"], username, password)
     except (OSError, ValueError) as exc:
         parser.exit(1, f"Administrator setup failed: {exc}\n")
     print("Administrator configured. Restart the controller, then sign in.")

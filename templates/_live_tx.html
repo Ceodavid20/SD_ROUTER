@@ -1,0 +1,23 @@
+<section class="surface panel live-tx-panel" aria-labelledby="tx-title" data-live-tx data-endpoint="{{ url_for('api.live_tx_view') }}">
+  <div class="panel-heading tx-heading">
+    <h2 id="tx-title">Outbound TX</h2>
+    <div class="tx-controls">
+      <span class="tx-connection" data-live-connection role="status">Live</span>
+      <label class="visually-hidden" for="tx-range">Time range</label>
+      <select class="form-select form-select-sm" id="tx-range" data-tx-range aria-label="Time range">
+        <option value="15">15 minutes</option><option value="60" selected>1 hour</option><option value="360">6 hours</option><option value="all">All readings</option>
+      </select>
+      <button class="btn btn-sm btn-outline-secondary" type="button" data-tx-follow>Latest</button>
+    </div>
+  </div>
+  <div class="tx-series" data-tx-series>
+    {% for series in live.series %}<div class="tx-series-item"><span>{{ series.name }}</span><strong>{{ bandwidth_value(series.current_mbps) }} <small>Mbps</small></strong></div>{% endfor %}
+  </div>
+  <div id="tx-chart" class="live-tx-chart" data-tx-chart role="group" tabindex="0" aria-label="Interactive outbound TX graph. Click a point or use arrow keys to inspect readings."></div>
+  <section class="tx-reading" data-tx-reading aria-label="Selected TX reading" aria-live="polite">
+    <div class="tx-reading-heading"><span data-tx-reading-label>Latest reading</span><time data-tx-reading-time></time></div>
+    <div class="tx-reading-values" data-tx-reading-values></div>
+  </section>
+  <span class="tx-sample-note">Samples every {{ live.sample_interval_seconds }}s · <span data-tx-updated>Connecting</span></span>
+  <script type="application/json" data-tx-payload>{{ live | tojson }}</script>
+</section>

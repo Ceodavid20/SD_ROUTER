@@ -1,4 +1,4 @@
-# One authenticated, read-only controller exchange for RouterOS 7.21.4.
+# One authenticated, read-only controller exchange for capable RouterOS 7 devices.
 # Render the four placeholders using the controller's private provisioning tool.
 # This file never changes interfaces, routes, OSPF costs, or scheduler settings.
 {

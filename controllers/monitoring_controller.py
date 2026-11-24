@@ -22,3 +22,19 @@ def configure_monitoring(router_id):
         flash("Outbound monitoring enabled." if request.form["monitoring_enabled"] == "true"
               else "Outbound monitoring disabled.", "success")
     return redirect(url_for("pages.monitoring"))
+
+
+@monitoring_management.post('/routers/<router_id>/monitoring-interfaces')
+def configure_interfaces(router_id):
+    try:
+        # One exact name per line; no comma splitting of legal interface names.
+        raw = request.form.get('interfaces', '')
+        if len(raw) > 2100:
+            raise RouterValidationError('Enter at most sixteen TX interfaces.')
+        interfaces = raw.splitlines()
+        RouterService(current_app.extensions['json_storage'],current_app.config).configure_monitoring_interfaces(router_id, interfaces)
+    except RouterValidationError as exc:
+        flash(str(exc), 'danger')
+    else:
+        flash('TX interfaces saved. A changed interface list disables monitoring until explicitly re-enabled. Prepare and approve its matching collector before enabling.', 'success')
+    return redirect(url_for('pages.monitoring'))

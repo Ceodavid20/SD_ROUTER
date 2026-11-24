@@ -14,14 +14,27 @@ from services.router_protocol import ProtocolError, parse_utc_timestamp, utc_tex
 from services.routeros_poll_service import RouterOSPollService
 from services.routeros_protocol import ROUTEROS_TRAFFIC_PATH, _uuid4
 from services.traffic_protocol import parse_traffic_request, validate_interface
-from services.traffic_state import TRAFFIC_DOCUMENT
+from services.traffic_state import TRAFFIC_DOCUMENT, counter_record
 
 
 _AUTHORIZATION_FIELDS = (
+    "active",
     "controller_auth_enabled", "controller_auth_ref", "controller_auth_key_ids",
     "monitoring_enabled", "interface_name", "monitoring_generation",
     "traffic_source_ip",
+    "monitoring_interfaces",
 )
+
+
+def monitored_interfaces(router):
+    interfaces = router.get("monitoring_interfaces", [router.get("interface_name")])
+    if not isinstance(interfaces, list) or not 1 <= len(interfaces) <= 16:
+        raise ProtocolError("Configure one to sixteen unique TX interfaces.")
+    for interface in interfaces:
+        validate_interface(interface)
+    if len(set(interfaces)) != len(interfaces) or router.get("interface_name") not in interfaces:
+        raise ProtocolError("The primary interface must be in the unique TX interface list.")
+    return interfaces
 
 
 def stale_after_seconds(settings: Mapping[str, Any], router: Mapping[str, Any] | None = None) -> int:
@@ -61,7 +74,7 @@ def project_traffic_status(state, settings, config, routers, *, now=None):
             configured = True
         except ProtocolError:
             interface, configured = None, False
-        record = state["routers"].get(router["router_id"])
+        record = counter_record(state, router["router_id"], interface)
         same_series = bool(record and configured and record["interface"] == interface
                            and record["generation"] == router.get("monitoring_generation"))
         enabled = router.get("monitoring_enabled") is True
@@ -144,15 +157,16 @@ class TrafficService:
                 if actual != permitted:
                     raise PollError("Traffic source is not authorized for this router.",
                                     403, "source_mismatch")
-            interface = current.get("interface_name")
+            interface = payload["interface"]
             generation = current.get("monitoring_generation")
             try:
                 validate_interface(interface)
+                authorized_interfaces = monitored_interfaces(current)
                 if generation is not None:
                     _uuid4(generation)
             except ProtocolError as exc:
                 raise PollError("Router monitoring configuration is invalid.", 403, "monitoring_configuration") from exc
-            if payload["interface"] != interface:
+            if interface not in authorized_interfaces:
                 raise PollError("Traffic must use the configured outbound interface.", 403, "interface_mismatch")
             seen = [entry for entry in state["seen_requests"]
                     if parse_utc_timestamp(entry["expires_at"]) >= now]
@@ -161,7 +175,7 @@ class TrafficService:
                 raise PollError("This traffic request has already been accepted.", 409, "replayed_request")
             if len(seen) >= MAX_REPLAY_RECORDS:
                 raise PollError("Traffic request capacity is temporarily unavailable.", 503, "request_capacity")
-            previous = state["routers"].get(payload["router_id"])
+            previous = counter_record(state, payload["router_id"], interface)
             same_series = previous and previous["interface"] == interface and previous["generation"] == generation
             rate, interval, sample_state = None, None, "baseline"
             if same_series:
@@ -179,12 +193,17 @@ class TrafficService:
             series_id = previous.get("series_id") if same_series else None
             if sample_state != "measured" or series_id is None:
                 series_id = str(uuid4())
-            state["routers"][payload["router_id"]] = {
+            record = {
                 "interface": interface, "generation": generation,
                 "timestamp": payload["timestamp"], "tx_octets": payload["tx_octets"],
                 "last_received_at": utc_text(now), "tx_mbps": rate, "sample_state": sample_state,
                 "series_id": series_id,
             }
+            if interface == current.get("interface_name"):
+                state["routers"][payload["router_id"]] = record
+            else:
+                state["schema_version"] = 2
+                state.setdefault("interfaces", {}).setdefault(payload["router_id"], {})[interface] = record
             seen.append({
                 "router_id": payload["router_id"], "request_id": payload["request_id"],
                 "expires_at": utc_text(sampled_at + timedelta(

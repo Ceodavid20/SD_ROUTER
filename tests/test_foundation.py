@@ -96,7 +96,6 @@ def storage(storage_dirs):
         ("/routers/connect", "Router connection"),
         ("/routing-paths", "Routing paths"),
         ("/monitoring", "Traffic monitoring"),
-        ("/mathematics", "Traffic analysis"),
         ("/optimization", "Optimization"),
         ("/json-output", "Router output"),
         ("/automation", "Automation"),
@@ -136,6 +135,7 @@ def test_all_required_storage_files_are_initialized(app):
         "router_communication_v2.json",
         "router_traffic_v2.json",
         "router_enrollment.json",
+        "optimization_communication.json",
         "automation_settings.json",
         "activity_logs.json",
     }
@@ -206,7 +206,7 @@ def test_local_functionality_mode_opens_all_pages_without_administrator_setup(st
     })
     anonymous = app.test_client()
     for path in (
-        "/", "/routers", "/routers/connect", "/routing-paths", "/monitoring", "/mathematics", "/optimization",
+        "/", "/routers", "/routers/connect", "/routing-paths", "/monitoring", "/optimization",
         "/json-output", "/automation", "/settings", "/logs",
     ):
         page = anonymous.get(path)
@@ -580,3 +580,11 @@ def test_failed_atomic_replacement_preserves_current_file(
     assert path.read_bytes() == original
     assert json.loads(original)["monitoring_interval_seconds"] == 60
     assert not list(path.parent.glob("*.tmp"))
+
+
+def test_retired_analysis_redirects_to_optimization_without_navigation_link(client):
+    response = client.get("/mathematics")
+    assert response.status_code == 302 and response.location.endswith("/optimization")
+    page = client.get("/optimization").get_data(as_text=True)
+    assert "Traffic analysis" not in page
+    assert 'href="/mathematics"' not in page

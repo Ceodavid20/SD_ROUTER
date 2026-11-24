@@ -7,9 +7,7 @@ from pathlib import Path
 import re
 import secrets
 import stat
-
 from dotenv import dotenv_values
-
 from services.env_storage import update_private_environment
 from services.router_protocol import ROUTER_ID
 
@@ -23,7 +21,8 @@ def api_credentials(router, config):
     if not isinstance(reference, str) or not re.fullmatch(r"[A-Z][A-Z0-9_]{0,63}", reference):
         return "", ""
     if router.get("api_credentials_source") != "private_env":
-        return os.environ.get(reference + "_USERNAME", ""), os.environ.get(reference + "_PASSWORD", "")
+        return (_referenced_value(reference + "_USERNAME", config, "API_CREDENTIALS_ENV_FILE"),
+                _referenced_value(reference + "_PASSWORD", config, "API_CREDENTIALS_ENV_FILE"))
     values = private_environment(config["API_CREDENTIALS_ENV_FILE"])
     return values.get(reference + "_USERNAME") or "", values.get(reference + "_PASSWORD") or ""
 
@@ -53,7 +52,17 @@ def controller_secret(router, key_id, config):
     name = f'{router["controller_auth_ref"]}_{key_id}_SECRET'
     if router.get("controller_credentials_source") == "private_env":
         return private_environment(config["CONTROLLER_CREDENTIALS_ENV_FILE"]).get(name) or ""
-    return os.environ.get(name, "")
+    return _referenced_value(name, config, "CONTROLLER_CREDENTIALS_ENV_FILE")
+
+
+def _referenced_value(name, config, setting):
+    # Isolated deployments never inherit another profile's ambient router keys.
+    if config.get("ENVIRONMENT", "development") == "development" and name in os.environ:
+        return os.environ[name]
+    filename = config.get(setting)
+    if filename and Path(filename).exists():
+        return private_environment(filename).get(name) or ""
+    return ""
 
 
 def registered_api_target(storage, router_id):

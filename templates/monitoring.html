@@ -49,6 +49,19 @@
       </table>
     </div>
   </section>
+  <section class="surface panel section-gap">
+    <h2>Authorized TX interfaces</h2>
+    <p>For carrier allocation, select a distinct main-router outbound interface for each path. One exact interface name per line; the first is the primary interface. A changed list disables monitoring and starts fresh baselines after explicit re-enabling. This form does not modify any router.</p>
+    {% for router in routers %}<details class="section-gap"><summary>{{ router.name }} · {{ router.monitoring_interfaces | join(', ') or 'Not configured' }}</summary>
+      <form method="post" action="{{ url_for('monitoring_management.configure_interfaces', router_id=router.router_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="form-label" for="interfaces-{{ loop.index }}">Outbound TX interface names</label>
+        <textarea class="form-control" id="interfaces-{{ loop.index }}" name="interfaces" rows="3" maxlength="2100" required>{{ router.monitoring_interfaces | join('\n') }}</textarea>
+        <button class="btn btn-outline-primary section-gap" type="submit">Save TX interfaces</button>
+      </form>
+    </details>{% endfor %}
+    <a href="{{ url_for('pages.optimization') }}">View TX and utilization graphs in Optimization</a>
+  </section>
   <section class="surface panel section-gap" aria-labelledby="measurements-title">
     <div class="panel-heading"><h2 id="measurements-title">Recent measurements</h2></div>
     <div class="table-responsive">

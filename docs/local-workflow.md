@@ -197,3 +197,9 @@ small-integer cost oracle, demand conservation, capacity/standby constraints,
 independent aggregation groups, missing/stale inputs, series resets, zero
 traffic, currencies, hold-down, concurrent calculations, interrupted commit
 and retry, restart persistence, browser auth/CSRF and preservation of registered routers.
+
+The primary paper-based workflow now uses Adaptive MLU in Optimization. The
+standalone Traffic analysis page has been retired; its legacy URL redirects to
+Optimization. Legacy calculation records/objectives remain compatible. See
+`adaptive-optimization.txt` for the current routing-cost model, automatic worker,
+main-router measurement requirements, graphs and advisory execution boundary.

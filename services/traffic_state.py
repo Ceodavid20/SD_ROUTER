@@ -22,11 +22,34 @@ READING_FIELDS = {
 }
 
 
+def stream_key(router_id: str, interface: str) -> str:
+    """Internal window key; device identity and history fields stay unchanged."""
+    return router_id + "\x1f" + interface
+
+
+def counter_record(state, router_id, interface):
+    primary = state["routers"].get(router_id)
+    if primary and primary["interface"] == interface:
+        return primary
+    return state.get("interfaces", {}).get(router_id, {}).get(interface)
+
+
+def counter_streams(state):
+    records = dict(state["routers"])
+    for router_id, interfaces in state.get("interfaces", {}).items():
+        for interface, record in interfaces.items():
+            primary = state["routers"].get(router_id)
+            if not primary or primary["interface"] != interface:
+                records[stream_key(router_id, interface)] = record
+    return records
+
+
 def validate_traffic_state(state: Any) -> None:
     if (
         not isinstance(state, dict)
-        or set(state) != {"schema_version", "routers", "seen_requests", "rate_limits", "pending_reading"}
-        or type(state["schema_version"]) is not int or state["schema_version"] != 1
+        or type(state.get("schema_version")) is not int or state["schema_version"] not in (1, 2)
+        or set(state) != ({"schema_version", "routers", "seen_requests", "rate_limits", "pending_reading"}
+                         | ({"interfaces"} if state["schema_version"] == 2 else set()))
         or not isinstance(state["routers"], dict)
     ):
         raise ValidationError("Invalid traffic state.")
@@ -35,7 +58,20 @@ def validate_traffic_state(state: Any) -> None:
         "seen_requests": state["seen_requests"], "rate_limits": state["rate_limits"],
     })
     try:
-        for router_id, record in state["routers"].items():
+        records = list(state["routers"].items())
+        extra = state.get("interfaces", {})
+        if not isinstance(extra, dict) or len(extra) > 4096:
+            raise ValidationError("Invalid interface counter state.")
+        for router_id, interfaces in extra.items():
+            _identity(router_id)
+            if not isinstance(interfaces, dict) or len(interfaces) > 16:
+                raise ValidationError("Invalid per-router interface counters.")
+            for interface, record in interfaces.items():
+                validate_interface(interface)
+                if not isinstance(record, dict) or record.get("interface") != interface:
+                    raise ValidationError("Interface counter identity mismatch.")
+                records.append((router_id, record))
+        for router_id, record in records:
             _identity(router_id)
             if not isinstance(record, dict) or set(record) not in (COUNTER_FIELDS, COUNTER_FIELDS | {"series_id"}):
                 raise ValidationError("Invalid traffic counter record.")
@@ -84,7 +120,7 @@ def validate_traffic_state(state: Any) -> None:
                 raise ValidationError("Invalid pending traffic interval.")
             if not pending["file"].startswith("traffic_segments/traffic-" + reading["timestamp"][:10] + "-"):
                 raise ValidationError("Pending traffic date mismatch.")
-            record = state["routers"].get(reading["router_id"])
+            record = counter_record(state, reading["router_id"], reading["interface"])
             sampled_at = parse_utc_timestamp(reading["timestamp"])
             if (record is None or record["sample_state"] != "measured"
                     or sampled_at.timestamp() != record["timestamp"]

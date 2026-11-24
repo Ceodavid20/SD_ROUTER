@@ -82,6 +82,10 @@ class StorageService:
 
     DEFAULTS = {
         "routers.json": [],
+        "router_onboarding.json": {"schema_version": 1, "routers": {}},
+        "optimization_communication.json": {
+            "schema_version": 1, "routers": {}, "seen_requests": [], "rate_limits": {}, "deliveries": [],
+        },
         "router_enrollment.json": {"schema_version": 1, "grants": {}, "rate_limits": {}, "pending": None},
         "routing_paths.json": {},
         "router_communication.json": {
@@ -105,6 +109,7 @@ class StorageService:
             "routing_changes_enabled": False,
             "monitoring_interval_seconds": 60,
             "averaging_window": 5,
+            "optimization_enabled": True,
             "start_time": None,
             "stop_time": None,
         },
@@ -478,6 +483,23 @@ class StorageService:
         with self._locked():
             return self._workflow_inputs_unlocked(), self._read_unlocked("optimization_results.json")
 
+    def read_onboarding_snapshot(self):
+        """Consistent inventory/topology/approvals, with no device I/O under lock."""
+        with self._locked():
+            inputs = {key: self._read_unlocked(key) for key in (
+                "routers.json", "routing_paths.json", "automation_settings.json")}
+            return inputs, self._read_unlocked("router_onboarding.json")
+
+    def update_onboarding(self, router_id, update):
+        with self._locked():
+            inputs = {key: self._read_unlocked(key) for key in (
+                "routers.json", "routing_paths.json", "automation_settings.json")}
+            state = self._read_unlocked("router_onboarding.json")
+            entry = state["routers"].get(router_id, {"discovery": None, "baselines": [], "authorization": None})
+            state["routers"][router_id] = update(inputs, deepcopy(entry))
+            self._write_unlocked("router_onboarding.json", state)
+            return deepcopy(state["routers"][router_id])
+
     def read_monitoring_snapshot(self) -> tuple[dict[str, Any], dict[str, list], list[dict[str, Any]]]:
         """Read current per-router windows without collecting or publishing data."""
         with self._locked():
@@ -536,8 +558,11 @@ class StorageService:
         Inspect at most one bounded segment in memory and stop as soon as
         every series has its window. Legacy history remains untouched.
         """
-        targets = {router_id: record for router_id, record in state["routers"].items()
+        from services.traffic_state import counter_streams
+        targets = {router_id: record for router_id, record in counter_streams(state).items()
                    if record.get("series_id") and record["sample_state"] == "measured"}
+        by_source = {(key.split("\x1f", 1)[0], record["interface"]): (key, record)
+                     for key, record in targets.items()}
         windows = {router_id: [] for router_id in targets}
         if not targets:
             return windows
@@ -555,8 +580,8 @@ class StorageService:
                 except (UnicodeError, json.JSONDecodeError, RecursionError) as exc:
                     raise StorageError("Traffic segment contains invalid JSON.") from exc
                 self._validate_traffic(row)
-                router_id = row["router_id"]
-                target = targets.get(router_id)
+                source = by_source.get((row["router_id"], row["interface"]))
+                router_id, target = source if source else (None, None)
                 if (target and len(windows[router_id]) < count
                         and row.get("series_id") == target["series_id"]
                         and row["interface"] == target["interface"]):
@@ -566,6 +591,17 @@ class StorageService:
             if all(len(rows) >= count for rows in windows.values()):
                 break
         return {router_id: list(reversed(rows)) for router_id, rows in windows.items()}
+
+    def optimization_exchange(self, exchange):
+        """Consume one signed nonce and delivery/result atomically, with fresh inputs."""
+        with self._locked():
+            inputs = self._workflow_inputs_unlocked()
+            windows = self._traffic_windows_unlocked(inputs["router_traffic_v2.json"],
+                inputs["automation_settings.json"]["averaging_window"] + 1)
+            state = self._read_unlocked("optimization_communication.json")
+            response = exchange(state, inputs, windows, self._read_unlocked("optimization_results.json"))
+            self._write_unlocked("optimization_communication.json", state)
+            return deepcopy(response)
 
     def calculate_workflow(self, calculate: Callable) -> dict[str, Any]:
         """Publish a calculation after its average/cost projections are durable.
@@ -582,16 +618,27 @@ class StorageService:
                 inputs["router_traffic_v2.json"], inputs["automation_settings.json"]["averaging_window"] + 1,
             )
             result = calculate(inputs, windows, results)
-            existing = next((row for row in reversed(results) if row.get("workflow_version") == 1), None)
+            existing = next((row for row in reversed(results) if row.get("workflow_version") in (1, 2)), None)
             if existing is not None and existing["evaluation_id"] == result["evaluation_id"]:
-                return deepcopy(existing)
+                if (result.get("workflow_version") == 2
+                        and existing["source_fingerprint"] != result["source_fingerprint"]):
+                    # Keep the latest measured values and validity current without
+                    # publishing another decision/version or appending history.
+                    results = [row for row in results
+                               if row.get("evaluation_id") != result["evaluation_id"]]
+                else:
+                    return deepcopy(existing)
+            adaptive_ids = [r["evaluation_id"] for r in results if r.get("workflow_version") == 2]
+            expired_ids = set(adaptive_ids[:-255]) if result.get("workflow_version") == 2 else set()
+            if expired_ids:
+                results = [r for r in results if r.get("evaluation_id") not in expired_ids]
             for name, records in (("averages.json", result["analysis"]),
                                   ("routing_costs.json", result["allocations"])):
                 previous = self._read_unlocked(name)
                 projection = [{"workflow_version": 1, "evaluation_id": result["evaluation_id"],
                                "calculated_at": result["timestamp"], **row} for row in records]
                 self._write_unlocked(name, [row for row in previous
-                    if row.get("evaluation_id") != result["evaluation_id"]] + projection)
+                    if row.get("evaluation_id") != result["evaluation_id"] and row.get("evaluation_id") not in expired_ids] + projection)
             self._write_unlocked("optimization_results.json", [*results, result])
             return deepcopy(result)
 
@@ -682,10 +729,18 @@ class StorageService:
             for key in ("start_time", "stop_time"):
                 if value.get(key) is not None and (not isinstance(value[key], str) or not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value[key])):
                     raise ValidationError("Schedule times must be HH:MM or null.")
+            if type(value.get("optimization_enabled", True)) is not bool:
+                raise ValidationError("Optimization enablement must be true or false.")
             if value.get("optimization_objective", "not_configured") not in (
-                "not_configured", "minimize_cost", "balance_utilization",
+                "not_configured", "minimize_cost", "balance_utilization", "adaptive_mlu",
             ):
                 raise ValidationError("Select a supported dry-run optimization objective.")
+            if "adaptive_optimization" in value:
+                from services.adaptive_routing import validate_settings
+                try:
+                    validate_settings(value["adaptive_optimization"])
+                except (ValueError, TypeError, OverflowError) as exc:
+                    raise ValidationError("Invalid adaptive optimization settings.") from exc
         elif name == "traffic_history.json":
             if not isinstance(value, dict) or value.get("schema_version") != 1 or value.get("storage") != "segmented_jsonl" or not isinstance(value.get("segments"), list):
                 raise ValidationError("Invalid traffic history manifest.")
@@ -703,6 +758,12 @@ class StorageService:
             from services.path_config_service import validate_routing_paths
 
             validate_routing_paths(value)
+        elif name == "router_onboarding.json":
+            from services.onboarding_state import validate_onboarding
+            validate_onboarding(value)
+        elif name == "optimization_communication.json":
+            from services.optimization_protocol import validate_state
+            validate_state(value)
         elif name == "router_communication.json":
             from services.router_communication_state import validate_communication_state
 

@@ -136,3 +136,10 @@ HMAC authenticates requests; TLS authenticates and encrypts the server
 exchange. Keep private keys and rendered client scripts out of browser
 routes and logs. See [installation](routeros-setup.md) and
 [target-release test evidence](routeros-native-notes.md).
+
+An independent advisory optimizer exchange is available at
+`/api/controller/v2/optimization` and `/api/controller/v2/optimization/result`.
+These paths use the same V2 HMAC-SHA512 canonicalization with their own exact paths,
+strict schemas and bounded transport state. Legacy poll/receipt responses remain
+unchanged. See `adaptive-optimization.txt` for its complete contract and the disabled
+read/report-only native client. Receipt acknowledgements never prove application.

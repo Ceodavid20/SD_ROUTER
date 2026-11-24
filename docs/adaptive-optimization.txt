@@ -1,0 +1,295 @@
+SD_ROUTER — ADAPTIVE OPTIMIZATION
+Implementation and operating guide, 24 November 2026
+
+PURPOSE AND CURRENT LIMIT
+Flask receives authenticated cumulative outbound TX byte counters, calculates
+averaged link load, and publishes advisory capacity allocations, routing costs
+and connection weights. MikroTik initiates communication. Flask has no routing
+executor. SIMULATION_MODE=true concerns execution; measured TX remains real.
+LIVE_ROUTING_ENABLED=false is preserved. No router configuration was changed
+for this implementation.
+
+The previously shared-interface blocker was resolved later on 24 November 2026
+with explicit user approval. Main ether2 now carries VLAN 2401 (sdr-to-mtn) and
+VLAN 2402 (sdr-to-glo), with matching carrier VLANs on their existing ether3.
+The main collector sends independent signed TX counters for these two logical
+interfaces. Carrier TX remains health telemetry only. Distinct counter behavior
+and full real averaging windows are validated by the bounded integration test.
+Configured capacities remain 8,000 Mbps and 4,000 Mbps; these are model inputs,
+not throughput measurements for the free-license CHRs.
+
+IMPLEMENTATION STAGES
+1. Preserve the existing protocols and add independent, explicitly authorized
+   TX counter channels. Validate each stage against existing traffic tests.
+2. Integrate MLU, feedback, routing costs and strict public result validation
+   into WorkflowService and the existing JSON transaction/storage pipeline.
+3. Add a separate authenticated advisory pull/result exchange and an independent
+   calculation worker. Keep legacy V1/V2 polling and receipt ACK unchanged.
+4. Remove the standalone Traffic analysis page/navigation, repair broken page
+   data feeds, and add actual-history and predicted-allocation charts inside
+   Optimization. Verify security, mathematics, regression suite and browser.
+
+MEASUREMENTS AND CONFIGURATION
+Traffic monitoring remains opt-in. An interface list contains 1 to 16 distinct
+exact RouterOS interface names, with the first as the primary interface.
+Traffic monitoring -> Authorized TX interfaces saves this list locally. A
+changed list disables monitoring and rotates its measurement generation.
+It neither installs scripts nor changes RouterOS interfaces. Re-enable only
+after the corresponding reviewed collector is ready.
+
+The existing /api/controller/v2/traffic request is unchanged: exactly one
+interface and one cumulative uint64 tx_octets value per signed request. Each
+channel has its own baseline, reset/gap detection, series ID and averaging
+window. The router identity has one shared nonce ledger, so the same request
+ID cannot be reused on another interface. Interface authorization, source IP
+binding where configured, HMAC-SHA512, clock limits, rate limits and replay
+protection remain enforced. RX counters are never collected.
+
+Rate in bits/second = 8 * (new_TX_octets - old_TX_octets) / elapsed_seconds.
+Adaptive calculations use bits/second; display converts to decimal Mbps.
+Counter decreases and long gaps create a new baseline and averaging series.
+Stale, missing, unordered, incomplete or mismatched history is not zero traffic.
+A fresh full averaging window is required independently for every main egress.
+
+In Routing paths, each operator-confirmed path identifies its main router,
+carrier router, main outbound interface, carrier interface, capacity and role.
+For Adaptive MLU, select the main router as the measurement source. Two paths
+may not claim the same main-router interface. Carrier health is shown
+separately and is never added to demand. Unknown telemetry does not prove
+carrier failure. Carrier availability can be independently marked confirmed
+available/unavailable; leave unknown when failure has not been established.
+
+Select Adaptive MLU in Settings. Capacity is entered in Routing paths in bps;
+router WAN capacity confirmation remains required. No carrier name, router ID,
+address or 8:4 ratio is embedded in the optimizer. The current lab capacities
+are saved configuration, not algorithm constants. Other parallel-link groups
+are supported and never transfer demand between different main routers.
+
+MATHEMATICS
+For measured averaged TX d_i and confirmed eligible capacities c_i:
+  D = sum(d_i)
+  u_i = d_i / c_i
+  target_i = D * c_i / sum(c_i)
+  adjustment_i = target_i - d_i
+These targets solve parallel-link minimum maximum utilization. They conserve
+measured demand and equalize utilization across eligible links. Standby or
+confirmed failed links receive zero. The remaining healthy capacity must carry
+the whole demand; no partial allocation is presented as a valid solution.
+
+For capacities 8 and 4 Gbps:
+  Demand     MTN target   Glo target   Target utilization
+  3 Gbps     2 Gbps       1 Gbps       25%
+  6 Gbps     4 Gbps       2 Gbps       50%
+  9 Gbps     6 Gbps       3 Gbps       75%
+  9.6 Gbps   6.4 Gbps     3.2 Gbps     80%
+  12 Gbps    8 Gbps       4 Gbps       100%
+Above 12 Gbps, targets are withheld and physical excess is reported. Above the
+80% operating target but within healthy physical capacity, a feasible target
+is still calculated and congestion_risk is reported. A failed carrier can
+make demand infeasible even below combined configured capacity; report unmet
+demand against healthy capacity. Optimizing cannot manufacture more capacity.
+
+Feedback for two links follows the requested proportional law:
+  error = u_second - u_first
+  delta = clip(gain * error, -maximum_step, maximum_step)
+  next_first_weight = clip(previous_first_weight + delta, 0, 1)
+  next_second_weight = 1 - next_first_weight
+Weights start proportional to capacity. Changes stop inside the utilization
+imbalance tolerance. Larger groups use a bounded simplex projection to keep
+normalization and per-cycle adjustment limits. PCC integer bucket allocations
+also respect the step limit; inadequate granularity withholds the publication.
+
+Crucially, this advisory release has no verified applied weights. It uses the
+capacity initialization as its explicitly UNVERIFIED control baseline each
+cycle, rather than integrating a previous unapplied recommendation. Otherwise
+an advisory controller would wind up while nothing changed on the router.
+The pure controller is tested for convergence by applying its proposed weights
+in an explicitly synthetic equal-connection test model. That is a test, not
+proof of real bandwidth response. A live closed loop requires an authorized
+router-local actuator, verified applied state and fresh post-application TX.
+
+ROUTING COST AND TRAFFIC DISTRIBUTION
+Calculated optimization cost:
+  ceil((reference_bandwidth_bps / capacity_bps) * (1 + alpha * utilization^2))
+Default reference = 100,000,000,000 bps; alpha = 4. Decimal arithmetic avoids
+binary rounding errors at integer boundaries, such as incorrectly rounding
+29 to 30. This value is neither a financial price nor an observed OSPF metric.
+
+Read-only lab inspection found main-router OSPF interface templates, cost 10
+on ether2 and loopback; MTN also had cost-10 templates; Glo had no templates.
+All three had zero mangle rules and one routing table. These are observations
+at inspection time, not proof of carrier-specific forwarding or a PCC setup.
+A different OSPF cost prefers a route; it does not set a bandwidth percentage.
+
+Weighted PCC is the proposed connection distribution mechanism. At the saved
+8:4 capacity ratio, denominator 3 assigns buckets 0 and 1 to MTN, bucket 2 to
+Glo. The configurable default 300 buckets supports smaller adjustments.
+The recommendation contains disjoint bucket ranges, not executable commands.
+Future reviewed router-local policy should classify only new unmarked
+connections, preserve existing marks, and direct marked traffic into the
+appropriate carrier tables. Actual bandwidth share depends on connection
+sizes and persistence and must be checked with measured TX.
+
+Official PCC reference:
+https://manual.mikrotik.com/docs/high-availability-solutions/load-balancing/per-connection-classifier/
+Official load-balancing reference:
+https://manual.mikrotik.com/docs/high-availability-solutions/load-balancing/
+
+STABILITY SETTINGS (ALL CONFIGURABLE)
+Monitoring interval: 60 seconds; averaging window: 5 readings.
+Safe utilization operating target: 80% (soft).
+Imbalance tolerance: 5 percentage points.
+Hold-down: 120 seconds; feedback gain: 0.1.
+Maximum connection-weight step: 0.05 (5 percentage points).
+Reference bandwidth: 100 Gbps; congestion alpha: 4; PCC buckets: 300.
+The worker never enables routing automation. Decisions have stable identifiers
+and monotonic versions per main router. An unchanged decision is not repeatedly
+saved. Held, invalid or stale plans are withheld from the pull endpoint.
+Adaptive history is bounded to the latest 256 calculation snapshots. Existing
+legacy results and immutable segmented TX history are retained.
+
+JSON AND PULL COMMUNICATION
+Existing V1 poll, V2 poll and V2 receipt ACK retain their no-action contracts.
+New device-only authenticated POST endpoints:
+  /api/controller/v2/optimization
+  /api/controller/v2/optimization/result
+Both reuse existing HMAC-SHA512 canonicalization and active router keys, with
+the endpoint path included in the signature. Strict JSON rejects extra fields,
+duplicate keys, NaN, invalid IDs and non-integer timestamps. Verified HTTPS is
+required except the existing loopback-only simulation allowance. Independent
+persistent rate/replay state cannot spend the existing poll/ACK quota.
+Authentication metadata is rechecked inside the storage transaction.
+
+The five-field pull request is protocol_version=2.0, router_id, UUID4
+request_id, whole UTC epoch timestamp, request_type=optimization.
+The response binds router, request, response ID and a short expiry, and scopes
+the recommendation to that main router only. It includes current measurements,
+targets, utilization, calculated costs, weights, decision ID/version and
+freshness. mode=advisory, action=none, execution_authorized=false and
+routing_changes_enabled=false are mandatory. An invalid/unready/held/stale
+plan returns optimization_unavailable and no recommendation.
+
+Application reports additionally identify response_id, decision_id,
+decision_version and result. Only the delivered, unexpired decision may be
+reported once. Results not_applied, failed and rejected are recorded separately
+from receipt ACKs. An applied claim is rejected: this release never issued
+execution authorization. Therefore ACKs cannot fabricate verified improvement.
+
+optimization_communication.json holds bounded delivery/replay/rate metadata.
+optimization_results.json remains the authoritative calculation history; the
+new closed workflow version 2 adds adaptive results. Legacy version 1 records
+and average/allocation projections remain compatible. The legacy router output
+file is not turned into an executable optimization channel.
+
+RUNNING THE APP
+Use the existing virtual environment and private .env configuration. Run each
+process under the existing service supervisor or its own terminal:
+  .venv/bin/python serve_devices.py
+  .venv/bin/python serve.py
+  .venv/bin/python serve_optimizer.py
+The first two keep their existing loopback ports/TLS proxy. The third runs
+calculations at the configured monitoring interval without browser visits.
+For a single calculation:
+  .venv/bin/python serve_optimizer.py --once
+A real deployment should supervise all three so they restart after reboot.
+The calculation worker refuses live execution or SIMULATION_MODE=false.
+
+To prepare a disabled native advisory client, with no router connection:
+  .venv/bin/python manage.py prepare-optimization-client --router-id ROUTER_ID --key-id KEY_ID --output-dir PRIVATE_DIRECTORY
+Do not print/share that generated file: it contains an existing router key.
+The read/report-only client verifies TLS, identity, validity, mode, execution
+authorization and decision version, then reports not_applied. It has no routing
+executor and is not installed or scheduled automatically. Target-device
+validation and installation need a separately approved operation. Existing
+poll/ACK/traffic collectors remain separate and unchanged.
+
+prepare-traffic-client supports the configured multi-interface list and creates
+a disabled collector; it changes neither RouterOS nor monitoring authorization.
+Each interface uses its own signed request. New TLS proxy configurations include
+a separately scoped optimization rule with the same allowed sources; existing
+working endpoint rules are preserved. The current lab proxy already forwards
+these routes, confirmed with verified TLS and an unsigned-request rejection.
+
+FRONTEND AND LIVE TX GRAPH
+Dashboard and Optimization now use one interactive TX graph with separate
+main-to-carrier traces. Click the graph or a sample to inspect its actual rate,
+interface and time. Arrow keys inspect adjacent samples; Latest resumes the
+latest reading. Time ranges and per-link visibility controls are available.
+The page fetches fresh data every five seconds without a page reload. Actual
+samples retain their router timestamps (normally 60 seconds apart); refreshes
+do not generate interpolated or invented readings. A selected historical sample
+stays selected while new data arrives. Counter-reset series and long gaps remain
+separate. Stale sources have no current rate, while their history remains visible.
+
+The utilization, prediction, verified-before/after and carrier-health graphs
+were removed from the UI at the user's request. Internal utilization/cost math,
+security, original JSON protocols and all measurement history remain available.
+Optimization keeps a compact recommendation table and Recent changes sidebar.
+That sidebar projects recorded monitoring/configuration events, published
+advisories and router application reports. It marks controller settings as
+Saved, verified monitoring setup as Applied, proposed routing as Advisory, and
+not_applied reports as Not applied. Receipt ACKs never become applied changes.
+Arbitrary legacy log messages/private fields are excluded from this projection.
+
+The browser-only GET /api/optimization/live uses existing administrator access
+and no-store headers. It is absent from the device-only listener. Reads cannot
+start a test, contact a router, publish a decision or change configuration.
+
+LAB OPERATIONS STILL REQUIRED
+1. Review and approve a topology with independently measurable main-router
+   egress interfaces for MTN and Glo, such as separate physical/virtual ports
+   or verified VLAN handoffs. The existing shared ether2 cannot satisfy this.
+   Do not assign unrelated NAT/management ports just to make the graph appear.
+2. Set the approved main-side mapping for each path, authorize the matching TX
+   interfaces locally, and review/install the disabled matching collector only
+   after authorization. Re-enable monitoring and wait for full fresh windows.
+3. Review/approve carrier tables, reachability, NAT, firewall exclusions, policy
+   ownership, rollback and a router-local PCC actuator in a future execution
+   phase. This implementation has no live actuator and cannot be enabled by
+   merely changing the live-routing flag; that flag still fails closed.
+4. Validate measured traffic response before claiming optimization improvement.
+   Confirm the CHR licensing/resources can sustain the configured speeds; the
+   saved 8/4 Gbps model inputs are not achieved bandwidth measurements.
+5. Set up normal process supervision for unattended controller restarts.
+
+No steps above have been applied to the routers by this change. No routing,
+clock, interface, firewall, OSPF, NAT, license or scheduler settings were edited.
+
+APPROVED LAB HANDOFF UPDATE — 24 NOVEMBER 2026
+The user explicitly approved isolated handoffs and the TX collector setup.
+Main sdr-to-mtn / MTN sdr-from-main use VLAN 2401 and 172.31.250.0/30.
+Main sdr-to-glo / Glo sdr-from-main use VLAN 2402 and 172.31.250.4/30.
+These are logical interfaces over existing host-only lab links. Their IP addresses
+create only the approved connected test routes; default routes, OSPF, PCC and
+8/4 Gbps capacity settings remain unchanged. The existing main TX collector was
+backed up privately and updated; its scheduler's prior enabled state was restored.
+No routing actuator was installed or enabled. Earlier listed handoff steps are
+now completed for this lab; live traffic shifting still requires separate approval.
+
+Interactive UI validation: full suite 649 passed (70.33 seconds). Isolated Chrome
+checks covered real-point clicks, pinned values during background refresh,
+keyboard selection, mobile layout, and new signed samples in temporary test
+storage. Actual production TX data and router configuration were not changed by
+these UI checks. Only the browser application service was reloaded.
+
+OPTIMIZATION ON/OFF CONTROL
+The switch in the Optimization header controls advisory calculations and
+recommendation delivery. Off pauses the worker, blocks manual calculation and
+withholds device recommendations. TX collection, the live graph, signed polling
+and receipt ACKs continue. Existing history and configured capacities are kept.
+On resumes using fresh measurements; configured sample and hold-down rules still
+apply. It does not enable live routing or apply RouterOS changes.
+
+The boolean optimization_enabled setting is stored in automation_settings.json.
+Older installations without that field keep their existing enabled behavior.
+Browser changes require the existing administrator access and CSRF token. The
+worker checks the control at most five seconds apart; publication and device
+pulls also check the current setting inside the JSON storage lock, preventing a
+stale worker read from bypassing Off. An unexpired saved calculation becomes
+historical while Off. Pause/resume actions appear in Recent changes.
+
+Optimization-control validation: full suite 666 passed (74.97 seconds). Browser
+checks verified Off/On, disabled manual calculation, live signed test samples
+continuing while Off, preserved graph selection, and advisory recommendations
+resuming. Control clicks were tested in isolated fixture storage; the current
+production optimizer state was preserved. No router configuration changed.

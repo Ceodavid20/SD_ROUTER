@@ -1,0 +1,212 @@
+{
+  "started_at": "2026-11-24T11:06:40.671657+00:00",
+  "duration_seconds": 180,
+  "scope": "Actual main-router transmit-only tests to existing isolated lab peers",
+  "streams": [
+    {
+      "source": "SDR-CHR-LAB-01",
+      "destination": "SDR-MTN-01",
+      "requested_limit_bps": 150000
+    },
+    {
+      "source": "SDR-CHR-LAB-01",
+      "destination": "SDR-GLO-01",
+      "requested_limit_bps": 350000
+    }
+  ],
+  "routing_changes_made": false,
+  "router_configuration_changes_made": false,
+  "rx_collected": false,
+  "per_carrier_main_measurement_available": false,
+  "observations": [
+    {
+      "elapsed_seconds": 4,
+      "main_actual_signed_tx_mbps": 0.011644666666666666,
+      "main_average_mbps": 0.015218586666666667,
+      "main_sampled_at": "2026-11-24T11:06:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 4,
+        "SDR-MTN-01": 7,
+        "SDR-GLO-01": 8
+      }
+    },
+    {
+      "elapsed_seconds": 21,
+      "main_actual_signed_tx_mbps": 0.011644666666666666,
+      "main_average_mbps": 0.015218586666666667,
+      "main_sampled_at": "2026-11-24T11:06:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 5,
+        "SDR-MTN-01": 3,
+        "SDR-GLO-01": 4
+      }
+    },
+    {
+      "elapsed_seconds": 39,
+      "main_actual_signed_tx_mbps": 0.011644666666666666,
+      "main_average_mbps": 0.015218586666666667,
+      "main_sampled_at": "2026-11-24T11:06:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 5,
+        "SDR-MTN-01": 2,
+        "SDR-GLO-01": 3
+      }
+    },
+    {
+      "elapsed_seconds": 56,
+      "main_actual_signed_tx_mbps": 0.011644666666666666,
+      "main_average_mbps": 0.015218586666666667,
+      "main_sampled_at": "2026-11-24T11:06:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 10,
+        "SDR-MTN-01": 3,
+        "SDR-GLO-01": 4
+      }
+    },
+    {
+      "elapsed_seconds": 75,
+      "main_actual_signed_tx_mbps": 0.5224996,
+      "main_average_mbps": 0.11751927999999998,
+      "main_sampled_at": "2026-11-24T11:07:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 5,
+        "SDR-MTN-01": 5,
+        "SDR-GLO-01": 7
+      }
+    },
+    {
+      "elapsed_seconds": 92,
+      "main_actual_signed_tx_mbps": 0.5224996,
+      "main_average_mbps": 0.11751927999999998,
+      "main_sampled_at": "2026-11-24T11:07:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 6,
+        "SDR-MTN-01": 3,
+        "SDR-GLO-01": 8
+      }
+    },
+    {
+      "elapsed_seconds": 109,
+      "main_actual_signed_tx_mbps": 0.5224996,
+      "main_average_mbps": 0.11751927999999998,
+      "main_sampled_at": "2026-11-24T11:07:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 9,
+        "SDR-MTN-01": 4,
+        "SDR-GLO-01": 2
+      }
+    },
+    {
+      "elapsed_seconds": 126,
+      "main_actual_signed_tx_mbps": 0.5227710666666666,
+      "main_average_mbps": 0.21914658666666664,
+      "main_sampled_at": "2026-11-24T11:08:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 7,
+        "SDR-MTN-01": 4,
+        "SDR-GLO-01": 2
+      }
+    },
+    {
+      "elapsed_seconds": 143,
+      "main_actual_signed_tx_mbps": 0.5227710666666666,
+      "main_average_mbps": 0.21914658666666664,
+      "main_sampled_at": "2026-11-24T11:08:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 2,
+        "SDR-MTN-01": 3,
+        "SDR-GLO-01": 2
+      }
+    },
+    {
+      "elapsed_seconds": 161,
+      "main_actual_signed_tx_mbps": 0.5227710666666666,
+      "main_average_mbps": 0.21914658666666664,
+      "main_sampled_at": "2026-11-24T11:08:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 5,
+        "SDR-MTN-01": 3,
+        "SDR-GLO-01": 5
+      }
+    },
+    {
+      "elapsed_seconds": 178,
+      "main_actual_signed_tx_mbps": 0.5227710666666666,
+      "main_average_mbps": 0.21914658666666664,
+      "main_sampled_at": "2026-11-24T11:08:00.000000Z",
+      "optimizer_status": "blocked",
+      "carrier_test_sessions": {
+        "SDR-MTN-01": 1,
+        "SDR-GLO-01": 1
+      },
+      "cpu_load_percent": {
+        "SDR-CHR-LAB-01": 9,
+        "SDR-MTN-01": 3,
+        "SDR-GLO-01": 3
+      }
+    }
+  ],
+  "client_exit_codes": [
+    0,
+    0
+  ],
+  "sessions_after": {
+    "SDR-CHR-LAB-01": 0,
+    "SDR-MTN-01": 0,
+    "SDR-GLO-01": 0
+  },
+  "main_interface_tx_octet_increase": 12128624,
+  "main_interface_observed_average_mbps": 0.49758457435897435,
+  "finished_at": "2026-11-24T11:10:00.330955+00:00",
+  "outcome": "Real TX generated to both carriers; optimizer correctly withheld allocation because main ether2 is shared."
+}

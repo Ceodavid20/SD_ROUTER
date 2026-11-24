@@ -1,0 +1,54 @@
+ISOLATED CARRIER TX HANDOFF PLAN — PREPARED, NOT APPLIED
+24 November 2026
+
+Purpose: give the main MikroTik a real, independently measurable TX interface
+toward each existing carrier CHR, then repeat the bounded authenticated TX test.
+
+MAIN SDR-CHR-LAB-01:
+  sdr-to-mtn: VLAN 2401 over existing ether2, 172.31.250.1/30
+  sdr-to-glo: VLAN 2402 over existing ether2, 172.31.250.5/30
+MTN SDR-MTN-01:
+  sdr-from-main: VLAN 2401 over existing ether3, 172.31.250.2/30
+GLO SDR-GLO-01:
+  sdr-from-main: VLAN 2402 over existing ether3, 172.31.250.6/30
+
+These are separate logical TX interfaces on the current host-only lab network.
+No VM shutdown or replacement of existing interfaces is planned. Existing VLAN 10,
+management IPs, default routes, OSPF and PCC stay unchanged. Test IP assignment
+necessarily creates connected routes for these two /30 subnets. The controller's
+LIVE_ROUTING_ENABLED remains false, and no traffic-shifting policy is applied.
+The proposed VLAN IDs are unused and subnets do not overlap the non-default
+routes observed on the three lab routers. No firewall filter rules were present.
+Reachability and distinct cumulative TX counter increases must be validated after
+setup; success is not assumed from the configuration alone.
+
+After explicit approval:
+1. Back up only the affected local metadata and existing main collector source
+   privately, preserving all keys and replay/history state.
+2. Add the four VLAN interfaces and their four IP addresses. Verify the new
+   peers and TX counter isolation before assigning optimizer demand sources.
+3. Update main TX collection to the two approved logical interfaces using the
+   existing authenticated HTTPS channel. Keep carrier health collectors intact.
+4. Map each path to its matching main TX interface; retain configurable saved
+   capacities (MTN 8000 Mbps, Glo 4000 Mbps) and all routing safeguards.
+5. Run finite, capped main-to-MTN and main-to-Glo TX tests, wait for full fresh
+   averaging windows, and record actual measurements and advisory targets.
+6. Stop every test stream, verify zero remaining test sessions, and retain the
+   measurement handoffs only if the approved setup succeeds. On setup failure,
+   restore the affected collector/metadata and remove only test-marked objects.
+
+Capacity and interpretation:
+The current CHRs have free licenses. Their documented upload limit is 1 Mbps
+per interface, so this test cannot create real congestion at configured 8/4 Gbps.
+We can still verify real measured demand, demand conservation and 2:1 targets.
+A visibly congested demonstration needs a clearly separated lab-scale capacity
+profile or higher licensed real throughput. The saved WAN capacities will not
+be silently reduced, and generated traffic is not proof of automatic routing.
+A before/after routing improvement will not be claimed while execution is off.
+
+Prepared per-router apply and rollback scripts are in the git-ignored private
+handoff-preparation directory. They contain no credentials and have not run.
+No router configuration was changed while preparing this plan.
+
+Official license reference:
+https://help.mikrotik.com/docs/spaces/ROS/pages/18350234/Cloud+Hosted+Router+CHR

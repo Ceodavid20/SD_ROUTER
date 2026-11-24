@@ -17,6 +17,7 @@ from controllers.monitoring_controller import monitoring_management
 from controllers.workflow_controller import workflow
 from services.json_storage import StorageError, StorageService
 from services.security_service import LoginThrottle, admin_is_authenticated, csrf_token, valid_csrf
+from services.deployment_service import validate_deployment
 
 
 def create_app(test_config: Mapping[str, Any] | None = None) -> Flask:
@@ -24,6 +25,7 @@ def create_app(test_config: Mapping[str, Any] | None = None) -> Flask:
     app.config.from_mapping(load_config())
     if test_config is not None:
         app.config.update(test_config)
+    validate_deployment(app.config)
 
     if not app.config.get("SECRET_KEY"):
         if app.config["AUTH_ENABLED"] and (
@@ -55,6 +57,12 @@ def create_app(test_config: Mapping[str, Any] | None = None) -> Flask:
 
     @app.before_request
     def protect_company_operations() -> Response | tuple[Response, int] | None:
+        if app.config.get("ENVIRONMENT") == "production":
+            from urllib.parse import urlsplit
+            if not request.is_secure:
+                return app.response_class("HTTPS is required.", status=403)
+            if request.host.lower() != urlsplit(app.config["ADMIN_BASE_URL"]).netloc.lower():
+                return app.response_class("Unrecognized administrator origin.", status=400)
         if request.endpoint is None or request.endpoint == "static":
             return None
         # Device command delivery has its own Bearer authentication.
@@ -104,6 +112,8 @@ def create_app(test_config: Mapping[str, Any] | None = None) -> Flask:
         )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
+        if app.config.get("ENVIRONMENT") == "production" and request.is_secure:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
         if request.endpoint != "static":
             response.headers["Cache-Control"] = "no-store"
         return response

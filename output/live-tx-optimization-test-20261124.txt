@@ -1,0 +1,91 @@
+REAL MAIN-ROUTER TX / ADVISORY OPTIMIZATION TEST
+24 November 2026
+
+RESULT: PASSED
+The approved isolated carrier handoffs are installed and the former shared-
+interface measurement blocker is resolved. Actual main-router TX measurements
+now populate Optimization. All generated test streams stopped automatically.
+Routing execution remains disabled and there is no claimed applied improvement.
+
+APPROVED HANDOFFS
+Main sdr-to-mtn: VLAN 2401 on ether2; MTN sdr-from-main on ether3.
+Main sdr-to-glo: VLAN 2402 on ether2; Glo sdr-from-main on ether3.
+Point-to-point subnets: 172.31.250.0/30 and 172.31.250.4/30.
+These are distinct logical channels on the existing host-only lab network.
+IP assignment added the expressly approved connected routes. Existing default
+routes, OSPF, PCC, management addresses and 8/4 Gbps capacity inputs were retained.
+The main TX collector and its path mappings were updated with your approval.
+Carrier collectors remain separate health sources. The main scheduler was
+restored enabled after staging. Existing HMAC identity and TLS trust were reused.
+
+INDEPENDENT COUNTERS VERIFIED
+  SDR-MTN-01: expected-interface TX increased 473993 octets; other-interface TX increased only 616 octets. Native client exit 0.
+  SDR-GLO-01: expected-interface TX increased 475273 octets; other-interface TX increased only 682 octets. Native client exit 0.
+
+SUSTAINED REAL TRAFFIC
+Two authenticated transmit-only native tests ran concurrently for 420 seconds.
+Requested caps: MTN 150,000 bps; Glo 350,000 bps. These are generation limits,
+not substituted measurements. Rates below are calculated from real cumulative
+TX counters and elapsed times, accepted by the HMAC-authenticated endpoint.
+  MTN: interface sdr-to-mtn; actual average 0.146519 Mbps; predicted target 0.331085 Mbps; calculated cost 13; recommended connection weight 66.666667%.
+  GLO: interface sdr-to-glo; actual average 0.350108 Mbps; predicted target 0.165543 Mbps; calculated cost 26; recommended connection weight 33.333333%.
+  Total averaged actual demand: 0.496628 Mbps.
+The optimizer conserved demand and computed the configured 2:1 MLU targets.
+Five fresh samples were required per interface; warm-up produced no allocation.
+MTN and Glo configured WAN capacities remain 8,000 and 4,000 Mbps. No RX rate
+or byte counters were collected. No fabricated history was inserted.
+
+WHAT THIS RESULT MEANS
+The controller is receiving actual separate main-to-carrier TX and producing
+valid advisory targets. The traffic generator did not apply a PCC/OSPF routing
+policy. Current actual traffic and predicted targets are distinct in the table,
+JSON and graphs. The before/after routing panel correctly remains unverified.
+Traffic terminated on the two carrier bandwidth-test servers; this did not
+validate internet forwarding or a live connection-balancing actuator.
+
+The free CHRs have a documented 1 Mbps upload limit per interface. These VLANs
+also share one physical lab adapter. The saved 8/4 Gbps inputs are not measured
+physical capabilities. This capped test validates collection and the math, not
+real congestion control at those gigabit speeds. Under the configured capacities,
+the observed utilization difference is below the 5-percentage-point tolerance;
+therefore the condition is balanced and feedback weights remain at their 2:1
+capacity baseline. A visibly congested test needs a separately authorized,
+clearly labelled lab-scale profile or verified higher physical throughput.
+Official license reference:
+https://help.mikrotik.com/docs/spaces/ROS/pages/18350234/Cloud+Hosted+Router+CHR
+
+REAL ROUTER PULL CHECK
+The actual main MikroTik fetched its scoped advisory over certificate-verified
+HTTPS using HMAC-SHA512, and sent a separate not_applied application report.
+Flask accepted the report. Neither receipt ACKs nor this report claim successful
+routing application. This was a one-shot diagnostic; no recurring advisory pull
+client or routing actuator was installed.
+
+CODE FIX AND VALIDATION
+The live run exposed a saved-result freshness issue when decision weights/costs
+stay unchanged. Storage now refreshes the same snapshot's measurements and
+expiry in place, preserving its decision ID, version and original publication
+time. It does not append duplicate decisions or graph events. A new regression
+test verifies freshness beyond the initial expiry. Full suite: 643 passed in
+72.15 seconds. Browser checks rendered the two actual TX traces and separate
+predicted target bars on the real application.
+
+The first native collector transfer hit SSH RemoteCommand percent expansion.
+Its original source was backed up privately. Literal-percent handling was fixed,
+the updated source integrity checked, and both signed baselines verified. No
+credentials or secrets are included in this report or screenshots.
+
+CLEANUP AND CONTINUING OPERATION
+All generated bandwidth-test sessions are stopped. The approved handoffs,
+signed TX collector and controller advisory worker remain available for real
+future traffic. Idle rates are expected after a finite test; load history stays
+in the graph. Monitoring is read-only. SIMULATION_MODE=true and
+LIVE_ROUTING_ENABLED=false remain unchanged. The existing default routes/OSPF/
+PCC policies were verified after the test. No traffic-shifting rules were applied.
+
+ARTIFACTS
+  output/isolated-main-tx-optimization-20261124T111743Z.json
+  output/real-router-advisory-pull-20261124T112451Z.json
+  output/carrier-handoff-final-verification-20261124.json
+  output/main-to-carriers-optimization-live.png
+  docs/adaptive-optimization.txt

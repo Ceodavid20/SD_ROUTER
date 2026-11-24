@@ -131,7 +131,7 @@ class RouterOSPollService:
         if not isinstance(signature, str) or not _SIGNATURE.fullmatch(signature):
             self._authentication_failed()
         router = next((r for r in self.storage.read_json("routers.json") if r.get("router_id") == payload["router_id"]), None)
-        if router is None or router.get("controller_auth_enabled") is not True:
+        if router is None or router.get("active", True) is not True or router.get("controller_auth_enabled") is not True:
             self._authentication_failed()
         reference, key_ids = router.get("controller_auth_ref"), router.get("controller_auth_key_ids")
         if (

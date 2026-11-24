@@ -74,12 +74,12 @@ def test_add_router_link_opens_connection_setup_instead_of_a_form(app, path):
     assert all(link["href"] == SETUP_PATH for link in links)
 
 
-def test_router_page_removes_registration_form_but_retains_existing_router_actions(app):
+def test_router_page_supports_explicit_registration_and_retains_existing_router_actions(app):
     app.extensions["json_storage"].write_json("routers.json", [{"router_id": "EXISTING-R1", "name": "Existing router"}])
     response = app.test_client().get("/routers")
     page = elements(response)
-    assert not any(form.get("action") == "/routers/add" for form in page.forms)
-    assert not any(field.get("name") == "router_id" for field in page.inputs)
+    assert any(form.get("action") == "/routers/add" for form in page.forms)
+    assert any(field.get("name") == "router_id" for field in page.inputs)
     actions = {form.get("action") for form in page.forms}
     assert "/routers/EXISTING-R1/edit" in actions
     assert "/routers/EXISTING-R1/delete" in actions
@@ -87,12 +87,12 @@ def test_router_page_removes_registration_form_but_retains_existing_router_actio
 
 
 @pytest.mark.parametrize("with_csrf", [False, True])
-def test_removed_manual_registration_route_cannot_create_a_router(app, with_csrf):
+def test_explicit_registration_requires_csrf_and_keeps_monitoring_off(app, with_csrf):
     client = app.test_client()
     client.get("/routers")
     storage = app.extensions["json_storage"]
     before = deepcopy(storage.read_json("routers.json"))
-    form = {"router_id": "SHOULD-NOT-BE-ADDED", "name": "Rejected registration"}
+    form = {"router_id": "REGISTERED-PHYSICAL", "name": "New physical router", "deployment_kind": "physical"}
     if with_csrf:
         client.get("/settings")
         with client.session_transaction() as session:
@@ -100,8 +100,15 @@ def test_removed_manual_registration_route_cannot_create_a_router(app, with_csrf
 
     response = client.post("/routers/add", data=form)
 
-    assert response.status_code in (404, 405)
-    assert storage.read_json("routers.json") == before
+    assert response.status_code == (302 if with_csrf else 400)
+    after = storage.read_json("routers.json")
+    if with_csrf:
+        assert after[:-1] == before
+        assert after[-1]["monitoring_enabled"] is False
+        assert after[-1]["controller_auth_enabled"] is False
+        assert after[-1]["deployment_kind"] == "physical"
+    else:
+        assert after == before
 
 
 def test_connection_page_is_read_only_and_does_not_claim_router_reachability(app):

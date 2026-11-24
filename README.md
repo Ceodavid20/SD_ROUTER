@@ -2,7 +2,7 @@
 
 The controller stores router and operational settings in JSON files. Its intended optimization scope is outbound traffic on the MTN and Glo Lagos–Abuja trunks. Aggregation handoffs and operating limits are entered by the operator.
 
-The controller implements authenticated polling and receipts, opt-in outbound TX monitoring, moving-average analysis and local dry-run traffic allocation. The native RouterOS 7.21.4 polling client uses verified HTTPS and protocol v2. Polling still returns a versioned **no-action** JSON response. A separate traffic endpoint calculates Mbps from cumulative TX counters on one configured interface per router. Live routing changes remain disabled.
+The controller implements authenticated polling and receipts, opt-in outbound TX monitoring, moving-average inputs and advisory adaptive traffic allocation. The native RouterOS 7.21.4 polling client uses verified HTTPS and protocol v2. Polling still returns a versioned **no-action** JSON response. A separate traffic endpoint calculates Mbps from cumulative TX counters on explicitly authorized outbound interfaces. Live routing changes remain disabled.
 
 ## Start the application
 
@@ -43,7 +43,7 @@ It defaults to `127.0.0.1:8001`. The browser application remains on `127.0.0.1:8
 
 Follow [RouterOS connection setup](docs/routeros-setup.md) for private provisioning, verified HTTPS, and the first router exchange. The [v2 contract](docs/routeros-v2-protocol.md) documents the native protocol; [Router polling v1](docs/router-pull.md) retains the Python compatibility contract. [Native test notes](docs/routeros-native-notes.md) separate real RouterOS results from Python tests.
 
-## Monitoring, analysis and recommendations
+## Monitoring and recommendations
 
 The main application supports authenticated TX collection, moving averages, utilization/share calculations, estimated volume costs and constrained advisory allocations. It uses only saved router inventory and actual received readings. Missing measurements or settings remain unavailable.
 
@@ -123,17 +123,17 @@ For the existing MikroTik, run `.venv/bin/python manage.py configure-router-api 
 
 Open **Routing paths** to create the links used by your network. Select the aggregation router and carrier router from the inventory, then enter their interfaces, the confirmed path capacity and any applicable limits. For carrier-side dry-run analysis, an unknown aggregation interface can remain blank; it must be established before any future routing deployment. Carrier labels come from the configured inventory. Paths can be edited or removed. No connections or congestion thresholds are assumed at startup.
 
-**Optimization** displays the current allocation automatically, with the same read-only result at `GET /api/optimization`. Saved snapshots remain separate and optional. Signed fresh TX measurements establish readiness independently of optional API diagnostics. This workspace uses utilization balancing with an editable 80% ceiling and a 120-second hold-down for saved recommendations. No financial price is invented and no routing change is executed.
+**Optimization** displays the current allocation automatically, with the same read-only result at `GET /api/optimization`. Saved snapshots remain separate and optional. Signed fresh TX measurements establish readiness independently of optional API diagnostics. This workspace uses Adaptive MLU with a configurable 80% soft operating target and a 120-second hold-down. No financial price is invented and no routing change is executed.
 
 The supplied network PDF is a reference for entering these settings. The application does not embed a topology image or derive executable router changes from the drawing. Saving routers or paths changes local settings only; it does not contact a device or alter its configuration.
 
-Outbound monitoring accepts cumulative TX counters through the separate authenticated `POST /api/controller/v2/traffic` endpoint. Configure one outbound interface per router and explicitly enable it on **Traffic monitoring**. New routers remain disabled. The frontend displays current TX rates and existing measured history; first samples, resets and stale data are not shown as fabricated zero traffic. RX is never collected. See [traffic monitoring](docs/traffic-monitoring.md) for authentication, calculation, recovery and an optional disabled collector template. No SNMP collector or router-side installation is run by the application. Enter each carrier's actual financial price and billing unit after confirming them. Numeric OSPF costs and the mapping from optimization results to those costs remain unset.
+Outbound monitoring accepts cumulative TX counters through the separate authenticated `POST /api/controller/v2/traffic` endpoint. Configure one outbound interface per router and explicitly enable it on **Traffic monitoring**. New routers remain disabled. The frontend displays current TX rates and existing measured history; first samples, resets and stale data are not shown as fabricated zero traffic. RX is never collected. See [traffic monitoring](docs/traffic-monitoring.md) for authentication, calculation, recovery and an optional disabled collector template. No SNMP collector or router-side installation is run by the application. Adaptive MLU calculates congestion-aware routing costs separately from observed OSPF metrics and connection weights. See the adaptive guide below for the approved main-side interface requirements.
 
 Passwords, controller authentication secrets, and SNMP keys do not belong in registry JSON or HTML forms. Use separate environment references. `python manage.py provision-router --help` describes local private client provisioning for an existing identity. It generates a new key, writes a private RouterOS bundle, and preserves existing settings under a file lock. It never contacts or installs anything on a router.
 
 Plaintext API connections are blocked by default. API port 8728 is unencrypted; do not enable it unless the network team approves the protected management path. Prefer certificate-verified API-SSL.
 
-TX measurement, moving averages, utilization/share calculations, estimated volume costs and constrained local allocation are implemented. Recommendations are advisory dry-run snapshots. Executable RouterOS command generation, application acknowledgements and rollback remain unimplemented. Protocol v2 ACKs record response receipts only. Real calculations require confirmed operator settings and fresh readings. The application does not generate traffic, prices or recommendations from demonstration data. Polling stays no-action even when a local recommendation exists. The new documented allocation model does not replace an existing optimization engine.
+TX measurement, moving averages, utilization/share calculations, estimated volume costs and constrained local allocation are implemented. Recommendations are advisory dry-run snapshots. Executable routing command generation, authorized application and rollback remain disabled. The separate optimization-result endpoint records rejected/failed/not-applied reports; an applied claim is refused without execution authorization. Protocol v2 ACKs record response receipts only. Real calculations require confirmed operator settings and fresh readings. The application does not generate traffic, prices or recommendations from demonstration data. Polling stays no-action even when a local recommendation exists. The new documented allocation model does not replace an existing optimization engine.
 
 New storage starts in simulation mode. Existing saved automation modes are preserved rather than changed at startup. Regardless of a legacy mode label, routing changes and automation remain off. Device `SIMULATION_MODE` controls the existing loopback HTTP transport allowance; it does not create simulated routers, generate traffic or enable routing execution.
 
@@ -178,3 +178,27 @@ python -m pip check
 Tests use temporary JSON storage and mocked router requests. They do not need company credentials or contact real routers.
 
 Router authentication and polling tests cover signatures, per-router authorization, expiry, replay after restart, concurrent duplicate requests, source rate limits, JSON validation, isolated device routes, transport restrictions, no-action responses and signed receipts. Traffic tests add TX math, counter resets, interface enforcement, opt-in/CSRF, independent quotas and interrupted history recovery. Setup tests exercise credential rotation/revocation, concurrent secret-file updates, real certificate generation and strict TLS verification. See [native validation notes](docs/routeros-native-notes.md) for checks executed on RouterOS 7.21.4 itself; those results apply to the existing polling client, not the new disabled traffic collector. Company network reachability must be verified separately after an address is assigned.
+
+### Adaptive MLU optimization
+
+Optimization now supports capacity-weighted min-max utilization, bounded feedback,
+congestion-aware **routing** costs, and a live TX graph with click-to-inspect readings. The separate
+Traffic analysis page has been retired. Select **Adaptive MLU** in Settings and run
+`.venv/bin/python serve_optimizer.py` alongside the existing browser/device servers
+for automatic advisory calculations. Routing execution remains disabled.
+
+Each carrier path requires a distinct, authorized **main-router outbound TX interface**.
+Carrier-side TX is health telemetry and cannot substitute for main-to-carrier demand.
+The approved lab VLAN handoffs now provide separate main-router TX channels
+(`sdr-to-mtn` and `sdr-to-glo`); each must have a full fresh measurement window. The single TX graph updates in the background; selections remain pinned.
+Optimization shows advisory targets in a compact table and recorded actions in
+Recent changes.
+
+See [the implementation and operating guide](docs/adaptive-optimization.txt) for the
+math, defaults, authenticated pull/result contracts, startup commands, and remaining
+router-side work. A disabled, read/report-only advisory client can be prepared with
+`manage.py prepare-optimization-client`; no installation or routing changes are made.
+
+Use the **Optimization On/Off** switch to pause or resume advisory calculations.
+Off keeps TX monitoring and the graph running, blocks new recommendation delivery,
+and persists across restarts. Routing execution remains disabled in both states.

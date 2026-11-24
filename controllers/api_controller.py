@@ -70,6 +70,19 @@ def live_optimization() -> Response:
     return response
 
 
+@api.get("/optimization/live")
+def live_tx_view() -> Response:
+    from services.optimization_graphs import live_view
+    try:
+        response = jsonify(live_view(current_app.extensions["json_storage"], current_app.config))
+    except (StorageError, OSError, ValueError):
+        current_app.logger.error("Unable to read live TX dashboard data.")
+        response = jsonify(error="Live readings are temporarily unavailable.")
+        response.status_code = 503
+    response.cache_control.no_store = True
+    return response
+
+
 @router_config.get("/router-config/<router_id>")
 def current_router_config(router_id: str) -> Response:
     """Return only a validated router command, never an internal storage file."""

@@ -97,7 +97,8 @@ def sign_routeros_request(
         raise ProtocolError("Invalid router request size.")
     if not isinstance(key_id, str) or not KEY_ID.fullmatch(key_id):
         raise ProtocolError("Invalid authentication key ID.")
-    if path not in (ROUTEROS_POLL_PATH, ROUTEROS_ACK_PATH, ROUTEROS_TRAFFIC_PATH):
+    if path not in (ROUTEROS_POLL_PATH, ROUTEROS_ACK_PATH, ROUTEROS_TRAFFIC_PATH,
+                    "/api/controller/v2/optimization", "/api/controller/v2/optimization/result"):
         raise ProtocolError("Unsupported signed endpoint.")
     canonical = "\n".join((
         "SDR-POLL-V2", "POST", path, key_id, hashlib.sha512(raw).hexdigest(),

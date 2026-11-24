@@ -15,6 +15,7 @@ from services.json_storage import StorageService
 from services.controller_status_service import read_controller_status
 from services.routeros_api import RouterAPIError, RouterOSReadOnlyClient
 from services.traffic_service import read_traffic_status
+from services.traffic_service import monitored_interfaces
 from services.traffic_protocol import validate_interface
 from services.router_protocol import ProtocolError
 from services.controller_status_service import _authorization_enabled
@@ -80,6 +81,7 @@ class RouterService:
             "management_interface", "deployment_kind", "integration_status",
             "traffic_origin", "enrolled_at",
             "traffic_source_ip",
+            "api_ca_file", "detected_architecture",
         )
         result = {key: router.get(key) if isinstance(router.get(key), str) else ""
                   for key in text_fields}
@@ -108,6 +110,11 @@ class RouterService:
             else None
         )
         result["monitoring_enabled"] = router.get("monitoring_enabled") is True
+        result["active"] = router.get("active", True) is True
+        try:
+            result["monitoring_interfaces"] = monitored_interfaces(router)
+        except ProtocolError:
+            result["monitoring_interfaces"] = []
         interval = router.get("monitoring_interval_seconds")
         result["monitoring_interval_seconds"] = interval if type(interval) is int and 1 <= interval <= 86400 else None
         for key in ("capacity_mbps", "cost_per_gb"):
@@ -180,9 +187,28 @@ class RouterService:
             raise RouterValidationError("SNMP interface index must be a positive integer.") from exc
         if snmp_ifindex is not None and not 1 <= snmp_ifindex <= 2**31 - 1:
             raise RouterValidationError("SNMP interface index must be a positive integer.")
+        role = _string(form, "router_role", limit=64) or "unassigned"
+        if not re.fullmatch(r"[a-z][a-z0-9_-]{0,63}", role):
+            raise RouterValidationError("Use a lowercase role name containing letters, digits, hyphens or underscores.")
+        kind = _string(form, "deployment_kind", limit=32) or "unspecified"
+        if kind not in ("unspecified", "physical", "virtual", "chr_lab", "router"):
+            raise RouterValidationError("Select physical, virtual or unspecified deployment.")
+        if self.config.get("ENVIRONMENT") == "production" and kind == "chr_lab":
+            raise RouterValidationError("Laboratory CHR records cannot be registered in production.")
+        ca_file = _string(form, "api_ca_file", limit=1024)
+        if ca_file:
+            from services.deployment_service import profile_path
+            try:
+                ca_file = str(profile_path(self.config, ca_file))
+            except ValueError as exc:
+                raise RouterValidationError(str(exc)) from exc
         record = {
             "router_id": router_id,
             "name": _string(form, "name", required=True),
+            "router_role": role,
+            "deployment_kind": kind,
+            "carrier": _string(form, "carrier", limit=64),
+            "api_ca_file": ca_file or None,
             "ip_address": str(address) if address is not None else "",
             "model": _string(form, "model"),
             "routeros_version": _string(form, "routeros_version", limit=64),
@@ -288,8 +314,8 @@ class RouterService:
         for key in ("capacity_mbps", "cost_per_gb", "currency"):
             if key in existing and key not in data:
                 record[key] = existing[key]
-        for key in ("carrier", "endpoint", "router_role"):
-            if key in existing:
+        for key in ("carrier", "endpoint", "router_role", "deployment_kind", "api_ca_file"):
+            if key in existing and key not in data:
                 record[key] = existing[key]
         if "ospf_target_id" not in data:
             record["ospf_target_id"] = existing.get("ospf_target_id")
@@ -336,6 +362,9 @@ class RouterService:
                         or updated.get("controller_auth_ref") != current.get("controller_auth_ref")
                         or source_changed):
                     updated["monitoring_generation"] = str(uuid4())
+                    if updated.get("interface_name") != current.get("interface_name") and "monitoring_interfaces" in current:
+                        updated["monitoring_interfaces"] = [updated["interface_name"]]
+                        updated["monitoring_enabled"] = False
                 routers[index] = updated
                 return routers
             raise RouterValidationError("Router was not found.")
@@ -365,6 +394,7 @@ class RouterService:
             if router is None:
                 raise RouterValidationError("Router was not found.")
             if router.get("interface_name") != interface:
+                router.pop("monitoring_interfaces", None)
                 router.update(interface_name=interface, monitoring_enabled=False,
                               monitoring_generation=str(uuid4()))
             return routers
@@ -373,6 +403,24 @@ class RouterService:
         self.storage.append_activity("monitoring", "Outbound TX monitoring interface configured.", {
             "router_id": router_id, "interface": interface,
         })
+
+    def configure_monitoring_interfaces(self, router_id: str, interfaces: list[str]) -> None:
+        """Authorize explicit independent TX channels; no router connection/write."""
+        candidate = {"interface_name": interfaces[0] if isinstance(interfaces, list) and interfaces else None,
+                     "monitoring_interfaces": interfaces}
+        try:
+            monitored_interfaces(candidate)
+        except ProtocolError as exc:
+            raise RouterValidationError(str(exc)) from exc
+        def configure(rows):
+            row = next((row for row in rows if row["router_id"] == router_id), None)
+            if row is None:
+                raise RouterValidationError("Router was not found.")
+            if row.get("monitoring_interfaces", [row.get("interface_name")]) != interfaces:
+                row.update(interface_name=interfaces[0], monitoring_interfaces=list(interfaces),
+                           monitoring_generation=str(uuid4()), monitoring_enabled=False)
+            return rows
+        self.storage.update_json("routers.json", configure)
 
     def set_monitoring(self, router_id: str, enabled: bool) -> None:
         """Explicit local opt-in; changing this flag never installs a collector."""
@@ -386,8 +434,10 @@ class RouterService:
             if router is None:
                 raise RouterValidationError("Router was not found.")
             if enabled:
+                if router.get("active", True) is not True:
+                    raise RouterValidationError("Activate this router before enabling monitoring.")
                 try:
-                    validate_interface(router.get("interface_name"))
+                    monitored_interfaces(router)
                 except ProtocolError as exc:
                     raise RouterValidationError("Configure one outbound interface before enabling monitoring.") from exc
                 if not _authorization_enabled(router):
@@ -401,6 +451,23 @@ class RouterService:
         self.storage.append_activity("monitoring", "Outbound traffic monitoring setting updated.", {
             "router_id": router_id, "enabled": enabled,
         })
+
+    def set_active(self, router_id: str, active: bool) -> None:
+        """Reactivation never re-enables monitoring or old key authorization."""
+        if type(active) is not bool:
+            raise RouterValidationError("Invalid router activation setting.")
+        def update(rows):
+            row = next((item for item in rows if item["router_id"] == router_id), None)
+            if row is None:
+                raise RouterValidationError("Router was not found.")
+            if row.get("active", True) is not active:
+                row.update(active=active, monitoring_enabled=False, controller_auth_enabled=False,
+                           monitoring_generation=str(uuid4()))
+            return rows
+        self.storage.update_json("routers.json", update)
+        from services.router_onboarding_service import RouterOnboardingService
+        RouterOnboardingService(self.storage, self.config).revoke(router_id)
+        self.storage.append_activity("routers", "Router activated for setup." if active else "Router deactivated; monitoring and key authorization disabled.", {"router_id": router_id})
 
     def delete_router(self, router_id: str) -> None:
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", router_id):
@@ -442,7 +509,7 @@ class RouterService:
             data["snmp_ifindex"] = str(index)
         elif not isinstance(index, str):
             raise RouterValidationError("SNMP interface index is invalid. Edit and save the router.")
-        for key in ("ospf_target_id", "snmp_version", "snmp_credential_ref"):
+        for key in ("ospf_target_id", "snmp_version", "snmp_credential_ref", "api_ca_file"):
             if data.get(key) is None:
                 data[key] = ""
         return self._validated(data, allow_pending_address=True)
@@ -457,6 +524,8 @@ class RouterService:
             issues.append("Management IP address has not been entered for this router.")
         if router["api_port"] is None:
             issues.append("API port has not been entered for this router.")
+        if saved.get("active", True) is not True:
+            issues.append("Router is deactivated.")
         if not router["api_tls"] and not self.config.get("ALLOW_PLAINTEXT_API", False):
             issues.append("Unencrypted API connections are blocked. Configure API-SSL or explicitly authorize API access through a protected company network.")
         try:
@@ -513,7 +582,7 @@ class RouterService:
                     connection_settings["ip_address"], connection_settings["api_port"], username, password,
                     tls=connection_settings["api_tls"],
                     timeout=self.config.get("API_TIMEOUT_SECONDS", 3),
-                    ca_file=self.config.get("ROUTER_CA_FILE"),
+                    ca_file=router.get("api_ca_file") or self.config.get("ROUTER_CA_FILE"),
                 ).read_resource()
             except RouterAPIError as exc:
                 tested.update(connection_status="disconnected", last_error=str(exc))

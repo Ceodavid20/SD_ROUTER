@@ -38,7 +38,8 @@ def render_bootstrap(token, origin, interface, ca_name):
     template = (Path(__file__).resolve().parents[1] / "scripts/routeros/controller_bootstrap.rsc").read_text()
     values = {"__ENROLLMENT_TOKEN__": token, "__CONTROLLER_ORIGIN__": _https_origin(origin),
               "__OUTBOUND_INTERFACE__": interface, "__CA_FILENAME__": ca_name}
-    return re.sub(r"__[A-Z_]+__", lambda m: _routeros_string(values[m.group()]), template)
+    preflight = (Path(__file__).resolve().parents[1] / "scripts/routeros/controller_preflight.rsc").read_text()
+    return preflight + "\n" + re.sub(r"__[A-Z_]+__", lambda m: _routeros_string(values[m.group()]), template)
 
 
 def _request(raw):
@@ -71,6 +72,11 @@ def create_enrollment_grant(storage, config, output_dir, ca_file, *, interface,
                             bind_source=False, replace_existing=False, interval_seconds=None,
                             ttl_seconds=900, now=None):
     """Prepare initial trust privately. This makes no router configuration changes."""
+    from services.deployment_service import profile_path
+    profile_path(config, output_dir)
+    profile_path(config, ca_file)
+    if config.get("ENVIRONMENT") == "production" and (chr_lab or enable_monitoring):
+        raise ValueError("Production enrollment requires a non-lab identity and baseline review before monitoring opt-in.")
     current = now or datetime.now(UTC)
     if current.utcoffset() is None:
         raise ValueError("A timezone-aware enrollment time is required.")

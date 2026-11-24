@@ -19,6 +19,7 @@ def _authorization_enabled(router: Mapping[str, Any]) -> bool:
     reference, key_ids = router.get("controller_auth_ref"), router.get("controller_auth_key_ids")
     return (
         router.get("controller_auth_enabled") is True
+        and router.get("active", True) is True
         and isinstance(reference, str) and bool(_REFERENCE.fullmatch(reference))
         and isinstance(key_ids, list) and bool(key_ids)
         and all(isinstance(value, str) and KEY_ID.fullmatch(value) for value in key_ids)

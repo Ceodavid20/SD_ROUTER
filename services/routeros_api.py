@@ -1,8 +1,8 @@
 """Small, read-only RouterOS native API client.
 
 Framing follows MikroTik's published API protocol. The only device commands
-implemented are login and a restricted system-resource read. No routing or
-other configuration command can be submitted by a caller.
+implemented are login and explicitly projected read-only print operations.
+No routing or other configuration command can be submitted by a caller.
 """
 
 from __future__ import annotations
@@ -15,6 +15,10 @@ from typing import Any
 
 class RouterAPIError(Exception):
     """A safe, credential-free error suitable for an administrator."""
+
+
+class RouterAPIMenuUnavailable(RouterAPIError):
+    """A menu was rejected; support/permission cannot safely be inferred."""
 
 
 def encode_length(value: int) -> bytes:
@@ -39,6 +43,21 @@ class RouterOSReadOnlyClient:
     _MAX_REPLY_BYTES = 1024 * 1024
     _MAX_SENTENCES = 128
     _MAX_WORDS = 256
+    READS = {
+        "resource": ("/system/resource/print", "board-name,version,architecture-name,uptime,cpu-load"),
+        "interfaces": ("/interface/print", ".id,name,type,running,disabled"),
+        "tables": ("/routing/table/print", ".id,name,fib,disabled"),
+        "ospf_instances": ("/routing/ospf/instance/print", ".id,name,version,disabled,routing-table"),
+        "ospf_areas": ("/routing/ospf/area/print", ".id,name,instance,area-id,disabled"),
+        "ospf_templates": ("/routing/ospf/interface-template/print", ".id,interfaces,networks,area,cost,disabled"),
+        "ospf_interfaces_v6": ("/routing/ospf/interface/print", ".id,interface,cost,network-type,passive,disabled"),
+        "mangle": ("/ip/firewall/mangle/print", ".id,chain,action,disabled,connection-mark,new-connection-mark,routing-mark,new-routing-mark,per-connection-classifier,passthrough,in-interface,out-interface"),
+        "routes": ("/ip/route/print", ".id,dst-address,gateway,distance,routing-table,routing-mark,disabled,dynamic,static"),
+        "fasttrack": ("/ip/firewall/filter/print", ".id,chain,action,disabled,hw-offload,connection-mark"),
+        "bridge_ports": ("/interface/bridge/port/print", ".id,interface,bridge,hw,hw-offload,disabled"),
+        "switches": ("/interface/ethernet/switch/print", ".id,name,type,l3-hw-offloading"),
+        "tx": ("/interface/print", ".id,name,tx-byte"),
+    }
 
     def __init__(
         self,
@@ -112,8 +131,17 @@ class RouterOSReadOnlyClient:
         raise RouterAPIError("Router API sentence exceeded the permitted size.")
 
     def _talk(self, words: list[str]) -> list[dict[str, str]]:
-        if not words or words[0] not in ("/login", "/system/resource/print"):
-            raise RouterAPIError("Only read-only resource discovery is supported.")
+        allowed = [(command, "=.proplist=" + fields) for key, (command, fields) in self.READS.items() if key != "tx"]
+        allowed.append(("/system/resource/print", "=.proplist=board-name,version,uptime,cpu-load"))
+        login = (len(words) == 3 and words[0] == "/login" and words[1].startswith("=name=")
+                 and words[2].startswith("=password="))
+        printing = len(words) == 2 and tuple(words) in allowed
+        selected_tx = (len(words) == 3 and tuple(words[:2]) ==
+                       (self.READS["tx"][0], "=.proplist=" + self.READS["tx"][1])
+                       and words[2].startswith("?name=") and 0 < len(words[2][6:]) <= 128
+                       and all(ord(c) >= 32 and ord(c) != 127 for c in words[2][6:]))
+        if not (login or printing or selected_tx):
+            raise RouterAPIError("Only allowlisted read-only discovery is supported.")
         encoded = bytearray()
         for word in words:
             value = word.encode("utf-8")
@@ -124,7 +152,7 @@ class RouterOSReadOnlyClient:
         encoded.append(0)
         self._socket.settimeout(self._remaining())
         self._socket.sendall(encoded)
-        rows = []
+        rows, trapped = [], False
         for _ in range(self._MAX_SENTENCES):
             sentence = self._read_sentence()
             if not sentence:
@@ -134,21 +162,75 @@ class RouterOSReadOnlyClient:
                 if word.startswith("=") and "=" in word[1:]:
                     key, value = word[1:].split("=", 1)
                     attributes[key] = value
-            if sentence[0] in ("!trap", "!fatal"):
+            if sentence[0] == "!fatal":
                 # Device-provided errors may echo arguments; do not expose them.
                 raise RouterAPIError("Router rejected the API request. Check account permissions and credentials.")
+            if sentence[0] == "!trap":
+                # Drain through !done before another read on this connection.
+                trapped = True
+                continue
             if sentence[0] == "!done":
+                if trapped:
+                    raise RouterAPIMenuUnavailable("Read-only menu unavailable or not permitted.")
                 if "ret" in attributes:
                     raise RouterAPIError("Legacy RouterOS API authentication is not supported.")
                 return rows
             if sentence[0] == "!re":
-                rows.append(attributes)
+                # The API may return extra fields despite .proplist. Project
+                # immediately: secrets, RX and script sources never leave here.
+                fields = set(words[1].removeprefix("=.proplist=").split(",")) if not login else set()
+                rows.append({key: value[:256] for key, value in attributes.items() if key in fields})
             elif sentence[0] != "!empty":
                 raise RouterAPIError("Router returned an unexpected API reply.")
         raise RouterAPIError("Router API reply exceeded the permitted number of sentences.")
 
     def read_resource(self) -> dict[str, str]:
         """Use a verified connection to read the model, version, and uptime."""
+        def read():
+            rows = self._talk(["/system/resource/print", "=.proplist=board-name,version,uptime,cpu-load"])
+            if len(rows) != 1 or not rows[0].get("version"):
+                raise RouterAPIError("Router did not return the expected resource information.")
+            return {key: value[:256] for key, value in rows[0].items()
+                    if key in ("board-name", "version", "uptime", "cpu-load")}
+        return self._read(read)
+
+    def read_discovery(self, interfaces=()):
+        """A bounded read-only snapshot. Rejected menus remain explicitly unknown."""
+        from services.traffic_protocol import validate_interface
+        if len(interfaces) > 16:
+            raise RouterAPIError("Too many selected TX interfaces.")
+        for name in interfaces:
+            validate_interface(name)
+
+        def read():
+            result = {}
+            def menu(key, suffix=()):
+                command, fields = self.READS[key]
+                try:
+                    rows = self._talk([command, "=.proplist=" + fields, *suffix])
+                except RouterAPIMenuUnavailable:
+                    return {"status": "unavailable", "rows": []}
+                return {"status": "observed", "rows": rows}
+
+            result["resource"] = menu("resource")
+            resources = result["resource"]["rows"]
+            if len(resources) != 1 or not resources[0].get("version"):
+                raise RouterAPIError("Router did not return discovery resource information.")
+            version = resources[0]["version"].split(".", 1)[0]
+            for key in self.READS:
+                if key in ("resource", "tx"):
+                    continue
+                if ((key in ("tables", "ospf_templates") and version != "7")
+                        or (key == "ospf_interfaces_v6" and version != "6")):
+                    result[key] = {"status": "not_probed", "rows": []}
+                else:
+                    result[key] = menu(key)
+            result["tx"] = {name: menu("tx", ("?name=" + name,)) for name in interfaces}
+            return result
+        return self._read(read)
+
+    def _read(self, operation):
+        """One verified, authenticated connection with a total byte/time budget."""
         connection = None
         self._deadline = time.monotonic() + self.timeout
         self._received = 0
@@ -181,14 +263,7 @@ class RouterOSReadOnlyClient:
                     ) from exc
             self._socket = connection
             self._talk(["/login", "=name=" + self._username, "=password=" + self._password])
-            rows = self._talk([
-                "/system/resource/print",
-                "=.proplist=board-name,version,uptime,cpu-load",
-            ])
-            if len(rows) != 1 or not rows[0].get("version"):
-                raise RouterAPIError("Router did not return the expected resource information.")
-            return {key: value[:256] for key, value in rows[0].items()
-                    if key in ("board-name", "version", "uptime", "cpu-load")}
+            return operation()
         except ssl.SSLCertVerificationError as exc:
             raise RouterAPIError(
                 "Router TLS certificate verification failed. Configure the trusted router CA "

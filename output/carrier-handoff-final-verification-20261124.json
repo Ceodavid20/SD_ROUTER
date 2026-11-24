@@ -1,0 +1,55 @@
+{
+  "checked_at": "2026-11-24T11:27:38.385227+00:00",
+  "all_test_sessions_stopped": true,
+  "main_collector": {
+    "glo_running": true,
+    "mtn_running": true,
+    "scheduler_disabled": false
+  },
+  "routers": {
+    "SDR-CHR-LAB-01": {
+      "default_routes": [
+        {
+          "dst-address": "0.0.0.0/0",
+          "gateway": "10.0.2.2",
+          "routing-table": "main",
+          "active": true
+        }
+      ],
+      "mangle_rules": 0,
+      "ospf_templates": 2,
+      "routing_tables": 1,
+      "sessions": 0
+    },
+    "SDR-MTN-01": {
+      "default_routes": [
+        {
+          "dst-address": "0.0.0.0/0",
+          "gateway": "10.0.2.2",
+          "routing-table": "main",
+          "active": true
+        }
+      ],
+      "mangle_rules": 0,
+      "ospf_templates": 2,
+      "routing_tables": 1,
+      "sessions": 0
+    },
+    "SDR-GLO-01": {
+      "default_routes": [
+        {
+          "dst-address": "0.0.0.0/0",
+          "gateway": "10.0.2.2",
+          "routing-table": "main",
+          "active": true
+        }
+      ],
+      "mangle_rules": 0,
+      "ospf_templates": 0,
+      "routing_tables": 1,
+      "sessions": 0
+    }
+  },
+  "simulation_mode": true,
+  "live_routing_enabled": false
+}

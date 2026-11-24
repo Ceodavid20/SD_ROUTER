@@ -76,7 +76,7 @@ def render_routeros_script(router_id: str, key_id: str, secret: str, base_url: s
         template = template.replace(placeholder, _routeros_string(value))
     if re.search(r'__[A-Z_]+__', template):
         raise ValueError('The RouterOS client contains an unresolved setting.')
-    return template
+    return (PROJECT_ROOT / 'scripts/routeros/controller_preflight.rsc').read_text() + '\n' + template
 
 
 def _store_secret(env_path: Path, name: str, value: str) -> None:
@@ -151,7 +151,8 @@ def provision_router(
         if current is None or tuple(current.get(k) for k in ('controller_auth_ref', 'controller_auth_key_ids', 'controller_auth_enabled')) != expected_auth:
             raise ValueError('Router authorization changed during provisioning. Review the unused bundle before retrying.')
         current.update(controller_auth_ref=reference, controller_auth_enabled=True,
-                       controller_auth_key_ids=[*active, key_id])
+                       controller_auth_key_ids=[*active, key_id],
+                       controller_credentials_source="private_env")
         return routers
 
     storage.update_json('routers.json', enable)
@@ -280,6 +281,8 @@ def create_controller_tls(
         f'ProxyPassReverse "/api/controller/" "http://127.0.0.1:{backend_port}/api/controller/"',
         '<Location "/">', 'Require all denied', '</Location>',
         '<LocationMatch "^/api/controller/(v1/poll|v2/(poll|ack|traffic' + ('|enroll' if allow_enrollment else '') + '))$">',
+        'Require ip ' + ' '.join(networks), 'LimitRequestBody 8192', '</LocationMatch>',
+        '<LocationMatch \"^/api/controller/v2/optimization(?:/result)?$\">',
         'Require ip ' + ' '.join(networks), 'LimitRequestBody 8192', '</LocationMatch>',
         '</VirtualHost>', '',
     ])

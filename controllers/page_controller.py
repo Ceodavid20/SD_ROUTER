@@ -1,6 +1,6 @@
 """Browser routes. All persistent state is read through JSON storage."""
 
-from flask import Blueprint, abort, current_app, render_template, request
+from flask import Blueprint, abort, current_app, render_template, request, redirect, url_for
 
 from services.status_service import read_status
 from services.router_service import RouterService
@@ -24,21 +24,10 @@ def _render(page: str, *, activity_limit: int = 0, **context: object) -> str:
 def dashboard() -> str:
     storage = current_app.extensions["json_storage"]
     routers = RouterService(storage, current_app.config).list_routers()
-    connected = sum(router.get("connection_status") == "connected" for router in routers)
-    authenticated = sum(router["controller_polling"]["state"] == "authenticated" for router in routers)
-    return _render(
-        "dashboard",
-        activity_limit=5,
-        routers=routers,
-        live_preview=WorkflowService(storage, current_app.config).preview(),
-        router_counts={
-            "registered": len(routers),
-            "connected": connected,
-            "needs_check": len(routers) - connected,
-            "authenticated": authenticated,
-            "no_recent_checkin": len(routers) - authenticated,
-        },
-    )
+    from services.optimization_graphs import live_view
+    return _render("dashboard", routers=routers,
+                   live=live_view(storage, current_app.config))
+
 
 
 @pages.get("/routers")
@@ -87,15 +76,15 @@ def routing_paths() -> str:
 
 @pages.get("/mathematics")
 def mathematics() -> str:
-    return _render("mathematics", calculation=WorkflowService(
-        current_app.extensions["json_storage"], current_app.config,
-    ).read_latest())
+    return redirect(url_for("pages.optimization"))
 
 
 @pages.get("/optimization")
 def optimization() -> str:
-    service = WorkflowService(current_app.extensions["json_storage"], current_app.config)
-    return _render("optimization", calculation=service.read_latest(), live_preview=service.preview())
+    from services.optimization_graphs import live_view
+    return _render("optimization", live=live_view(
+        current_app.extensions["json_storage"], current_app.config))
+
 
 
 @pages.get("/json-output")
@@ -112,7 +101,9 @@ def automation() -> str:
 
 @pages.get("/settings")
 def settings() -> str:
-    return _render("settings")
+    from services.adaptive_routing import DEFAULT_SETTINGS
+    saved = current_app.extensions["json_storage"].read_json("automation_settings.json")
+    return _render("settings", adaptive_settings={**DEFAULT_SETTINGS, **saved.get("adaptive_optimization", {})})
 
 
 @pages.get("/logs")

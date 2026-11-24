@@ -58,11 +58,19 @@ def _record(row, fields):
 
 
 def validate_workflow_result(row):
+    if isinstance(row, dict) and row.get("workflow_version") == 2:
+        if set(row) != RESULT_FIELDS | {"adaptive"} or row.get("objective") != "adaptive_mlu":
+            raise ValidationError("Invalid adaptive calculation fields.")
+        from services.adaptive_routing import validate_adaptive
+        validate_adaptive(row["adaptive"])
+        validate_workflow_result({**{k: v for k, v in row.items() if k != "adaptive"},
+                                  "workflow_version": 1, "objective": "balance_utilization"})
+        return
     _record(row, RESULT_FIELDS)
     if (type(row["workflow_version"]) is not int or row["workflow_version"] != 1
             or row["mode"] != "dry_run" or row["action"] != "none"
             or row["routing_changes_enabled"] is not False
-            or row["status"] not in ("blocked", "ready", "infeasible", "hold_down")
+            or row["status"] not in ("blocked", "ready", "infeasible", "hold_down", "disabled")
             or row["objective"] not in ("not_configured", "minimize_cost", "balance_utilization")):
         raise ValidationError("Invalid dry-run calculation state.")
     for key in ("evaluation_id", "source_fingerprint", "policy_fingerprint"):
