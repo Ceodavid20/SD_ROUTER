@@ -23,7 +23,7 @@ __HMAC_HELPER__
         :local sdrCanonical ("SDR-POLL-V2\nPOST\n" . $sdrPath . "\n" . $sdrKeyId . "\n" . $sdrDigest);
         :local sdrSignature [$sdrHmacSha512 sdrSecret=$sdrSharedSecret sdrMessage=$sdrCanonical];
         :local sdrHeaders ("Content-Type:application/json,X-SDR-Key-Id:" . $sdrKeyId . ",X-SDR-Signature:" . $sdrSignature);
-        :local sdrFetched [/tool/fetch url=($sdrBaseUrl . $sdrPath) http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=10s];
+        :local sdrFetched [/tool/fetch url=($sdrBaseUrl . $sdrPath) http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=__FETCH_TIMEOUT_SECONDS__s];
         :if (($sdrFetched->"status") != "finished") do={ :error "Fetch failed"; };
         :local sdrText ($sdrFetched->"data");
         :if (([:typeof $sdrText] != "str") || ([:len $sdrText] = 0) || ([:len $sdrText] > 8192)) do={ :error "Invalid reply size"; };
@@ -58,7 +58,7 @@ __HMAC_HELPER__
         :local sdrResultCanonical ("SDR-POLL-V2\nPOST\n" . $sdrResultPath . "\n" . $sdrKeyId . "\n" . $sdrResultDigest);
         :local sdrResultSignature [$sdrHmacSha512 sdrSecret=$sdrSharedSecret sdrMessage=$sdrResultCanonical];
         :local sdrResultHeaders ("Content-Type:application/json,X-SDR-Key-Id:" . $sdrKeyId . ",X-SDR-Signature:" . $sdrResultSignature);
-        :local sdrReported [/tool/fetch url=($sdrBaseUrl . $sdrResultPath) http-method=post http-data=$sdrResultBody http-header-field=$sdrResultHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=10s];
+        :local sdrReported [/tool/fetch url=($sdrBaseUrl . $sdrResultPath) http-method=post http-data=$sdrResultBody http-header-field=$sdrResultHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=__FETCH_TIMEOUT_SECONDS__s];
         :if (($sdrReported->"status") != "finished") do={ :error "Result report failed"; };
         :put "SDR advisory retrieved; reported not applied; no routing action";
     } on-error={

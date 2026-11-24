@@ -175,7 +175,7 @@ def live_view(storage, config, *, now=None):
         public_routers.append({'id': rid, 'name': name if isinstance(name, str) and 0 < len(name) <= 128 else rid,
                               'state': router_states[rid]['state'], 'sampled_at': router_states[rid]['last_sample_at']})
     receiving = [row for row in series if row['state'] == 'measured' and row['current_mbps'] is not None]
-    return {'updated_at': utc_text(current), 'refresh_seconds': 5,
+    return {'updated_at': utc_text(current), 'refresh_seconds': config.get('DASHBOARD_REFRESH_SECONDS', 5),
         'sample_interval_seconds': settings['monitoring_interval_seconds'],
         'max_gap_seconds': graph['max_gap_seconds'], 'series': series,
         'summary': {'total_mbps': sum(row['current_mbps'] for row in receiving) if series and len(receiving) == len(series) else None,

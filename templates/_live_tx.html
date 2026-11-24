@@ -1,4 +1,4 @@
-<section class="surface panel live-tx-panel" aria-labelledby="tx-title" data-live-tx data-endpoint="{{ url_for('api.live_tx_view') }}">
+<section class="surface panel live-tx-panel" aria-labelledby="tx-title" data-live-tx data-endpoint="{{ url_for('api.live_tx_view') }}" data-request-timeout-seconds="{{ config.BROWSER_REQUEST_TIMEOUT_SECONDS }}">
   <div class="panel-heading tx-heading">
     <h2 id="tx-title">Outbound TX</h2>
     <div class="tx-controls">

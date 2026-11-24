@@ -272,7 +272,7 @@
     fetching = true;
     const revision = controlRevision;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), Number(root.dataset.requestTimeoutSeconds || 10) * 1000);
     try {
       const response = await fetch(root.dataset.endpoint, {credentials: 'same-origin', cache: 'no-store', redirect: 'error', signal: controller.signal});
       if (!response.ok) throw new Error(response.status === 401 ? 'session' : 'connection');
@@ -294,7 +294,7 @@
     const message = document.querySelector('[data-optimization-error]');
     message.textContent = '';
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), Number(root.dataset.requestTimeoutSeconds || 10) * 1000);
     renderOperations();
     try {
       const response = await fetch(controlForm.action, {method: 'POST', credentials: 'same-origin', redirect: 'error',

@@ -33,7 +33,7 @@ __HMAC_HELPER__
         :local sdrCanonical ("SDR-POLL-V2\nPOST\n" . $sdrPath . "\n" . $sdrKeyId . "\n" . $sdrBodyDigest);
         :local sdrSignature [$sdrHmacSha512 sdrSecret=$sdrSharedSecret sdrMessage=$sdrCanonical];
         :local sdrHeaders ("Content-Type:application/json,X-SDR-Key-Id:" . $sdrKeyId . ",X-SDR-Signature:" . $sdrSignature);
-        :local sdrFetched [/tool/fetch url=($sdrBaseUrl . $sdrPath) http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=10s];
+        :local sdrFetched [/tool/fetch url=($sdrBaseUrl . $sdrPath) http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=__FETCH_TIMEOUT_SECONDS__s];
         :if (($sdrFetched->"status") != "finished") do={ :error "Traffic request did not finish"; };
         :local sdrText ($sdrFetched->"data");
         :if (([:typeof $sdrText] != "str") || ([:len $sdrText] = 0) || ([:len $sdrText] > 8192)) do={ :error "Invalid traffic response"; };

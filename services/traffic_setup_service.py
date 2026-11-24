@@ -16,10 +16,10 @@ from services.traffic_service import monitored_interfaces
 from services.api_credentials_service import controller_secret
 
 
-def render_traffic_script(router_id: str, key_id: str, secret: str, base_url: str, interface: str) -> str:
+def render_traffic_script(router_id: str, key_id: str, secret: str, base_url: str, interface: str, *, fetch_timeout_seconds=10) -> str:
     if isinstance(interface, list):
         monitored_interfaces({"interface_name": interface[0] if interface else None, "monitoring_interfaces": interface})
-        scripts = [render_traffic_script(router_id, key_id, secret, base_url, name) for name in interface]
+        scripts = [render_traffic_script(router_id, key_id, secret, base_url, name, fetch_timeout_seconds=fetch_timeout_seconds) for name in interface]
         # One explicit opt-in controls the whole authorized list. Each channel
         # keeps its own counter and fresh nonce; failures do not fabricate rates.
         header = ":local sdrTrafficEnabled false;\n:if ($sdrTrafficEnabled != true) do={ :put \"SDR outbound collection is disabled\"; :return; };\n"
@@ -27,12 +27,13 @@ def render_traffic_script(router_id: str, key_id: str, secret: str, base_url: st
     validate_interface(interface)
     # Reuse the validated settings and exact HMAC implementation of the
     # existing client; its poll and ACK source is never edited or installed.
-    poll_script = render_routeros_script(router_id, key_id, secret, base_url)
+    poll_script = render_routeros_script(router_id, key_id, secret, base_url, fetch_timeout_seconds=fetch_timeout_seconds)
     helper = poll_script.split("    # SDR_HMAC_BEGIN\n", 1)[1].split("    # SDR_HMAC_END", 1)[0]
     template = (PROJECT_ROOT / "scripts/routeros/controller_traffic_v2.rsc").read_text()
     values = {
         "__ROUTER_ID__": router_id, "__KEY_ID__": key_id, "__SHARED_SECRET__": secret,
         "__CONTROLLER_BASE_URL__": _https_origin(base_url), "__INTERFACE__": interface,
+        "__FETCH_TIMEOUT_SECONDS__": str(fetch_timeout_seconds),
     }
     # A single substitution pass prevents interface text becoming a template
     # directive. Only the inserted HMAC helper is code; settings are escaped.
@@ -55,7 +56,7 @@ def prepare_traffic_client(
         from config import load_config
         config = load_config()
     secret = controller_secret(router, key_id, config)
-    script = render_traffic_script(router_id, key_id, secret, base_url, monitored_interfaces(router) if "monitoring_interfaces" in router else router.get("interface_name"))
+    script = render_traffic_script(router_id, key_id, secret, base_url, monitored_interfaces(router) if "monitoring_interfaces" in router else router.get("interface_name"), fetch_timeout_seconds=config.get("ROUTER_FETCH_TIMEOUT_SECONDS", 10))
     target = _new_private_directory(output_dir)
     _private_file(target / "controller-traffic.rsc", script)
     _private_file(target / "README.txt", (
@@ -83,11 +84,11 @@ def prepare_optimization_client(storage,router_id,key_id,base_url,output_dir,con
         from config import load_config
         config=load_config()
     secret=controller_secret(router,key_id,config)
-    poll=render_routeros_script(router_id,key_id,secret,base_url)
+    poll=render_routeros_script(router_id,key_id,secret,base_url,fetch_timeout_seconds=config.get("ROUTER_FETCH_TIMEOUT_SECONDS",10))
     helper=poll.split('    # SDR_HMAC_BEGIN\n',1)[1].split('    # SDR_HMAC_END',1)[0]
     template=(PROJECT_ROOT/'scripts/routeros/controller_optimization_v2.rsc').read_text()
     values={'__ROUTER_ID__':router_id,'__KEY_ID__':key_id,'__SHARED_SECRET__':secret,
-            '__CONTROLLER_BASE_URL__':_https_origin(base_url)}
+            '__CONTROLLER_BASE_URL__':_https_origin(base_url), '__FETCH_TIMEOUT_SECONDS__':str(config.get("ROUTER_FETCH_TIMEOUT_SECONDS",10))}
     replacements={key:_routeros_string(value) for key,value in values.items()}
     replacements['__HMAC_HELPER__']=helper.rstrip()
     script=(PROJECT_ROOT / 'scripts/routeros/controller_preflight.rsc').read_text() + '\n' + re.sub(r'__[A-Z_]+__',lambda match:replacements[match.group()],template)

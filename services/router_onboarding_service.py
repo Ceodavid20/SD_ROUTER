@@ -325,7 +325,8 @@ class RouterOnboardingService:
         parent = profile_path(self.config, self.config["PRIVATE_BUNDLE_DIR"])
         target = parent / (router_id + "-" + secrets.token_hex(8))
         result = provision_router(self.storage, self.config["CONTROLLER_CREDENTIALS_ENV_FILE"], router_id,
-            self.config.get("CONTROLLER_BASE_URL", ""), target, ca_file=ca_path)
+            self.config.get("CONTROLLER_BASE_URL", ""), target, ca_file=ca_path,
+            fetch_timeout_seconds=self.config.get("ROUTER_FETCH_TIMEOUT_SECONDS", 10))
         prepare_traffic_client(self.storage, router_id, result["key_id"], result["controller_base_url"], target / "traffic", config=self.config)
         prepare_optimization_client(self.storage, router_id, result["key_id"], result["controller_base_url"], target / "advisory", config=self.config)
         # A provisioned key changes the binding: require fresh review before any

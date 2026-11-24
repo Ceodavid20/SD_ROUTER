@@ -29,7 +29,7 @@
                 :set sdrNow [:tonum ([:tonsec [:timestamp]] / 1000000000)];
                 :set sdrBody [:serialize value={"protocol_version"="1.0";"request_type"="enroll";"request_id"=$sdrRequestId;"timestamp"=$sdrNow;"router_name"=[/system/identity/get name];"device_id"=$sdrDeviceId;"interface"=$sdrInterface} to=json options=json.no-string-conversion];
                 :do {
-                    :set sdrFetched [/tool/fetch url=($sdrOrigin . "/api/controller/v2/enroll") http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=15s];
+                    :set sdrFetched [/tool/fetch url=($sdrOrigin . "/api/controller/v2/enroll") http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=__FETCH_TIMEOUT_SECONDS__s];
                     :set sdrFinished (($sdrFetched->"status") = "finished");
                 } on-error={ :if ($sdrAttempt < 3) do={ :delay 5s; }; };
             };

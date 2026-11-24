@@ -1,5 +1,5 @@
 # One authenticated, read-only controller exchange for capable RouterOS 7 devices.
-# Render the four placeholders using the controller's private provisioning tool.
+# Render the settings using the controller's private provisioning tool.
 # This file never changes interfaces, routes, OSPF costs, or scheduler settings.
 {
     :local sdrBaseUrl "__CONTROLLER_BASE_URL__";
@@ -133,7 +133,7 @@
         :local sdrSignature [$sdrHmacSha512 sdrSecret=$sdrSharedSecret sdrMessage=$sdrCanonical];
         :local sdrHeaders ("Content-Type:application/json,X-SDR-Key-Id:" . $sdrKeyId . ",X-SDR-Signature:" . $sdrSignature);
         :set sdrStep "poll transport";
-        :local sdrFetched [/tool/fetch url=($sdrBaseUrl . $sdrPollPath) http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=10s];
+        :local sdrFetched [/tool/fetch url=($sdrBaseUrl . $sdrPollPath) http-method=post http-data=$sdrBody http-header-field=$sdrHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=__FETCH_TIMEOUT_SECONDS__s];
         :if (($sdrFetched->"status") != "finished") do={ :error "Controller poll did not finish"; };
         :set sdrStep "poll validation";
         :local sdrPollReply [$sdrValidateResponse sdrText=($sdrFetched->"data") sdrExpectedRouter=$sdrRouterId sdrExpectedRequest=$sdrRequestId sdrReceiptTarget=""];
@@ -152,7 +152,7 @@
         :local sdrAckSignature [$sdrHmacSha512 sdrSecret=$sdrSharedSecret sdrMessage=$sdrAckCanonical];
         :local sdrAckHeaders ("Content-Type:application/json,X-SDR-Key-Id:" . $sdrKeyId . ",X-SDR-Signature:" . $sdrAckSignature);
         :set sdrStep "receipt transport";
-        :local sdrAckFetched [/tool/fetch url=($sdrBaseUrl . $sdrAckPath) http-method=post http-data=$sdrAckBody http-header-field=$sdrAckHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=10s];
+        :local sdrAckFetched [/tool/fetch url=($sdrBaseUrl . $sdrAckPath) http-method=post http-data=$sdrAckBody http-header-field=$sdrAckHeaders check-certificate=yes http-max-redirect-count=0 output=user as-value duration=__FETCH_TIMEOUT_SECONDS__s];
         :if (($sdrAckFetched->"status") != "finished") do={ :error "Controller receipt did not finish"; };
         :set sdrStep "receipt validation";
         :local sdrAckReply [$sdrValidateResponse sdrText=($sdrAckFetched->"data") sdrExpectedRouter=$sdrRouterId sdrExpectedRequest=$sdrAckId sdrReceiptTarget=$sdrResponseId];

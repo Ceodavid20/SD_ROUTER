@@ -59,7 +59,9 @@ def _routeros_string(value: str) -> str:
     return value.replace('\\', '\\\\').replace('"', '\\"').replace('$', '\\$').replace('\r', '\\r').replace('\n', '\\n')
 
 
-def render_routeros_script(router_id: str, key_id: str, secret: str, base_url: str) -> str:
+def render_routeros_script(router_id: str, key_id: str, secret: str, base_url: str, *, fetch_timeout_seconds=10) -> str:
+    if type(fetch_timeout_seconds) is not int or not 1 <= fetch_timeout_seconds <= 60:
+        raise ValueError('Invalid native fetch timeout.')
     if not isinstance(router_id, str) or not ROUTER_ID.fullmatch(router_id):
         raise ValueError('Invalid registered router identity.')
     if not isinstance(key_id, str) or not KEY_ID.fullmatch(key_id):
@@ -69,7 +71,8 @@ def render_routeros_script(router_id: str, key_id: str, secret: str, base_url: s
     origin = _https_origin(base_url)
     template = (PROJECT_ROOT / 'scripts/routeros/controller_poll_v2.rsc').read_text()
     values = {'__ROUTER_ID__': router_id, '__KEY_ID__': key_id,
-              '__SHARED_SECRET__': secret, '__CONTROLLER_BASE_URL__': origin}
+              '__SHARED_SECRET__': secret, '__CONTROLLER_BASE_URL__': origin,
+              '__FETCH_TIMEOUT_SECONDS__': str(fetch_timeout_seconds)}
     for placeholder, value in values.items():
         if placeholder not in template:
             raise ValueError('The RouterOS client template is incomplete.')
@@ -94,6 +97,7 @@ def provision_router(
     storage: StorageService, env_path: str | Path, router_id: str,
     base_url: str, output_dir: str | Path, *, key_id: str | None = None,
     ca_file: str | Path | None = None,
+    fetch_timeout_seconds: int = 10,
 ) -> dict:
     """Issue a new private client bundle for an existing, approved identity."""
     origin = _https_origin(base_url)
@@ -116,7 +120,7 @@ def provision_router(
     if key_id in active:
         raise ValueError('This key ID is already active. Select a new key ID for rotation.')
     secret = secrets.token_hex(32)
-    script = render_routeros_script(router_id, key_id, secret, origin)
+    script = render_routeros_script(router_id, key_id, secret, origin, fetch_timeout_seconds=fetch_timeout_seconds)
     ca = Path(ca_file).expanduser().resolve().read_bytes() if ca_file else None
     if ca is not None and (b'-----BEGIN CERTIFICATE-----' not in ca or b'PRIVATE KEY' in ca):
         raise ValueError('Supply only the public controller CA certificate, never a private key.')

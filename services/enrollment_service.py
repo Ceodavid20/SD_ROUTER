@@ -29,7 +29,9 @@ TOKEN = re.compile(r"([0-9a-f]{32})\.([A-Za-z0-9_-]{43})\Z")
 REQUEST_FIELDS = {"protocol_version", "request_type", "request_id", "timestamp", "router_name", "device_id", "interface"}
 
 
-def render_bootstrap(token, origin, interface, ca_name):
+def render_bootstrap(token, origin, interface, ca_name, *, fetch_timeout_seconds=15):
+    if type(fetch_timeout_seconds) is not int or not 1 <= fetch_timeout_seconds <= 60:
+        raise ValueError("Invalid bootstrap fetch timeout.")
     if not isinstance(token, str) or TOKEN.fullmatch(token) is None:
         raise ValueError("Invalid private bootstrap authorization.")
     validate_interface(interface)
@@ -37,7 +39,8 @@ def render_bootstrap(token, origin, interface, ca_name):
         raise ValueError("Use a safe bootstrap CA file name.")
     template = (Path(__file__).resolve().parents[1] / "scripts/routeros/controller_bootstrap.rsc").read_text()
     values = {"__ENROLLMENT_TOKEN__": token, "__CONTROLLER_ORIGIN__": _https_origin(origin),
-              "__OUTBOUND_INTERFACE__": interface, "__CA_FILENAME__": ca_name}
+              "__OUTBOUND_INTERFACE__": interface, "__CA_FILENAME__": ca_name,
+              "__FETCH_TIMEOUT_SECONDS__": str(fetch_timeout_seconds)}
     preflight = (Path(__file__).resolve().parents[1] / "scripts/routeros/controller_preflight.rsc").read_text()
     return preflight + "\n" + re.sub(r"__[A-Z_]+__", lambda m: _routeros_string(values[m.group()]), template)
 
@@ -117,7 +120,7 @@ def create_enrollment_grant(storage, config, output_dir, ca_file, *, interface,
         "enrolled_router_id": None, "used_request_id": None}
     target = _new_private_directory(output_dir)
     ca_name = "sdr-bootstrap-ca-" + token_id + ".pem"
-    script = render_bootstrap(token, origin, interface, ca_name)
+    script = render_bootstrap(token, origin, interface, ca_name, fetch_timeout_seconds=config.get("ROUTER_BOOTSTRAP_TIMEOUT_SECONDS",15))
     _private_file(target / ca_name, ca_bytes)
     _private_file(target / "bootstrap.rsc", script)
     def save(state):
@@ -194,7 +197,8 @@ class EnrollmentService:
             reference = "SDR_ENROLL_" + secrets.token_hex(10).upper()
             key_id, secret = "E" + secrets.token_hex(10).upper(), secrets.token_hex(32)
             collector = render_traffic_script(router_id, key_id, secret,
-                _https_origin(self.config["CONTROLLER_BASE_URL"]), grant["outbound_interface"])
+                _https_origin(self.config["CONTROLLER_BASE_URL"]), grant["outbound_interface"],
+                fetch_timeout_seconds=self.config.get("ROUTER_FETCH_TIMEOUT_SECONDS",10))
             if grant["enable_monitoring"]:
                 collector = collector.replace(":local sdrTrafficEnabled false;", ":local sdrTrafficEnabled true;", 1)
             router.update(name=grant["name"] or body["router_name"], interface_name=grant["outbound_interface"],

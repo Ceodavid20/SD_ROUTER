@@ -183,6 +183,7 @@ def main() -> None:
                         storage, config["CONTROLLER_CREDENTIALS_ENV_FILE"], args.router_id,
                         args.controller_url or config.get("CONTROLLER_BASE_URL", ""),
                         args.output_dir, key_id=args.key_id, ca_file=args.ca_file,
+                        fetch_timeout_seconds=config["ROUTER_FETCH_TIMEOUT_SECONDS"],
                     )
                     print("Private router bundle prepared:", result["output_dir"])
                     print("Restart the device server to load the new credential reference.")
