@@ -1,0 +1,761 @@
+{
+  "started_at": "2026-11-25T11:02:49.509306Z",
+  "scope": "Actual TX through existing isolated CHR handoffs; lab capacity model",
+  "router_configuration_writes": false,
+  "rx_collected": false,
+  "synthetic_telemetry_inserted": false,
+  "simulation_mode": true,
+  "live_routing_enabled": false,
+  "applied_routing_relief_verified": false,
+  "physical_queue_congestion_verified": false,
+  "verified_after_measurements": null,
+  "observations": [
+    {
+      "at": "2026-11-25T11:03:02.791217Z",
+      "elapsed_seconds": 2,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 0,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 0
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:03:13.613117Z",
+      "elapsed_seconds": 13,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 1,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 2
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:03:20.423003Z",
+      "elapsed_seconds": 20,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 1,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 2
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:03:30.559228Z",
+      "elapsed_seconds": 30,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 7,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 2,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 3
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:03:37.235790Z",
+      "elapsed_seconds": 37,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 2,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 3
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:03:47.419191Z",
+      "elapsed_seconds": 47,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 3,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 4
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:03:54.076095Z",
+      "elapsed_seconds": 53,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 3,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 4
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:00.523632Z",
+      "elapsed_seconds": 60,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 3,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 4
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:10.333656Z",
+      "elapsed_seconds": 70,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 5,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:16.733009Z",
+      "elapsed_seconds": 76,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 5,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:26.594657Z",
+      "elapsed_seconds": 86,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:33.210725Z",
+      "elapsed_seconds": 93,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 9,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:43.007680Z",
+      "elapsed_seconds": 102,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:49.498072Z",
+      "elapsed_seconds": 109,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:04:55.642005Z",
+      "elapsed_seconds": 115,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:01.785762Z",
+      "elapsed_seconds": 121,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 7,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:11.208602Z",
+      "elapsed_seconds": 131,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:17.354145Z",
+      "elapsed_seconds": 137,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:26.723993Z",
+      "elapsed_seconds": 146,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:32.958476Z",
+      "elapsed_seconds": 152,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 9,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:42.429665Z",
+      "elapsed_seconds": 162,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:48.587582Z",
+      "elapsed_seconds": 168,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:05:54.744023Z",
+      "elapsed_seconds": 174,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:00.714738Z",
+      "elapsed_seconds": 180,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:09.781367Z",
+      "elapsed_seconds": 189,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:16.341924Z",
+      "elapsed_seconds": 196,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:25.360150Z",
+      "elapsed_seconds": 205,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:31.412684Z",
+      "elapsed_seconds": 211,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:37.463818Z",
+      "elapsed_seconds": 217,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 7,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:46.576101Z",
+      "elapsed_seconds": 226,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:52.685438Z",
+      "elapsed_seconds": 232,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:06:58.718664Z",
+      "elapsed_seconds": 238,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:04.850746Z",
+      "elapsed_seconds": 244,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 7,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:13.651519Z",
+      "elapsed_seconds": 253,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 10,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:19.605673Z",
+      "elapsed_seconds": 259,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:28.265241Z",
+      "elapsed_seconds": 268,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:34.210767Z",
+      "elapsed_seconds": 274,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:40.206270Z",
+      "elapsed_seconds": 280,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 9,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:49.139259Z",
+      "elapsed_seconds": 288,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:07:55.146670Z",
+      "elapsed_seconds": 294,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:00.884495Z",
+      "elapsed_seconds": 300,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:09.560625Z",
+      "elapsed_seconds": 309,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 7,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:15.359342Z",
+      "elapsed_seconds": 315,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:21.158876Z",
+      "elapsed_seconds": 320,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:29.867375Z",
+      "elapsed_seconds": 329,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 7,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:35.663053Z",
+      "elapsed_seconds": 335,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:41.435232Z",
+      "elapsed_seconds": 341,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:47.298855Z",
+      "elapsed_seconds": 347,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:53.261809Z",
+      "elapsed_seconds": 353,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:08:59.173376Z",
+      "elapsed_seconds": 358,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 7,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:09:04.960295Z",
+      "elapsed_seconds": 364,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:09:13.871882Z",
+      "elapsed_seconds": 373,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 9,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:09:19.979730Z",
+      "elapsed_seconds": 379,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T11:09:29.229396Z",
+      "elapsed_seconds": 389,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 30,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    }
+  ],
+  "trusted_tx_only_collector_verified": true,
+  "duration_limit_seconds": 480,
+  "capacity_limits_mbps": {
+    "MTN": 0.4,
+    "GLO": 0.15
+  },
+  "requested_test_tx_limits_mbps": {
+    "MTN": 0.41,
+    "GLO": 0.005
+  },
+  "initial_native_checks": {
+    "SDR-CHR-LAB-01": {
+      "authenticated": true,
+      "cpu_load": 2,
+      "enabled": true,
+      "epoch": 1795604569,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 6,
+      "sessions": 0
+    },
+    "SDR-MTN-01": {
+      "authenticated": true,
+      "cpu_load": 1,
+      "enabled": true,
+      "epoch": 1795604534,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 5,
+      "sessions": 0
+    },
+    "SDR-GLO-01": {
+      "authenticated": true,
+      "cpu_load": 1,
+      "enabled": true,
+      "epoch": 1795604571,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 4,
+      "sessions": 0
+    }
+  },
+  "outcome": "stopped_safely",
+  "error_type": "KeyboardInterrupt",
+  "finished_at": "2026-11-25T11:09:30.581941Z"
+}

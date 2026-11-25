@@ -1556,3 +1556,19 @@ The full automated suite passed: 769 tests. Browser checks passed for point
 clicks, live updates, metric visibility, keyboard selection and mobile layout.
 Those browser checks used isolated fixtures; real jitter needs authorized probes.
 SIMULATION_MODE=true and LIVE_ROUTING_ENABLED=false remain enforced.
+
+
+UPDATE — 25 November 2026: second-by-second graph
+-----------------------------------------------
+The live TX/jitter graph now opens on a one-minute view with second labels.
+Click anywhere along the timeline to select that second. Missing readings stay
+unavailable. Both TX and RTT jitter support real one-second target sampling
+through an explicitly enabled serve_live.py worker using verified API-SSL.
+TX rates use actual counter deltas and elapsed time; jitter uses eight pings
+spaced 50 ms apart. Measurements have independent timestamps.
+
+The sampler reuses its authenticated connection to avoid repeated login delays.
+A bounded JSON cache retains 600 points per interface, up to 12,000 overall.
+Existing signed TX history, polling, acknowledgements, optimization averaging
+and routing locks remain intact. New paths keep this feature disabled until
+explicitly enabled. See docs/second-live-monitoring.txt for operation and limits.

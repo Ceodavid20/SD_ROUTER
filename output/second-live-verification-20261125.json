@@ -1,0 +1,44 @@
+{
+  "checked_at": "2026-11-25T10:16:11.938989+00:00",
+  "links": [
+    {
+      "carrier": "MTN",
+      "readings": 106,
+      "median_tx_interval_seconds": 1.001375,
+      "median_jitter_interval_seconds": 0.995522,
+      "latest_tx_mbps": 0.004458603163418754,
+      "latest_jitter_ms": 0.816,
+      "latest_at": "2026-11-25T10:16:11.040728Z",
+      "latest_status": "measured",
+      "latest_probe_replies": 8
+    },
+    {
+      "carrier": "GLO",
+      "readings": 106,
+      "median_tx_interval_seconds": 1.001443,
+      "median_jitter_interval_seconds": 0.995426,
+      "latest_tx_mbps": 0.00445975716224059,
+      "latest_jitter_ms": 0.5584285714285714,
+      "latest_at": "2026-11-25T10:16:11.042821Z",
+      "latest_status": "measured",
+      "latest_probe_replies": 8
+    }
+  ],
+  "preservation": {
+    "router_inventory_unchanged": true,
+    "path_configuration_unchanged_except_live_opt_in": true,
+    "automation_settings_currently_match_saved_snapshot": true
+  },
+  "simulation_mode": true,
+  "live_routing_enabled": false,
+  "tests_passed": 794,
+  "sessions": {
+    "dashboard": 76432,
+    "devices": 43003,
+    "advisory_worker": 41292,
+    "normal_jitter_worker": 30111,
+    "live_worker": 10136
+  },
+  "history_retention_points_per_interface": 600,
+  "router_configuration_changed": false
+}

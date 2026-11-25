@@ -10,6 +10,7 @@ from __future__ import annotations
 import socket
 import ssl
 import time
+from contextlib import contextmanager
 from typing import Any
 
 
@@ -235,6 +236,12 @@ class RouterOSReadOnlyClient:
 
     def _read(self, operation):
         """One verified, authenticated connection with a total byte/time budget."""
+        with self._session():
+            return operation()
+
+    @contextmanager
+    def _session(self):
+        """Private transport lifetime; callers retain the fixed read allowlist."""
         connection = None
         self._deadline = time.monotonic() + self.timeout
         self._received = 0
@@ -267,7 +274,7 @@ class RouterOSReadOnlyClient:
                     ) from exc
             self._socket = connection
             self._talk(["/login", "=name=" + self._username, "=password=" + self._password])
-            return operation()
+            yield self
         except ssl.SSLCertVerificationError as exc:
             raise RouterAPIError(
                 "Router TLS certificate verification failed. Configure the trusted router CA "

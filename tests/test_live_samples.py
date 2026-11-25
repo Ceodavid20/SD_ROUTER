@@ -149,6 +149,7 @@ def test_resets_staleness_and_unavailable_values_never_fabricate_zero(realtime, 
     class Failing:
         def __init__(self, *a, **k): pass
         def read_live(self, channels): raise RouterAPIError("Unavailable")
+    service.close()
     monkeypatch.setattr("services.live_samples.LiveSampleClient", Failing)
     failed = service.collect("MAIN", now=NOW + timedelta(seconds=6))["wanA"]
     assert failed["state"] == "unavailable" and failed["mbps"] is None
@@ -248,3 +249,19 @@ def test_combined_client_projects_only_selected_tx_and_bounded_rtt(monkeypatch):
     assert result['wanA']['tx_octets'] == 1234 and result['wanA']['quality']['jitter_ms'] == 0
     assert b'=interval=50ms' in connection.sent and b'?name=wanA' in connection.sent
     assert b'rx-byte' not in connection.sent and 'do-not-return' not in json.dumps(result)
+
+
+def test_persistent_transport_authenticates_once_and_closes_on_failure(monkeypatch):
+    from test_router_discovery_api import Socket, sentence
+    def batch(counter):
+        return sentence('!re', '=name=wanA', '=tx-byte='+str(counter)) + sentence('!done')
+    connection = Socket(sentence('!done') + batch(1000) + batch(2000))
+    calls = []
+    def connect(*a, **k):calls.append(1);return connection
+    monkeypatch.setattr('socket.create_connection', connect)
+    client = LiveSampleClient('10.8.0.1', 9876, 'test', 'test', tls=False, persistent=True)
+    assert client.read_live({'wanA': None})['wanA']['tx_octets'] == 1000
+    assert client.read_live({'wanA': None})['wanA']['tx_octets'] == 2000
+    assert len(calls) == 1 and bytes(connection.sent).count(b'/login') == 1 and not connection.closed
+    with pytest.raises(RouterAPIError):client.read_live({'wanA': None})
+    assert connection.closed and client._socket is None

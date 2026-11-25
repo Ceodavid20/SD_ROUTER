@@ -1,0 +1,241 @@
+{
+  "started_at": "2026-11-25T10:11:24.343092Z",
+  "scope": "Actual TX through existing isolated CHR handoffs; lab capacity model",
+  "router_configuration_writes": false,
+  "rx_collected": false,
+  "synthetic_telemetry_inserted": false,
+  "simulation_mode": true,
+  "live_routing_enabled": false,
+  "applied_routing_relief_verified": false,
+  "physical_queue_congestion_verified": false,
+  "verified_after_measurements": null,
+  "observations": [
+    {
+      "at": "2026-11-25T10:11:40.228756Z",
+      "elapsed_seconds": 6,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 1,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 1
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:11:47.284005Z",
+      "elapsed_seconds": 13,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 1,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 1
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:11:54.295453Z",
+      "elapsed_seconds": 20,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 0,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 1,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 1
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:00.897069Z",
+      "elapsed_seconds": 26,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 2,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 2
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:11.106822Z",
+      "elapsed_seconds": 37,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 3,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 3
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:17.834387Z",
+      "elapsed_seconds": 43,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 3,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 3
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:28.034766Z",
+      "elapsed_seconds": 54,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 4,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 4
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:34.870648Z",
+      "elapsed_seconds": 60,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 4,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 4
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:44.914731Z",
+      "elapsed_seconds": 70,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 5,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 5
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:51.328444Z",
+      "elapsed_seconds": 77,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 5,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 5
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:12:57.691547Z",
+      "elapsed_seconds": 83,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 5
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:13:04.032486Z",
+      "elapsed_seconds": 90,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:13:13.553182Z",
+      "elapsed_seconds": 99,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:13:19.868232Z",
+      "elapsed_seconds": 105,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    }
+  ],
+  "trusted_tx_only_collector_verified": true,
+  "duration_limit_seconds": 480,
+  "capacity_limits_mbps": {
+    "MTN": 0.4,
+    "GLO": 0.15
+  },
+  "requested_test_tx_limits_mbps": {
+    "MTN": 0.41,
+    "GLO": 0.005
+  },
+  "initial_native_checks": {
+    "SDR-CHR-LAB-01": {
+      "authenticated": true,
+      "cpu_load": 7,
+      "enabled": true,
+      "epoch": 1795601491,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 6,
+      "sessions": 0
+    },
+    "SDR-MTN-01": {
+      "authenticated": true,
+      "cpu_load": 0,
+      "enabled": true,
+      "epoch": 1795601470,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 5,
+      "sessions": 0
+    },
+    "SDR-GLO-01": {
+      "authenticated": true,
+      "cpu_load": 1,
+      "enabled": true,
+      "epoch": 1795601493,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 4,
+      "sessions": 0
+    }
+  },
+  "outcome": "stopped_safely",
+  "error_type": "RuntimeError",
+  "finished_at": "2026-11-25T10:13:26.944470Z"
+}

@@ -1,0 +1,501 @@
+{
+  "started_at": "2026-11-25T10:06:56.832088Z",
+  "scope": "Actual TX through existing isolated CHR handoffs; lab capacity model",
+  "router_configuration_writes": false,
+  "rx_collected": false,
+  "synthetic_telemetry_inserted": false,
+  "simulation_mode": true,
+  "live_routing_enabled": false,
+  "applied_routing_relief_verified": false,
+  "physical_queue_congestion_verified": false,
+  "verified_after_measurements": null,
+  "observations": [
+    {
+      "at": "2026-11-25T10:07:12.678748Z",
+      "elapsed_seconds": 6,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 1,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 1
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:07:19.579394Z",
+      "elapsed_seconds": 13,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 1,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 1
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:07:29.840394Z",
+      "elapsed_seconds": 23,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 2,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 2
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:07:36.405821Z",
+      "elapsed_seconds": 29,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 2,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 2
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:07:46.452078Z",
+      "elapsed_seconds": 39,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 3,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 3
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:07:53.000813Z",
+      "elapsed_seconds": 46,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 3,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 3
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:07:59.490708Z",
+      "elapsed_seconds": 52,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 4,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 4
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:08:05.835189Z",
+      "elapsed_seconds": 59,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 4,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 4
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:08:15.567736Z",
+      "elapsed_seconds": 69,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 5,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 5
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:08:22.335090Z",
+      "elapsed_seconds": 75,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 5,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 5
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:08:32.293903Z",
+      "elapsed_seconds": 85,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:08:38.733867Z",
+      "elapsed_seconds": 92,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:08:48.343675Z",
+      "elapsed_seconds": 101,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:08:54.631948Z",
+      "elapsed_seconds": 108,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 8,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:01.010681Z",
+      "elapsed_seconds": 114,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:10.454422Z",
+      "elapsed_seconds": 123,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:16.758181Z",
+      "elapsed_seconds": 130,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:26.034680Z",
+      "elapsed_seconds": 139,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": false,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:32.363112Z",
+      "elapsed_seconds": 145,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 1,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:41.628793Z",
+      "elapsed_seconds": 155,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:47.726893Z",
+      "elapsed_seconds": 161,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:53.860388Z",
+      "elapsed_seconds": 167,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:09:59.914821Z",
+      "elapsed_seconds": 173,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 10,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:05.881829Z",
+      "elapsed_seconds": 179,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 5,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:14.930081Z",
+      "elapsed_seconds": 188,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:20.889563Z",
+      "elapsed_seconds": 194,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:29.972567Z",
+      "elapsed_seconds": 203,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:35.982098Z",
+      "elapsed_seconds": 209,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:44.976129Z",
+      "elapsed_seconds": 218,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 6,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:51.037467Z",
+      "elapsed_seconds": 224,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:10:56.982655Z",
+      "elapsed_seconds": 230,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 2,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:11:02.934866Z",
+      "elapsed_seconds": 236,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 9,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:11:12.627136Z",
+      "elapsed_seconds": 246,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 4,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    },
+    {
+      "at": "2026-11-25T10:11:18.626710Z",
+      "elapsed_seconds": 252,
+      "workflow_status": "not_evaluated",
+      "condition": "monitoring_only",
+      "optimization_enabled": true,
+      "cpu_load": 3,
+      "fresh_samples": {
+        "45556669-3443-4e03-82b2-f45515ff6571": 6,
+        "4d6c42b2-25a9-4e23-9966-df4800ed7baf": 6
+      },
+      "group": null
+    }
+  ],
+  "trusted_tx_only_collector_verified": true,
+  "duration_limit_seconds": 480,
+  "capacity_limits_mbps": {
+    "MTN": 0.4,
+    "GLO": 0.15
+  },
+  "requested_test_tx_limits_mbps": {
+    "MTN": 0.41,
+    "GLO": 0.005
+  },
+  "initial_native_checks": {
+    "SDR-CHR-LAB-01": {
+      "authenticated": true,
+      "cpu_load": 1,
+      "enabled": true,
+      "epoch": 1795601224,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 6,
+      "sessions": 0
+    },
+    "SDR-MTN-01": {
+      "authenticated": true,
+      "cpu_load": 4,
+      "enabled": true,
+      "epoch": 1795601205,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 5,
+      "sessions": 0
+    },
+    "SDR-GLO-01": {
+      "authenticated": true,
+      "cpu_load": 0,
+      "enabled": true,
+      "epoch": 1795601227,
+      "mangle_count": 0,
+      "queue_count": 0,
+      "route_count": 4,
+      "sessions": 0
+    }
+  },
+  "outcome": "stopped_safely",
+  "error_type": "KeyboardInterrupt",
+  "finished_at": "2026-11-25T10:11:18.885032Z"
+}

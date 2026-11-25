@@ -57,6 +57,11 @@ explicit per-path opt-in and verified API-SSL. Run `serve_quality.py` alongside
 the existing services; disabled paths make no probe requests. See
 [RTT jitter setup and measurement](docs/rtt-jitter.txt).
 
+For real one-second TX and jitter readings, explicitly enable **Second-by-second
+readings** on the selected paths and run `serve_live.py`. The graph opens on a
+seconds-scale view and supports selecting any time in the plot. Setup, retention
+and measurement limits are in [second-by-second monitoring](docs/second-live-monitoring.txt).
+
 The main application supports authenticated TX collection, moving averages, utilization/share calculations, estimated volume costs and constrained advisory allocations. It uses only saved router inventory and actual received readings. Missing measurements or settings remain unavailable.
 
 Enter confirmed WAN capacities, explicitly select each path's TX measurement source, configure limits and choose an objective. Cost minimization also needs confirmed carrier prices in a shared currency; utilization balancing does not require prices. Then calculate from a full fresh window. [Workflow documentation](docs/local-workflow.md) explains formulas, assumptions, setup and persistence.
@@ -163,6 +168,7 @@ data/
 ├── router_enrollment.json
 ├── traffic_history.json
 ├── link_quality.json
+├── live_samples.json
 ├── traffic_segments/
 ├── averages.json
 ├── optimization_results.json

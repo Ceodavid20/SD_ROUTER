@@ -1,0 +1,93 @@
+SD_ROUTER — SECOND-BY-SECOND TX AND RTT JITTER
+25 November 2026
+
+The existing single graph supports a one-minute view with second labels, live
+updates once per second, and a click anywhere along the plot's timeline. A blank
+plot click selects that second, independently of the pointer's vertical position.
+The reading shows actual sample timestamps. Missing samples remain unavailable;
+minute averages are never expanded into invented second-by-second values.
+
+A separate serve_live.py worker reads cumulative TX octets only on the selected
+main-router interfaces through existing authenticated, certificate-verified
+API-SSL. One verified connection serves that router's configured paths and is reused
+between batches to avoid repeating the API login every second. It closes on
+errors, changed credentials/CA/connection settings, disablement or worker exit,
+and is renewed after at most five minutes. Initial login or reconnection can
+cause a missed tick; this remains visible rather than being filled in.
+Mbps = delta(TX octets) * 8 / actual elapsed seconds / 1,000,000. Fractional
+elapsed time is retained. First samples, counter resets, failures and long gaps
+are baselines or unavailable values, never fabricated zero rates.
+
+Where jitter is explicitly enabled, each batch requests eight interface-bound
+pings, spaced 50 ms apart. The existing RTT jitter formula remains the mean
+absolute difference of adjacent successful round trips. Loss breaks adjacency.
+Jitter has its own measurement timestamp and missing values break its line.
+The normal minute-scale jitter worker skips paths using this faster sampler.
+No RX counters, RouterOS scripts/schedulers or routing configuration are changed.
+
+Operation
+---------
+In Routing paths, explicitly enable Second-by-second readings for a configured
+path. Its main router must be active, TX monitoring enabled, and the interface
+included in its authorized selection. Configure and enable the existing jitter
+target separately if timing measurements are wanted. Targets must be literal
+unicast IPs within approved networks. New paths remain disabled by default.
+Endpoint or interface changes turn off this opt-in until it is reviewed again.
+
+Run alongside the existing browser, device and advisory workers:
+  .venv/bin/python serve_live.py
+One due batch:
+  .venv/bin/python serve_live.py --once
+Use the same SDR_ENV and SDR_PROFILE_DIR as the other services.
+
+Validated settings:
+  SDR_LIVE_SAMPLE_INTERVAL_SECONDS=1     range 1–60 seconds
+  SDR_LIVE_SAMPLE_TIMEOUT_SECONDS=3      range 1–10 seconds
+
+One second is the target cadence. Network delays, unavailable targets or large
+router/path groups can miss that deadline; actual timestamps and gaps remain
+visible. The worker skips missed ticks instead of issuing catch-up bursts.
+Leases prevent simultaneous workers from probing the same router. Configuration
+is rechecked after I/O; revoked or changed authorization discards in-flight data.
+No network calls run under the JSON storage lock. Account credentials, device
+traps and raw replies are never projected to the browser or logs.
+
+History and compatibility
+-------------------------
+The existing authenticated TX history, V1/V2 polling, ACKs, signed traffic ingress,
+replay checks and rate budgets remain unchanged. Their measurement baselines and
+averaging settings continue to drive optimization. Live chart sampling does not
+change optimizer mathematics, hold-down rules or the Optimization On/Off state.
+
+The existing validated JSON storage keeps a bounded live_samples.json cache:
+600 readings per interface and 12,000 overall. At one-second cadence this gives
+about ten minutes of fine detail per interface, subject to the total bound.
+Older signed TX history and minute-scale jitter history remain available at
+their actual original resolution. The fast cache is distinct from signed device
+telemetry; the controller never manufactures router signatures or nonces.
+Read-only sampling settings are excluded from routing-policy fingerprints.
+
+The browser uses an authenticated, read-only samples endpoint once per second.
+Small overlapping deltas avoid repeatedly downloading all history. Points are
+deduplicated by their source and timestamp. Recommendations and recorded changes
+retain their existing slower refresh. Background updates preserve the selected
+time and never enable routing writes.
+
+Keep SIMULATION_MODE=true and LIVE_ROUTING_ENABLED=false. Real traffic monitoring
+works with these locks; they prohibit routing execution rather than fabricate TX.
+
+Reference: MikroTik Ping documents the 50 ms interval used by the short batches:
+https://help.mikrotik.com/docs/spaces/ROS/pages/8323183/Ping
+
+Validation
+----------
+Full regression suite: 794 tests passed in 75.67 seconds. Synthetic browser
+checks covered one-second polling, second labels, clicks on blank plot areas,
+missing seconds, pinned selections during updates, metric toggles and mobile
+layout. A separate real-lab browser check verified live timeline and jitter
+clicks with no fixture injection or Optimization toggles. More than 100 real
+readings per lab path showed median TX and jitter intervals of about one second.
+Router inventory, path settings other than the requested monitoring opt-in, and
+automation settings matched the saved pre-activation snapshot. Routing stayed
+disabled and no router configuration was changed. See
+output/second-live-verification-20261125.json for the sanitized measurements.

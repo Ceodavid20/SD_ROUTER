@@ -27,26 +27,30 @@ def main(argv=None):
     for sig in (SIGINT, SIGTERM):
         signal(sig, lambda *_: stop.set())
     next_tick = time.monotonic()
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        while not stop.is_set():
-            try:
-                paths = storage.read_json("routing_paths.json")["paths"]
-                routers = sorted({p["aggregation_router_id"] for p in paths if p.get("live_sampling_enabled") is True})
-                for future in [pool.submit(service.collect, rid) for rid in routers]:
-                    future.result()
-            except (StorageError, ValueError, OSError):
-                logging.error("Live sampling unavailable; review local monitoring settings.")
+    try:
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            while not stop.is_set():
+                try:
+                    paths = storage.read_json("routing_paths.json")["paths"]
+                    routers = sorted({p["aggregation_router_id"] for p in paths if p.get("live_sampling_enabled") is True})
+                    service.close(keep=set(routers))
+                    for future in [pool.submit(service.collect, rid) for rid in routers]:
+                        future.result()
+                except (StorageError, ValueError, OSError):
+                    logging.error("Live sampling unavailable; review local monitoring settings.")
+                    if args.once:
+                        return 1
                 if args.once:
-                    return 1
-            if args.once:
-                return 0
-            interval = config["LIVE_SAMPLE_INTERVAL_SECONDS"]
-            next_tick += interval
-            now = time.monotonic()
-            # Skip missed deadlines instead of issuing a burst of catch-up reads.
-            if next_tick <= now:
-                next_tick += (int((now - next_tick) / interval) + 1) * interval
-            stop.wait(max(0, next_tick - now))
+                    return 0
+                interval = config["LIVE_SAMPLE_INTERVAL_SECONDS"]
+                next_tick += interval
+                now = time.monotonic()
+                # Skip missed deadlines instead of issuing a burst of catch-up reads.
+                if next_tick <= now:
+                    next_tick += (int((now - next_tick) / interval) + 1) * interval
+                stop.wait(max(0, next_tick - now))
+    finally:
+        service.close()
     return 0
 
 

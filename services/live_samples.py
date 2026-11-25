@@ -11,13 +11,15 @@ from ipaddress import ip_address, ip_network
 import json
 import math
 import re
+import time
+from pathlib import Path
 from uuid import uuid4
 
 from services.json_storage import ValidationError
 from services.link_quality import _uuid, summarize, validate_quality
 from services.router_protocol import ROUTER_ID, parse_utc_timestamp, utc_text
 from services.router_service import RouterService, RouterValidationError
-from services.routeros_api import RouterAPIError
+from services.routeros_api import RouterAPIError, RouterAPIMenuUnavailable
 from services.routeros_probe import RouterOSProbeClient, probe_address
 from services.traffic_protocol import validate_interface
 from services.traffic_service import monitored_interfaces
@@ -29,6 +31,37 @@ STATES = {"baseline", "measured", "counter_reset", "gap_reset", "unavailable"}
 
 
 class LiveSampleClient(RouterOSProbeClient):
+    def __init__(self, *args, persistent=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._persistent = persistent
+        self._context = None
+        self._opened_at = 0
+
+    def close(self):
+        context, self._context = self._context, None
+        if context is not None:
+            context.__exit__(None, None, None)
+
+    def _read(self, operation):
+        if not self._persistent:
+            return super()._read(operation)
+        if self._context is not None and time.monotonic() - self._opened_at >= 300:
+            self.close()
+        try:
+            if self._context is None:
+                context = self._session()
+                context.__enter__()
+                self._context, self._opened_at = context, time.monotonic()
+            else:
+                # Every batch has independent total time and byte limits;
+                # the initial batch includes TLS/login within the same budget.
+                self._deadline = time.monotonic() + self.timeout
+                self._received = 0
+            return operation()
+        except (RouterAPIError, OSError, ValueError):
+            self.close()
+            raise RouterAPIError("Live API measurement unavailable.") from None
+
     def read_live(self, channels):
         if not isinstance(channels, dict) or not 1 <= len(channels) <= 16:
             raise ValueError("Select one to sixteen authorized TX interfaces.")
@@ -51,7 +84,7 @@ class LiveSampleClient(RouterOSProbeClient):
                 try:
                     rows = self._talk(["/ping", "=address=" + target, "=interface=" + interface, "=count=8", "=interval=50ms"])
                     values = summarize(self.samples(rows))
-                except RouterAPIError:
+                except RouterAPIMenuUnavailable:
                     values = {**summarize([None] * 8), "status": "unavailable"}
                 result[interface]["quality"] = {"at": utc_text(datetime.now(UTC)), "target": target, **values}
             return result
@@ -151,6 +184,29 @@ def validate_live_samples(state):
 class LiveSampleService:
     def __init__(self, storage, config):
         self.storage, self.config = storage, config
+        self._clients = {}
+
+    def close(self, keep=()):
+        for rid in list(self._clients):
+            if rid not in keep:
+                _, client = self._clients.pop(rid)
+                closer = getattr(client, "close", None)
+                if closer:
+                    closer()
+
+    def _client(self, router, connection, username, password):
+        ca = router.get("api_ca_file") or self.config.get("ROUTER_CA_FILE")
+        ca_state = (Path(ca).stat().st_mtime_ns, Path(ca).stat().st_size) if ca else None
+        key = (connection["ip_address"], connection["api_port"], username, password, ca, ca_state)
+        current = self._clients.get(router["router_id"])
+        if current and current[0] != key:
+            self.close(keep=set(self._clients) - {router["router_id"]})
+            current = None
+        if current is None:
+            client = LiveSampleClient(connection["ip_address"], connection["api_port"], username, password,
+                tls=True, timeout=self.config.get("LIVE_SAMPLE_TIMEOUT_SECONDS", 3), ca_file=ca, persistent=True)
+            self._clients[router["router_id"]] = (key, client)
+        return self._clients[router["router_id"]][1]
 
     def collect(self, router_id, *, now=None):
         started = now or datetime.now(UTC)
@@ -160,6 +216,7 @@ class LiveSampleService:
         def claim(inputs, state):
             paths, router = selected_paths(inputs, router_id)
             if not paths:
+                claimed["disabled"] = True
                 return
             digest = fingerprint(paths, router, self.config)
             old = state["routers"].get(router_id)
@@ -176,7 +233,9 @@ class LiveSampleService:
                 "lease_id": token, "lease_until": utc_text(started + timedelta(seconds=timeout + 2)), "channels": channels}
             claimed.update(paths=deepcopy(paths), router=deepcopy(router), digest=digest, token=token)
         self.storage.update_live_samples(claim)
-        if not claimed:
+        if not claimed or claimed.get("disabled"):
+            if claimed.get("disabled"):
+                self.close(keep=set(self._clients) - {router_id})
             return None
         paths, router = claimed["paths"], claimed["router"]
         values = {}
@@ -188,10 +247,9 @@ class LiveSampleService:
             username, password, connection = RouterService(self.storage, self.config)._preflight(router)
             if connection["api_tls"] is not True:
                 raise ValueError("Verified API-SSL is required.")
-            values = LiveSampleClient(connection["ip_address"], connection["api_port"], username, password,
-                tls=True, timeout=timeout, ca_file=router.get("api_ca_file") or self.config.get("ROUTER_CA_FILE")).read_live(targets)
+            values = self._client(router, connection, username, password).read_live(targets)
         except (RouterAPIError, RouterValidationError, OSError, ValueError):
-            pass
+            self.close(keep=set(self._clients) - {router_id})
         completed = now or datetime.now(UTC)
         saved = {}
         def commit(inputs, state):
