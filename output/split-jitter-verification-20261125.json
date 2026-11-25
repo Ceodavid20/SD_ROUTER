@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-11-25T11:26:07.722126+00:00",
+  "graphs": [
+    "Outbound TX (Mbps)",
+    "RTT jitter (ms)"
+  ],
+  "independent_controls": [
+    "time range",
+    "carrier filters",
+    "Latest",
+    "selected readings"
+  ],
+  "tests_passed": 806,
+  "fixture_browser_checks_passed": true,
+  "live_browser_checks_passed": true,
+  "dashboard_session": 33247,
+  "preservation": {
+    "router_inventory_unchanged": true,
+    "path_mappings_and_monitoring_flags_unchanged": true,
+    "automation_settings_unchanged": true
+  },
+  "simulation_mode": true,
+  "live_routing_enabled": false,
+  "router_commands_executed_for_display_change": false
+}

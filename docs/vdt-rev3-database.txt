@@ -1,0 +1,161 @@
+SD_ROUTER — Stage 2: database foundation and safe migration
+25 November 2026
+
+What is implemented
+
+MySQL is the user-selected production target. The existing local database named
+sdr is actually MariaDB 10.4.28, supplied by XAMPP. The schema was created and
+tested against that server through its Unix socket. MySQL 8 compatibility is
+designed into the SQL; a MySQL 8 server has not been exercised in this workspace.
+Version checks require MySQL >= 8.0.16 or MariaDB >= 10.4 with enforced CHECKs.
+
+database/mysql/001_rev3_schema.sql defines 24 InnoDB tables:
+  schema version; migration batches/files/chunks;
+  routers and authorized source addresses; link pairs/links/OSPF resources;
+  staff; policy versions/link thresholds; scheduled checks and measurements;
+  confirmation state; decisions and proposed costs; approvals;
+  releases/released costs; check-ins; applied reports; alerts; audit events.
+
+IDs, router addresses, interfaces, capacities, OSPF targets, thresholds and cost
+limits are data, never carrier-specific defaults. New monitoring is disabled.
+Unconfirmed capacity/costs remain NULL, not invented values. The schema separates
+calculated, released and applied costs and supports Test/Manual/Automatic.
+It does not implement the later policy, approval, release or execution services.
+Cross-record policy/scope/approval checks still need transactional application
+validation; foreign keys and CHECKs alone are not an execution authorization.
+
+Staff password hashes belong to NOC accounts. There are no RouterOS API login
+password columns. Production must not log in to routers. No router configuration,
+OSPF value, queue, collector, account or route was modified by this stage.
+
+Migration boundary
+
+The active Flask apps/workers still use their original JSON storage. Stage 2
+imports a private compatibility archive into the three migration tables, not
+into live business tables. No router or traffic record is fabricated, no normal
+cost is assumed, no production release or staff account is activated. The other
+20 tables are the relational foundation for later services and remain empty.
+
+All 17 managed JSON documents and every referenced traffic segment are captured
+together under an existing shared storage lock. Poll/ACK, replay/rate state,
+enrollment hash/consumption state, TX baselines, quality/live caches, settings,
+activity, decisions and legacy output survive byte for byte. Hashes and record
+counts are checked before and after database import and database restore.
+
+The archive is not a new JSON runtime backend. Later stages must map records to
+the normalized model, implement its repositories, preserve old protocol meaning,
+reconcile all counts and transaction behavior, and perform a controlled cutover.
+No dual writers, automatic backend selection or startup migration were added.
+
+Safety properties
+
+Preparation never calls StorageService.initialize(), normal mutating storage
+locks/recovery, RouterOS API, SSH, SNMP, router credential lookup or external
+services. It refuses an unfinished enrollment/traffic transaction; normal
+storage recovery must finish first. It never discards unreferenced traffic files,
+repairs truncated history, overwrites a bundle or alters active data/output.
+
+New artifact directories/files are owner-only (700/600). Snapshots exclude .env,
+API login files, controller keys, certificates/private keys and bootstrap bundles.
+Known credential-bearing JSON fields are rejected without echoing contents.
+Authentication references, signatures and enrollment hashes remain sensitive
+metadata; keep the entire bundle private. A metadata checksum is integrity
+evidence, not a digital signature or protection from a trusted writer modifying
+both data and manifest. Use separate protected backup storage for operations.
+
+Every source file has a size and SHA-256 in manifest.json. JSON is validated with
+duplicate/non-finite rejection; traffic is TX-only and complete JSON Lines.
+Snapshot limit is 512 MiB total and 16 MiB per managed file. Bigger migrations
+need an explicitly reviewed offline procedure. Referenced empty segments are
+preserved. Partial artifact creation is not a usable bundle.
+
+SQL payloads are binary hex literals in 128 KiB chunks. Router names/JSON values
+cannot become SQL syntax; statements fit small local packet limits. File and
+chunk hashes/counts are reconciled against the database. Data insertion uses one
+InnoDB transaction and refuses a previously imported snapshot. Never use the
+mysql client's --force option; an import error must abort, not continue to COMMIT.
+
+DDL commits implicitly on MySQL/MariaDB, so schema creation is a separate step.
+Initialization requires an empty database and contains no DROP, TRUNCATE, REPLACE,
+grants or CREATE USER. A partial schema failure needs inspection, not automatic
+cleanup. Existing tables are never overwritten. A successful import batch is
+always staged; a database constraint refuses an active batch state.
+
+Operator commands
+
+Run from the project directory. Paths are explicit settings; XAMPP and sdr are
+local operator selections, not runtime defaults. The private client options file
+has only a [client] section with user, optional password and an absolute socket.
+Never put credentials in command arguments, logs or chat. Use a dedicated,
+least-privilege database account for any future application deployment; the
+current local setup options are for operator staging only.
+
+Prepare (the output parent must already exist and be owner-only):
+  .venv/bin/python manage.py prepare-rev3-migration --output-dir PRIVATE_NEW_BUNDLE
+Check:
+  .venv/bin/python manage.py verify-rev3-migration --bundle PRIVATE_NEW_BUNDLE
+Restore archive to a NEW private directory without starting an app:
+  .venv/bin/python manage.py rehearse-rev3-restore --bundle PRIVATE_NEW_BUNDLE --output-dir PRIVATE_NEW_RESTORE
+
+Database commands also require --client-binary PATH --client-options PRIVATE_CNF
+and --database DATABASE_NAME. Never pass a password as a flag. Available commands:
+  init-rev3-database                 create schema in an EMPTY dedicated database
+  import-rev3-database --bundle PATH import a verified inactive archive
+  verify-rev3-database --bundle PATH recheck all saved bytes against that archive
+  rehearse-rev3-database-restore --bundle PATH --output-dir NEW_PRIVATE_DIRECTORY
+The last command reconstructs data/output from DATABASE bytes, not the snapshot
+copy, checks their hashes, and adds only a new empty storage lock. It starts no
+workers/listeners and grants no cutover permission. The original private keys
+would need a separate trusted restore; they are deliberately outside this bundle.
+
+Local artifacts
+
+  private/rev3-stage2-20261125/source-before-stage2.tar.gz
+  private/rev3-stage2-20261125/mysql-client.cnf
+  private/rev3-stage2-20261125/migration-bundle-v1/
+  private/rev3-stage2-20261125/database-restore-rehearsal/
+  output/vdt-rev3-stage2-verification.json (sanitized evidence only)
+
+The earlier migration-bundle directory is a private development draft generated
+before schema finalization; use the verified migration-bundle-v1 path above.
+
+Validation and remaining gates
+
+Unit tests cover byte-exact snapshots/restores, all replay ledgers, uint64 TX,
+secret exclusion, safe SQL encoding, malformed/truncated history, pending work,
+tampering, traversal/symlinks, private permissions, incomplete writes, existing
+destinations and unchanged source state. Real database tests verify InnoDB,
+rollback on duplicate/interrupted insert, staged-only constraint, chunk length,
+cost bounds, NULL capacities and disabled new monitoring. They use fresh random
+test identities. Transaction tests roll back; round-trip tests remove only their
+own randomly identified archive after checking import, corruption and restore.
+
+Real DB tests opt in with SDR_REV3_MYSQL_TEST_OPTIONS and
+SDR_REV3_MYSQL_TEST_BINARY (paths only), plus optional SDR_REV3_MYSQL_TEST_DATABASE.
+Without these they are explicitly skipped; all other tests use temporary files
+and mocked device requests. No test contacts a MikroTik.
+
+Before runtime cutover: approved password-free collection, normalized mapping and
+repositories, transactional replay/outbox/application semantics, named accounts,
+deployment credentials, storage backup/restore, outage handling and all required
+acceptance checks. Keep SIMULATION_MODE=true and LIVE_ROUTING_ENABLED=false.
+Neither the archive nor this schema grants router execution permission.
+
+The restored rehearsal is a dated checkpoint, not a replacement for active data.
+Future cutover must quiesce all writers, take a fresh consistent checkpoint and
+move every protocol replay ledger, counter baseline and enrollment grant together.
+Restore private credential references through a separate trusted procedure and
+verify that pre-cutover requests cannot be replayed before resuming service.
+
+Stage 2 verification completed: 901 tests passed with no failures or skips,
+including nine tests against the actual local MariaDB server. The operator's
+archive reconciled 17 managed documents, three segments and 2,764 TX readings;
+its database-to-JSON restore matched every captured byte. No synthetic test
+records remained. See the sanitized evidence report listed above.
+
+Technical references consulted (primary documentation):
+https://dev.mysql.com/doc/refman/8.4/en/create-table.html
+https://dev.mysql.com/doc/refman/8.4/en/create-table-check-constraints.html
+https://dev.mysql.com/doc/refman/8.4/en/hexadecimal-literals.html
+https://mariadb.com/docs/server/reference/sql-statements/transactions/sql-statements-that-cause-an-implicit-commit
+https://mariadb.com/docs/server/reference/sql-statements/data-definition/constraint

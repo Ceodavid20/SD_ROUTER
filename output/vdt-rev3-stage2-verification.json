@@ -1,0 +1,36 @@
+{
+  "verified": true,
+  "schema_version": 1,
+  "counts": {
+    "documents": 17,
+    "routers": 3,
+    "paths": 2,
+    "replay_records": 11,
+    "segments": 3,
+    "traffic_records": 2764
+  },
+  "runtime_backend": "json",
+  "runtime_cutover_authorized": false,
+  "router_execution_authorized": false,
+  "stage": 2,
+  "verified_on": "2026-11-25",
+  "database": {
+    "engine": "mariadb",
+    "version": "10.4.28-MariaDB",
+    "database": "sdr"
+  },
+  "tables": 24,
+  "database_restore_verified": true,
+  "synthetic_test_records_removed": true,
+  "business_tables_empty": true,
+  "active_storage_backend": "json",
+  "simulation_mode": true,
+  "live_routing_enabled": false,
+  "live_sample_target_seconds": 1,
+  "tests": {
+    "passed": 901,
+    "failed": 0,
+    "skipped": 0,
+    "real_database_tests": 9
+  }
+}

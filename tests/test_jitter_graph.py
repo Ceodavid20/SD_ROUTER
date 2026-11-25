@@ -1,4 +1,4 @@
-"""The existing single graph retains TX and exposes independent jitter samples."""
+"""Separate live TX and jitter plots share unchanged measured telemetry."""
 from datetime import timedelta
 from uuid import uuid4
 
@@ -30,7 +30,7 @@ def add_quality(lab):
         storage.update_json(DOCUMENT, lambda state: {**state, "links": {**state["links"], path["path_id"]: entry}})
 
 
-def test_single_live_plot_contains_independent_millisecond_jitter(lab):
+def test_separate_live_plots_contain_independent_tx_and_millisecond_jitter(lab):
     populate(lab)
     add_quality(lab)
     view = live_view(lab[1], lab[0].config, now=NOW)
@@ -43,7 +43,11 @@ def test_single_live_plot_contains_independent_millisecond_jitter(lab):
     for url in ("/", "/optimization"):
         html = client.get(url).text
         assert html.count('id="tx-chart"') == 1
-        assert 'data-jitter-toggle' in html and 'RTT jitter (ms)' in html
+        assert html.count('id="jitter-chart"') == 1
+        assert html.count('data-metric-panel=') == 2
+        assert 'data-metric-panel="tx"' in html and 'data-metric-panel="jitter"' in html
+        assert html.count('data-plot-range') == html.count('data-plot-follow') == 2
+        assert 'data-jitter-toggle' not in html
     payload = client.get("/api/optimization/live").get_json()
     assert len(payload["series"][0]["quality"]["points"]) == 2
 

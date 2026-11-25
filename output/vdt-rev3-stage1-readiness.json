@@ -1,0 +1,135 @@
+{
+  "stage": 1,
+  "assessment_only": true,
+  "planning_status": "pending_inputs",
+  "production_ready": false,
+  "router_execution_authorized": false,
+  "controller_router_writes_permitted": false,
+  "source": {
+    "title": "VDT SDR Implementation Plan (Plain Rev3)",
+    "revision": "Plain Rev3",
+    "sha256": "d3ac5411501332fa0243f63bff5ec45108c7f1b26dc3d069f2b06938bc6d1409"
+  },
+  "decisions": [
+    {
+      "id": "measurement_method",
+      "status": "pending",
+      "selection": null
+    },
+    {
+      "id": "routing_mechanism",
+      "status": "confirmed",
+      "selection": "ospf_interface_or_template_cost"
+    },
+    {
+      "id": "capacity_difference_basis",
+      "status": "pending",
+      "selection": null
+    },
+    {
+      "id": "step_percentage_basis",
+      "status": "pending",
+      "selection": null
+    },
+    {
+      "id": "rounding_rule",
+      "status": "pending",
+      "selection": null
+    },
+    {
+      "id": "confirmation_rule",
+      "status": "documented",
+      "selection": "two_consecutive_checks"
+    },
+    {
+      "id": "database_engine",
+      "status": "confirmed",
+      "selection": "mysql"
+    },
+    {
+      "id": "controller_outage_policy",
+      "status": "pending",
+      "selection": null
+    }
+  ],
+  "planning_blockers": [
+    {
+      "id": "measurement_method",
+      "reason": "Planning decision not yet confirmed."
+    },
+    {
+      "id": "capacity_difference_basis",
+      "reason": "Planning decision not yet confirmed."
+    },
+    {
+      "id": "step_percentage_basis",
+      "reason": "Planning decision not yet confirmed."
+    },
+    {
+      "id": "rounding_rule",
+      "reason": "Planning decision not yet confirmed."
+    },
+    {
+      "id": "controller_outage_policy",
+      "reason": "Planning decision not yet confirmed."
+    },
+    {
+      "id": "confirmation_rule",
+      "reason": "Documented requirement; production sign-off still required."
+    },
+    {
+      "id": "production_link_parameters",
+      "reason": "Exact endpoints, OSPF resources, capacities, thresholds, cost bounds and probe paths need confirmation."
+    }
+  ],
+  "current_profile": {
+    "environment": "development",
+    "snapshot_status": "read_only_snapshot",
+    "routers": 3,
+    "paths": 2,
+    "api_login_references_configured": 3,
+    "enabled_api_live_paths": 2,
+    "staff_login_enabled": false,
+    "live_sampling_target_seconds": 1,
+    "decision_interval_seconds": 60
+  },
+  "required_corrections": [
+    {
+      "id": "password_free_production_collection",
+      "status": "requires_replacement"
+    },
+    {
+      "id": "three_metric_two_check_step_policy",
+      "status": "not_implemented"
+    },
+    {
+      "id": "test_manual_automatic_release_workflow",
+      "status": "not_implemented"
+    },
+    {
+      "id": "calculated_released_applied_costs",
+      "status": "not_implemented"
+    },
+    {
+      "id": "transactional_database_and_history_migration",
+      "status": "staging_prepared_runtime_json"
+    },
+    {
+      "id": "authorized_router_side_cost_application",
+      "status": "not_implemented"
+    },
+    {
+      "id": "four_page_named_staff_noc_dashboard",
+      "status": "not_implemented"
+    },
+    {
+      "id": "private_network_identity_and_source_restrictions",
+      "status": "requires_validation"
+    },
+    {
+      "id": "alerts_backup_restore_and_staged_acceptance",
+      "status": "not_implemented"
+    }
+  ],
+  "next_stage": "Stage 3: approved password-free measurement, normalized persistence and scheduled checks; runtime remains JSON until verified cutover."
+}

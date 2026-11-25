@@ -521,7 +521,7 @@ def test_live_change_projection_never_exposes_unknown_legacy_fields_or_messages(
     assert payload['routers'][0]['name']=='MAIN'
 
 
-def test_dashboard_and_optimization_show_one_live_graph_without_instruction_panels(lab):
+def test_dashboard_and_optimization_show_tx_and_jitter_without_instruction_panels(lab):
     from app import create_app
     populate(lab)
     client=create_app(lab[0].config).test_client()
@@ -530,8 +530,9 @@ def test_dashboard_and_optimization_show_one_live_graph_without_instruction_pane
         assert page.status_code==200
         html=page.get_data(as_text=True)
         assert html.count('id="tx-chart"')==1
+        assert html.count('id="jitter-chart"')==1
         assert 'http-equiv="refresh"' not in html
-        assert 'data-tx-reading-values' in html and 'data-tx-follow' in html
+        assert html.count('data-plot-reading-values')==2 and html.count('data-plot-follow')==2
         assert all(s not in html for s in ('Routing mechanism and communication','Graph B','Graph C','health-chart','prediction-chart','verified-chart'))
     assert 'data-live-changes' in client.get('/optimization').get_data(as_text=True)
 

@@ -682,6 +682,8 @@ code { color: #244e86; }
 .live-metric strong small { color: var(--muted); font-size: .85rem; font-weight: 500; }
 .live-metric .metric-status { text-transform: capitalize; font-size: 1.35rem; }
 .tx-heading { flex-wrap: wrap; gap: 1rem; }
+.live-metric-plots { display: grid; gap: 1.25rem; min-width: 0; }
+.live-metric-plots h2 small { color: var(--muted); font-size: .8em; font-weight: 500; }
 .tx-controls { display: flex; align-items: center; gap: .7rem; }
 .tx-controls select { width: auto; }
 .tx-connection { white-space: nowrap; font-size: .78rem; color: #61738b; }
@@ -694,9 +696,6 @@ code { color: #244e86; }
 .tx-series-item strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .tx-series-item .tx-series-name { font-size: .83rem; font-weight: 650; }
 .tx-series-state { color: var(--muted); font-size: .72rem; text-transform: capitalize; }
-.tx-jitter-control { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; white-space: nowrap; }
-.tx-jitter-value { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.tx-jitter-value::before { content: ''; display: inline-block; width: 1rem; border-top: 2px dashed currentColor; margin-right: .4rem; vertical-align: middle; }
 .tx-series-item.is-hidden { opacity: .4; }
 .tx-swatch { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .5rem; }
 .live-tx-chart { min-height: 280px; margin: .8rem 0 0; outline-offset: 4px; border-radius: .35rem; }
@@ -709,10 +708,10 @@ code { color: #244e86; }
 .tx-reading { background: #f5f8fc; border: 1px solid #e2eaf3; border-radius: .6rem; padding: .9rem 1rem; }
 .tx-reading-heading { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem; color: var(--muted); font-size: .77rem; margin-bottom: .65rem; }
 .tx-reading-values { display: flex; gap: 2rem; flex-wrap: wrap; }
-.tx-reading-item { display: grid; gap: .2rem; }
+.tx-reading-item { display: grid; gap: .2rem; min-width: 0; max-width: 100%; }
 .tx-reading-item > span { font-weight: 650; font-size: .8rem; }
 .tx-reading-item strong { font-variant-numeric: tabular-nums; }
-.tx-reading-item small { color: var(--muted); font-size: .7rem; }
+.tx-reading-item small { color: var(--muted); font-size: .7rem; overflow-wrap: anywhere; }
 .tx-sample-note { display: block; margin-top: .7rem; color: var(--muted); font-size: .72rem; }
 .optimization-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 1.25rem; align-items: start; }
 .optimization-main { min-width: 0; }

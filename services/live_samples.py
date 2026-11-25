@@ -6,6 +6,7 @@ cache never impersonates a device, consumes its nonce budget or alters baselines
 from collections import Counter
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
 import hashlib
 from ipaddress import ip_address, ip_network
 import json
@@ -118,6 +119,41 @@ def fingerprint(paths, router, config):
     return hashlib.sha256(json.dumps(values, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+@lru_cache(maxsize=24_000)
+def _validated_point(encoded, router_id, interface):
+    """Memoize pure validation by complete content, never by object or file age.
+
+    Old immutable samples dominate the rolling cache. Changed content always
+    receives full validation; authorization and ordering remain checked below.
+    """
+    row = json.loads(encoded)
+    if not isinstance(row, dict) or set(row) != set("at tx_octets mbps elapsed_seconds state series_id quality".split()):
+        raise ValueError
+    at = parse_utc_timestamp(row["at"])
+    _uuid(row["series_id"])
+    if row["state"] not in STATES or (row["tx_octets"] is None) != (row["state"] == "unavailable"):
+        raise ValueError
+    if row["tx_octets"] is not None and (type(row["tx_octets"]) is not int or not 0 <= row["tx_octets"] < 2**64):
+        raise ValueError
+    if row["state"] == "measured":
+        if any(type(row[k]) not in (float, int) or not math.isfinite(row[k]) for k in ("mbps", "elapsed_seconds")) or row["mbps"] < 0 or not 0 < row["elapsed_seconds"] <= 180:
+            raise ValueError
+    elif row["mbps"] is not None or row["elapsed_seconds"] is not None:
+        raise ValueError
+    quality_at = None
+    if row["quality"] is not None:
+        q = row["quality"]
+        if not isinstance(q, dict) or set(q) != set("at target jitter_ms mean_rtt_ms replies probes_requested adjacent_pairs status".split()):
+            raise ValueError
+        quality_at = parse_utc_timestamp(q["at"])
+        if not 0 <= (quality_at - at).total_seconds() <= 30:
+            raise ValueError
+        validate_quality({"schema_version": 1, "links": {"quality": {"fingerprint": "0" * 64,
+            "series_id": row["series_id"], "next_probe_at": row["at"], "lease_id": None, "lease_until": None,
+            "samples": [{**q, "series_id": row["series_id"], "router_id": router_id, "interface": interface}]}}})
+    return at, quality_at
+
+
 def validate_live_samples(state):
     try:
         def fields(value, names):
@@ -147,34 +183,17 @@ def validate_live_samples(state):
                 if not isinstance(channel["points"], list) or len(channel["points"]) > MAX_POINTS:
                     raise ValueError
                 total += len(channel["points"])
-                previous = None
-                quality_rows = []
+                previous, previous_quality = None, None
                 for row in channel["points"]:
-                    fields(row, "at tx_octets mbps elapsed_seconds state series_id quality")
-                    at = parse_utc_timestamp(row["at"])
+                    encoded = json.dumps(row, sort_keys=True, allow_nan=False, separators=(",", ":"))
+                    at, quality_at = _validated_point(encoded, rid, interface)
                     if previous is not None and at <= previous:
                         raise ValueError
                     previous = at
-                    _uuid(row["series_id"])
-                    if row["state"] not in STATES or (row["tx_octets"] is None) != (row["state"] == "unavailable"):
-                        raise ValueError
-                    if row["tx_octets"] is not None and (type(row["tx_octets"]) is not int or not 0 <= row["tx_octets"] < 2**64):
-                        raise ValueError
-                    if row["state"] == "measured":
-                        if any(type(row[k]) not in (float, int) or not math.isfinite(row[k]) for k in ("mbps", "elapsed_seconds")) or row["mbps"] < 0 or not 0 < row["elapsed_seconds"] <= 180:
+                    if quality_at is not None:
+                        if previous_quality is not None and quality_at <= previous_quality:
                             raise ValueError
-                    elif row["mbps"] is not None or row["elapsed_seconds"] is not None:
-                        raise ValueError
-                    if row["quality"] is not None:
-                        q = row["quality"]
-                        fields(q, "at target jitter_ms mean_rtt_ms replies probes_requested adjacent_pairs status")
-                        if not 0 <= (parse_utc_timestamp(q["at"]) - at).total_seconds() <= 30:
-                            raise ValueError
-                        quality_rows.append({**q, "series_id": row["series_id"], "router_id": rid, "interface": interface})
-                for offset in range(0, len(quality_rows), 500):
-                    validate_quality({"schema_version": 1, "links": {"quality": {"fingerprint": entry["fingerprint"],
-                        "series_id": channel["series_id"], "next_probe_at": entry["next_sample_at"], "lease_id": None,
-                        "lease_until": None, "samples": quality_rows[offset:offset + 500]}}})
+                        previous_quality = quality_at
         if total > MAX_TOTAL_POINTS:
             raise ValueError
     except (ValueError, TypeError, KeyError, OverflowError) as exc:

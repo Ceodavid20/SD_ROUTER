@@ -12,6 +12,11 @@ from services.json_storage import StorageError, StorageService
 from services.live_samples import LiveSampleService
 
 
+def next_sample_deadline(started, completed, interval):
+    """A late batch resumes on completion, without waiting an extra whole tick."""
+    return max(started + interval, completed)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--once", action="store_true")
@@ -26,10 +31,10 @@ def main(argv=None):
     stop = Event()
     for sig in (SIGINT, SIGTERM):
         signal(sig, lambda *_: stop.set())
-    next_tick = time.monotonic()
     try:
         with ThreadPoolExecutor(max_workers=4) as pool:
             while not stop.is_set():
+                started = time.monotonic()
                 try:
                     paths = storage.read_json("routing_paths.json")["paths"]
                     routers = sorted({p["aggregation_router_id"] for p in paths if p.get("live_sampling_enabled") is True})
@@ -43,11 +48,10 @@ def main(argv=None):
                 if args.once:
                     return 0
                 interval = config["LIVE_SAMPLE_INTERVAL_SECONDS"]
-                next_tick += interval
                 now = time.monotonic()
-                # Skip missed deadlines instead of issuing a burst of catch-up reads.
-                if next_tick <= now:
-                    next_tick += (int((now - next_tick) / interval) + 1) * interval
+                # Drop historical deadlines. A slightly late batch must not
+                # introduce another full second of idle time before sampling.
+                next_tick = next_sample_deadline(started, now, interval)
                 stop.wait(max(0, next_tick - now))
     finally:
         service.close()

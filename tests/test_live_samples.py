@@ -265,3 +265,49 @@ def test_persistent_transport_authenticates_once_and_closes_on_failure(monkeypat
     assert len(calls) == 1 and bytes(connection.sent).count(b'/login') == 1 and not connection.closed
     with pytest.raises(RouterAPIError):client.read_live({'wanA': None})
     assert connection.closed and client._socket is None
+
+
+def test_warm_validation_rechecks_changed_content_and_preserves_good_snapshot(realtime):
+    from services.live_samples import validate_live_samples
+    lab, service, _, data = realtime
+    start(lab);service.collect('MAIN', now=NOW)
+    data['counter'] += 1000
+    service.collect('MAIN', now=NOW+timedelta(seconds=1))
+    valid = lab[1].read_json(DOCUMENT)
+    validate_live_samples(valid)
+    changed = deepcopy(valid)
+    changed['routers']['MAIN']['channels']['wanA']['points'][-1]['quality']['target'] = 'untrusted.example'
+    with pytest.raises(ValidationError):validate_live_samples(changed)
+    validate_live_samples(valid)
+
+
+def test_cached_points_still_require_chronological_tx_and_jitter(realtime):
+    from services.live_samples import validate_live_samples
+    lab, service, _, _ = realtime
+    start(lab);service.collect('MAIN', now=NOW)
+    service.collect('MAIN', now=NOW+timedelta(seconds=1))
+    state = lab[1].read_json(DOCUMENT)
+    points = state['routers']['MAIN']['channels']['wanA']['points']
+    points[0]['quality']['at'] = utc_text(NOW+timedelta(seconds=2))
+    # Each row is individually bounded, but the batch order is invalid.
+    with pytest.raises(ValidationError):validate_live_samples(state)
+
+
+@pytest.mark.parametrize('duration,expected', [(.7,1), (1,1), (1.05,1.05), (3.7,3.7)])
+def test_sampler_does_not_add_a_blank_second_after_a_late_batch(duration, expected):
+    from serve_live import next_sample_deadline
+    assert next_sample_deadline(100,100+duration,1) == pytest.approx(100+expected)
+
+
+@pytest.mark.parametrize('interval',[1,60])
+def test_browser_refresh_tracks_configured_sampling_without_changing_default_view(realtime,interval):
+    lab, service, _, _ = realtime
+    lab[0].config.update(LIVE_SAMPLE_INTERVAL_SECONDS=interval,DASHBOARD_REFRESH_SECONDS=5)
+    start(lab);service.collect('MAIN',now=NOW)
+    client=create_app(lab[0].config).test_client()
+    html=client.get('/optimization').text
+    assert f'data-sample-refresh-seconds="{interval}"' in html
+    assert html.count('<option value="1" selected>') == 2
+    data=client.get('/api/optimization/live').json
+    assert data['refresh_seconds'] == 5
+    assert data['sample_interval_seconds'] == data['series'][0]['quality']['interval_seconds'] == interval

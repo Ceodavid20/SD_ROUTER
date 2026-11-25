@@ -1,5 +1,12 @@
 # SD_ROUTER Controller
 
+**Architecture:** Flask monitors through read-only access, calculates decisions
+and publishes declarative JSON. Authorized MikroTik-side logic initiates the
+fetch, validates the decision and applies it locally. Flask never pushes routing
+changes or optimization commands. The current router client validates and
+reports `not_applied`; router-side application and rollback are unfinished.
+This boundary also governs future optimization algorithms; see [AGENTS.md](AGENTS.md).
+
 The controller stores router and operational settings in JSON files. Administrators configure main routers, carrier links, outbound interfaces and capacities. The existing MTN/Glo CHR laboratory is one configured topology; physical routers and additional carriers use the same inventory and optimization services.
 
 The controller implements authenticated polling and receipts, opt-in outbound TX monitoring, moving-average inputs and advisory adaptive traffic allocation. The native RouterOS 7 client uses verified HTTPS and protocol v2; its prerequisites must be checked on each target device. Polling still returns a versioned **no-action** JSON response. A separate traffic endpoint calculates Mbps from cumulative TX counters on explicitly authorized outbound interfaces. Live routing changes remain disabled.
@@ -51,15 +58,16 @@ Follow [RouterOS connection setup](docs/routeros-setup.md) for private provision
 
 ## Monitoring and recommendations
 
-The same live TX graph supports optional **RTT jitter (ms)** with its own axis,
-clickable readings and independent measurement timestamps. Probes require an
+Separate live graphs show **outbound TX (Mbps)** and **RTT jitter (ms)**. Each
+has independent carrier filters, time ranges, clickable readings and a Latest
+control, with actual measurement timestamps. Probes require an
 explicit per-path opt-in and verified API-SSL. Run `serve_quality.py` alongside
 the existing services; disabled paths make no probe requests. See
 [RTT jitter setup and measurement](docs/rtt-jitter.txt).
 
 For real one-second TX and jitter readings, explicitly enable **Second-by-second
-readings** on the selected paths and run `serve_live.py`. The graph opens on a
-seconds-scale view and supports selecting any time in the plot. Setup, retention
+readings** on the selected paths and run `serve_live.py`. Both graphs open on a
+seconds-scale view and support selecting any time in their plots. Setup, retention
 and measurement limits are in [second-by-second monitoring](docs/second-live-monitoring.txt).
 
 The main application supports authenticated TX collection, moving averages, utilization/share calculations, estimated volume costs and constrained advisory allocations. It uses only saved router inventory and actual received readings. Missing measurements or settings remain unavailable.
@@ -156,7 +164,9 @@ New storage starts in simulation mode. Existing saved automation modes are prese
 
 ## JSON storage
 
-No database is used. The JSON storage service validates documents, locks concurrent access, writes files atomically, and keeps prior versions as `.json.bak`.
+The active Flask runtime uses JSON; the separate Rev3 database is currently used
+for migration staging. The JSON storage service validates documents, locks
+concurrent access, writes files atomically, and keeps prior versions as `.json.bak`.
 
 ```text
 data/
@@ -186,6 +196,33 @@ Traffic readings use append-only dated JSON Lines segments that roll over at 8 M
 `router_traffic_v2.json` holds TX baselines, traffic replay records, a separate source rate-limit budget, and a recoverable pending history append. It reuses the existing segmented traffic history. Include this state and all traffic segments in a consistent stopped backup. Preparing a disabled traffic client uses an existing active key without changing polling scripts or credentials; the new client still requires approved target-device validation and installation. The installed proxy configuration is not changed automatically.
 
 Use persistent local disk, not a shared network filesystem. Stop the controller before restoring a backup or repairing a partially written traffic record. Back up `data/` and `output/` together while stopped; keep `.env` separate as a secret.
+
+## VDT Plain Rev3 implementation
+
+The official production target and staged acceptance plan are recorded in
+[the Rev3 baseline](docs/vdt-rev3-implementation-spec.txt). Stage 1 adds a
+read-only assessment: `.venv/bin/python manage.py rev3-readiness` (or `--json`).
+It reads existing inventory and settings without initializing storage, contacting
+routers, or changing the running lab. It never grants production readiness.
+
+[The planning register](docs/vdt-rev3-decisions.json) records user approval of
+OSPF interface/template cost and MySQL. Password-free production measurement,
+exact cost step math and controller-outage behavior remain open.
+Rev3 prohibits RouterOS login passwords on the production server; the existing
+API-SSL lab sampler is preserved while its production replacement is designed.
+The official 5/10/15-minute decision schedule and approximately one-minute router
+pull are separate from the current one-second lab graph sampling.
+
+Stage 2 creates a versioned 24-table relational foundation and a private, verified
+staging archive in the operator-supplied `sdr` database. The local XAMPP server
+reports MariaDB 10.4.28. The running application continues to use JSON; no live
+backend switch or release is performed. The archive preserves all managed
+documents, traffic segments and replay state byte for byte. See
+[database staging and restore](docs/vdt-rev3-database.txt) for private preparation,
+transactional import, verification and isolated database restore commands.
+Stage 2 validation passed all 901 tests, including nine tests on the actual local
+MariaDB server. The database archive and isolated restore matched the captured
+history and security state byte for byte.
 
 ## Tests
 

@@ -1,8 +1,9 @@
 SD_ROUTER — SECOND-BY-SECOND TX AND RTT JITTER
 25 November 2026
 
-The existing single graph supports a one-minute view with second labels, live
-updates once per second, and a click anywhere along the plot's timeline. A blank
+Separate TX and RTT jitter graphs support one-minute views with second labels,
+live updates once per second, and clicks anywhere along either timeline. Each
+plot has independent selection, time range, carrier filters and a Latest button. A blank
 plot click selects that second, independently of the pointer's vertical position.
 The reading shows actual sample timestamps. Missing samples remain unavailable;
 minute averages are never expanded into invented second-by-second values.
@@ -91,3 +92,18 @@ Router inventory, path settings other than the requested monitoring opt-in, and
 automation settings matched the saved pre-activation snapshot. Routing stayed
 disabled and no router configuration was changed. See
 output/second-live-verification-20261125.json for the sanitized measurements.
+
+Chart continuity and sampling performance
+-----------------------------------------
+Both plots connect consecutive valid measurements. Solid segments show a
+continuous measured series. Faint dotted connectors bridge missing intervals or
+changes of series, and are labeled as visual connectors only. They add no data
+points, zero values or calculated intermediate readings to the chart payload or
+history. Clicking a missing second still shows No sample at this time.
+
+Validation of unchanged live-cache samples is memoized by their complete JSON
+content plus router/interface, within a 24,000-entry memory bound. Changed
+content is fully validated, and document bounds, source authorization and
+chronological ordering are checked on every transaction. A late sampling batch
+now resumes on completion rather than adding an unnecessary full idle tick.
+TLS, authentication, timestamp/replay rules and routing locks are unchanged.

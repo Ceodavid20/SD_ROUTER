@@ -1,0 +1,315 @@
+SD_ROUTER — VDT Plain Rev3 implementation baseline
+Stage 1, recorded 25 November 2026
+
+1. Authority, scope and current state
+
+Source: VDT SDR Implementation Plan (Plain Rev3).docx, supplied by the user.
+SHA-256: d3ac5411501332fa0243f63bff5ec45108c7f1b26dc3d069f2b06938bc6d1409
+This is the plain-language companion to the full Rev3; the full technical Rev3
+was not supplied. Open technical choices below are not approvals. Requirements
+from the supplied document are distinguished from implementation proposals and
+existing lab behavior.
+
+The production objective is to change preference between existing redundant
+intercity links, detect congestion and recover gradually, with an audit trail.
+Purchasing servers, building links and changing provider agreements are outside
+the supplied plan. OSPF preference changes do not promise a particular Mbps
+split. Actual topology, cumulative path cost, equal-cost behavior and forwarding
+must be tested before claiming traffic balancing or congestion relief.
+
+Preserve the current lab: registered routers and handoffs, signed V1/V2 polling
+and receipt ACKs, authenticated TX ingestion, history, interactive TX and jitter
+graphs, optimization On/Off, and existing credentials. No demo router is added.
+No router is contacted or configured in Stage 1. Current one-second lab TX/jitter
+sampling remains unchanged; the user cancelled its minute conversion.
+SIMULATION_MODE=true and LIVE_ROUTING_ENABLED=false remain in force.
+
+Current lab implementation: JSON storage and segmented TX history; read-only
+API-SSL counter/ping collection; authenticated router-pushed TX; Adaptive MLU
+advisory recommendations and authenticated router pull/report. The current
+router client reports not_applied. It does not implement approved OSPF writes
+or rollback. Latency and jitter are not inputs to the existing optimizer.
+An acknowledgement proves receipt, not application or traffic relief.
+
+2. Architecture and security boundary
+
+Flask makes decisions; MikroTik fetches and executes them.
+
+Production flow:
+  approved independent measurements -> durable database -> scheduled decision
+  -> mode/approval release gate -> authenticated cost JSON -> router-initiated
+  fetch/validation -> separately authorized router-local OSPF application
+  -> router readback/report -> database, NOC pages and alerts.
+
+Flask never logs in to production routers, modifies router configuration, sends
+remote commands or embeds executable RouterOS code in a decision. Existing
+private operator/bootstrap tools are separate from the serving application.
+One-time trusted bootstrap/installation still needs initial network connectivity
+and explicit trust authorization. Enrollment does not grant execution permission.
+
+The official requirement is stricter than the present lab: no RouterOS login
+passwords on the production server. Current API-SSL sampler/diagnostics use
+private login credentials and are not the production collection solution.
+Do not delete or disable the functioning lab while replacing that dependency.
+
+Production measurement method is NOT YET DECIDED. Candidate designs to assess:
+  - authenticated, timestamped, replay-protected router-pushed TX counters, plus
+    approved timing probes that traverse the actual monitored link;
+  - independently scheduled read-only SNMP counter collection, plus equivalent
+    path-specific timing probes, without RouterOS login credentials.
+SNMP security credentials or device HMAC keys are not RouterOS login passwords;
+they remain protected secrets. Neither candidate is approved by this baseline.
+Measurements must not depend on PRTG, SolarWinds or InterMapper availability.
+Never collect RX counters under the current user-authorized scope.
+
+Keep verified HTTPS and existing HMAC-SHA512, closed JSON schemas, finite/ranged
+numbers, timestamp/expiry checks, rate limits and durable replay protection.
+Source-address restrictions supplement authenticated identity; neither replaces
+the other. Configure exact production router management addresses and trusted
+proxy handling, reject unexpected sources, and expose neither service publicly.
+The dashboard is for individually named authorized staff on the NOC/VPN network.
+No secrets in registry JSON, HTML, history, readiness reports or log messages.
+
+3. Decisions and production inputs
+
+docs/vdt-rev3-decisions.json is a planning register only. Editing it does not
+change active settings, sampling, authentication, releases or execution rights.
+The source hash records the supplied document, not a production sign-off.
+
+CONFIRMED BY USER: OSPF interface/template cost is approved (25 November 2026),
+in response to the question about Busuyi's approval. This confirms the mechanism,
+not exact resources, thresholds, values, router installation or production go-live.
+RouterOS versions and exact OSPF interface/template targets still need validation.
+Do not select targets by list position, broad wildcard or carrier name alone.
+
+CONFIRMED BY USER: MySQL is the selected database (25 November 2026). The supplied
+local sdr database runs MariaDB 10.4.28 through XAMPP; compatibility is tested there.
+
+PENDING: password-free measurement method; controller-outage
+policy; capacity-difference formula; the reference cost for percentage steps;
+integer rounding. Two consecutive checks are specified by the official plan;
+the plan also requires CTO/Busuyi confirmation of its six design choices before
+live effect. A documented requirement is not recorded as a user approval.
+
+Production input worksheet (none inferred from CHR lab values):
+  - link pair/sites, direction and destinations reachable through either link;
+  - registered router identities, authorized source addresses, RouterOS versions;
+  - exact monitored TX interfaces and exact OSPF resources and scope per router;
+  - confirmed usable capacity in Mbps, bandwidth %, latency ms and jitter ms
+    thresholds, normal/minimum/maximum integer costs for each link;
+  - approved probe endpoints, path steering, freshness and timeout limits;
+  - outage choice and failed-poll count if returning to normal is chosen;
+  - named staff/roles, alert recipients/channel and allowed application delay;
+  - database choice, backup destination, retention and restore objectives;
+  - CTO/Busuyi design approval and Busuyi/CTO/DSA rollout review records.
+
+Existing 0.4/0.15 Mbps lab limits are test settings, not production capacities.
+Previously discussed 8/4 Gbps settings do not establish intercity link capacity.
+
+4. Measurement and decision contract
+
+Official schedule: independently scheduled checks at configurable 5, 10 or
+15 minute intervals. Routers fetch released costs about every 60 seconds.
+These are separate clocks. A fetch reads the latest release; it must not create
+an extra decision or count as another congestion-confirmation check.
+The existing one-second lab graph is a separate presentation/collection feature.
+Do not silently reset it when introducing the production schedule.
+
+Outbound Mbps = (new TX octets - previous TX octets) * 8 / elapsed_seconds / 1e6.
+Use real elapsed time, same router/interface/counter generation. The first
+sample, reset, out-of-order counter or invalid elapsed time cannot yield a valid
+rate. Capacity must be positive and confirmed before utilization is calculated.
+Record raw sample provenance, observation/receipt times, validity and units.
+
+Latency and jitter must be measured independently from TX. Define the probe
+direction, endpoints, statistic, sample count and loss handling with the chosen
+measurement method. Existing lab jitter is successive successful RTT variation;
+do not label it one-way jitter or invent network jitter from Mbps fluctuations.
+The path must traverse the link, not merely test management-LAN reachability.
+
+A valid check is congested if any approved metric crosses its threshold. It is
+healthy only when all required metrics are valid and within limits. Missing,
+stale, partial or failed data is unknown, not healthy or zero. Proposed safety
+behavior: unknown breaks consecutive confirmation and blocks cost adjustment;
+continue recording and alerting. Freeze this detail in policy tests before use.
+Freshness/expiry must fit the approved 5/10/15-minute schedule; do not reuse the
+lab's short staleness windows blindly. Monotonic scheduling avoids duplicate
+checks; UTC timestamps and policy/check IDs make restart/replay deduplication
+durable. No catch-up burst may count old data as new confirmations.
+
+The official policy requires two consecutive scheduled congested checks, or
+two consecutive healthy checks, before reacting. One congested and one healthy
+link permit a small preference shift toward the healthy link.
+Official default step bands: capacity difference under 10% -> 1%; 10–30% -> 5%;
+over 30% -> 10%. Step sizes must be editable from Settings.
+The capacity-difference denominator, reference cost for the percentage step and
+integer rounding are undefined by the supplied plan. Keep these as explicit
+choices; do not silently implement one as an approved rule. Any eventual rounding
+must ensure a bounded meaningful integer step, without overshoot or endless
+adjustment attempts at a limit. Normal recovery must not cross normal cost.
+
+Proposed implementation: a pure deterministic policy module consuming a frozen
+settings version, a pair of validated checks and prior confirmation/cost state.
+It produces bounded proposed costs, reason codes and evidence references.
+Record one decision per scheduled check and policy version, including no-change
+decisions. Exact step math awaits the decisions above. Existing MLU and PCC
+weights must not be presented as the official OSPF step algorithm.
+
+5. Calculated, released and applied costs
+
+Calculated: the policy's proposal and reasons, retained even when not released.
+Released: the approved version the router is allowed to fetch.
+Applied: the router's validated readback/report of its actual configured cost,
+with identity, resource, time, release version and success/failure details.
+Unknown application stays unknown. V1/V2 receipt ACKs keep their existing meaning.
+
+Test: calculate and record proposals, always publish approved normal costs.
+Manual: record proposals; release only the exact proposal explicitly approved
+by an authorized staff account. Proposed approvals bind settings/measurement
+versions, expire on stale evidence, and cannot authorize a newer proposal.
+Automatic: release fresh bounded proposals only after staged authorization.
+Mode changes, approvals and release versions must be transactional and audited.
+
+The current Optimization On/Off switch remains a separate lab advisory pause.
+It cannot silently become production Test/Manual/Automatic or a restore command.
+Entering Test immediately changes the server's release to normal; the router
+can restore only after its next successful fetch and verified application.
+Do not promise instant router rollback if the router cannot contact the server.
+The outage policy is CTO's choice: hold last (document's recommended default),
+or restore approved normal after N failed pulls. Neither is selected yet.
+
+Router-local routine (a later authorized stage): fetch only its own release,
+verify TLS/controller trust, HMAC, identity/resource scope, strict numeric types,
+signature, time/expiry/version/replay and approved bounds. Reject executable
+content, unknown resources or invalid values. Apply only a changed value to
+the approved OSPF resource; read back and report. Duplicate polls are idempotent.
+Validate scoped template matches so one target cannot alter unrelated links.
+Persist the validated release/application state needed across router restarts.
+An authenticated report is still router-reported evidence, not independent proof
+that customer traffic moved. Exercise physical hardware before claiming support.
+
+RouterOS reference for template scope/cost (consulted 25 November 2026):
+https://manual.mikrotik.com/docs/cli-reference/routing/ospf/interface-template/
+https://help.mikrotik.com/docs/spaces/ROS/pages/9863229/OSPF
+Actual version capabilities and operator-approved min/max bounds must both pass.
+
+6. Persistence and NOC pages
+
+The user selected MySQL, as suggested by the document, on 25 November 2026.
+Stage 2 designs a transactional repository and a non-destructive migration. Keep
+the existing JSON storage/history and V1/V2 security state intact until an
+isolated migration, reconciliation, backup and restore have passed review.
+Never copy live state inconsistently or reset replay records during cutover.
+
+Proposed logical entities: sites/link pairs/links, routers and source mappings,
+OSPF resource mappings, versioned settings, named staff/roles, measurements and
+checks, confirmation state, decisions, approvals, releases, router check-ins,
+application reports, alerts and audit events. Enforce identity, foreign keys,
+unique check/release/request IDs, finite values, bounds and atomic state changes.
+No RouterOS login password columns. Keep secrets outside business records.
+
+Required four NOC pages:
+  Dashboard: congestion state, TX utilization, latency, jitter; three cost states
+    and last check-in per link/router; clear Test/Manual/Automatic banner.
+  Settings: intervals, thresholds, step bands/basis, normal/min/max costs, mode
+    and explicit Manual approvals with role checks and CSRF protection.
+  Daily Graphs: choose any retained day; bandwidth, latency, jitter and cost
+    for both links side by side; click to inspect real values/timestamps.
+  History: searchable decisions/changes (why, old/new, release/application time),
+    every check-in, approvals and failure/no-change records.
+Preserve existing TX/jitter click selection and live lab graphs. Distinguish
+stale/missing observations and visual connectors from measured values. Do not
+reintroduce the retired Traffic analysis page or fill absent samples with zero.
+
+7. Operations, alerts and rollout
+
+Raise deduplicated alerts for measurement failure, missing router cost fetches,
+and applied/released mismatch beyond an agreed delay. Record recovery, age,
+delivery attempts and acknowledgement. Recipients/channel and timings need
+operator settings. Never send external messages as part of Stage 1.
+
+Target deployment: private-management/VPN-only Ubuntu cloud server, 2 CPU,
+4 GB RAM, 40 GB persistent storage, supervised workers/proxy, synchronized
+time, separate daily backups, tested restore, retention/log rotation and regular
+security updates. Validate performance at the intended production workload.
+Record named accounts, least privilege and operational ownership in the runbook.
+
+Keep software build stages distinct from official operational rollout:
+  Lab test: spare/isolated router, validate every router-local guard and OSPF
+    readback without customer traffic.
+  Test: at least the prescribed 1–2-week observation period; start/end and review
+    recorded, real check-ins but normal released costs, proposals only recorded.
+  Review: Busuyi, CTO and DSA assess decisions against real conditions.
+  Manual: first live weeks, each released change explicitly approved.
+  Automatic: only after acceptance/sign-off, within bounds and ongoing oversight.
+Document emergency Test restore, router-local pause/manual restore and outage
+behavior before live use. No silent mode promotion by elapsed time alone.
+
+Real congestion-relief proof needs traffic through the common forwarding path
+able to use either link, with before/after measurements and verified OSPF cost
+application. Generating TX directly toward carrier-connected test addresses
+shows monitoring and advisory calculation, not OSPF-driven traffic movement.
+
+8. Implementation stages and acceptance traceability
+
+Stage 1 — This baseline, decisions, gap assessment and acceptance checks.
+Stage 2 — Database design, isolated schema and non-destructive migration tooling.
+Stage 3 — Approved independent measurement and configurable scheduled checks.
+Stage 4 — Pure three-metric, two-check, bounded OSPF step/recovery engine.
+Stage 5 — Versioned Test/Manual/Automatic release workflow and router pull/report.
+Stage 6 — Separately prepared router-local validator/apply/restore, isolated lab
+          installation and forwarding proof, only with explicit authorization.
+Stage 7 — Four NOC pages, named staff/roles, daily graphs, searchable history.
+Stage 8 — Alerts, deployment, restore/drills and official staged observation/review.
+Dependencies may require UI scaffolding sooner; no stage promotes live execution.
+
+Acceptance IDs (document section -> checks -> implementation stage):
+R01 1/2/6: Flask never logs in/writes production routers; no RouterOS login
+    passwords; dependency inspection and mocked forbidden-client tests. 3/5/6
+R02 2/3: Self-contained TX/latency/jitter measurement; monitoring tools offline
+    does not stop checks; no RX; exact path and reset/loss tests. 3
+R03 2/3: Exactly one check per 5/10/15-minute schedule; polls do not add checks;
+    restart/duplicate/late checks and interval changes tested. 3/4
+R04 2/3: Any metric breach, two consecutive checks, missing data/healthy recovery;
+    alternating spikes, stale/partial/lost data and restart persistence tested. 4
+R05 3/6: Approved step formula; 10%/30% boundaries, integer rounding, asymmetric
+    capacities, both congested, no headroom, normal recovery and bounds tested. 4
+R06 2/3: Approved step values editable in Settings, exact scoped OSPF mechanism;
+    unsupported versions and ambiguous/missing target templates rejected. 4/6/7
+R07 2/5/7: Test normal release, Manual exact approval, Automatic gated; separate
+    three costs, expired approval/release, rollback and outage cases tested. 5/6/7
+R08 2/6: Router pull authentication/source/TLS/JSON/replay guards, changed-only
+    application and readback; receipt ACK never means applied. 5/6
+R09 3/6: Every measurement/check/decision/release/check-in/report audited;
+    interrupted migration, consistent replay state, reconciliation/restore pass. 2/5/8
+R10 5/6: Four pages; named roles, private access/CSRF, interactive daily metrics
+    and cost comparisons, searchable histories; no secrets or fabricated points. 7
+R11 8: Failure/missing-poll/mismatch alerts, deduplication/recovery/channel outage
+    and secret-free delivery tested. 8
+R12 7: Isolated CHR and separately verified physical target; common-path load
+    moves following router-applied OSPF costs; Test/manual restore exercised. 6/8
+R13 3/7/9: Approvals and actual settings recorded; Test observation and review,
+    Manual acceptance and final Automatic authorization required. 5/8
+R14 4/8: Private Ubuntu deployment, worker restart, NTP, capacity/backup/restore,
+    rotation/update runbooks and monitoring meet agreed objectives. 8
+R15 Existing user requirements: V1/V2 poll/ACK and TX-only security/history,
+    opt-in/CSRF behavior preserved; full regression suite at every build stage.
+
+9. Stage 1 command and completion boundary
+
+Run: .venv/bin/python manage.py rev3-readiness
+JSON: .venv/bin/python manage.py rev3-readiness --json
+Optional --decisions PATH selects a validated planning register, not live policy.
+The assessor reads only an existing consistent JSON inventory/settings snapshot
+under a shared lock. It never initializes a profile, contacts a router, resolves
+API credentials, recovers storage or writes settings/history. Reports expose
+counts and whitelisted decisions, not router addresses, credentials or references.
+Uninitialized/unavailable inventory is reported, not created or repaired.
+
+Stage 1 software deliverables can be complete while decisions remain pending.
+Even a fully completed register cannot grant production readiness or router
+execution authorization. The assessor is an inventory/planning aid, not an
+application mode gate, rollout approval system or proof of physical operation.
+Proceed with isolated Stage 2 preparation without disturbing the live lab;
+The database decision is now recorded; see docs/vdt-rev3-database.txt for Stage 2
+staging, real database checks and the separate runtime cutover boundary.

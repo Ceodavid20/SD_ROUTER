@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "planning_only": true,
+  "source": {
+    "title": "VDT SDR Implementation Plan (Plain Rev3)",
+    "revision": "Plain Rev3",
+    "sha256": "d3ac5411501332fa0243f63bff5ec45108c7f1b26dc3d069f2b06938bc6d1409"
+  },
+  "production_inputs_confirmed": false,
+  "decisions": [
+    {
+      "id": "measurement_method",
+      "status": "confirmed",
+      "selection": "router_pushed_metrics",
+      "source": "user_confirmation",
+      "recorded_on": "2026-11-25"
+    },
+    {
+      "id": "routing_mechanism",
+      "status": "confirmed",
+      "selection": "ospf_interface_or_template_cost",
+      "source": "user_confirmation",
+      "recorded_on": "2026-11-25"
+    },
+    {
+      "id": "capacity_difference_basis",
+      "status": "pending",
+      "selection": null,
+      "source": "pending",
+      "recorded_on": null
+    },
+    {
+      "id": "step_percentage_basis",
+      "status": "pending",
+      "selection": null,
+      "source": "pending",
+      "recorded_on": null
+    },
+    {
+      "id": "rounding_rule",
+      "status": "pending",
+      "selection": null,
+      "source": "pending",
+      "recorded_on": null
+    },
+    {
+      "id": "confirmation_rule",
+      "status": "documented",
+      "selection": "two_consecutive_checks",
+      "source": "official_plan",
+      "recorded_on": "2026-11-25"
+    },
+    {
+      "id": "database_engine",
+      "status": "confirmed",
+      "selection": "mysql",
+      "source": "user_confirmation",
+      "recorded_on": "2026-11-25"
+    },
+    {
+      "id": "controller_outage_policy",
+      "status": "pending",
+      "selection": null,
+      "source": "pending",
+      "recorded_on": null
+    }
+  ]
+}

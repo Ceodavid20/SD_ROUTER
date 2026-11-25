@@ -1,11 +1,11 @@
 SD_ROUTER RTT JITTER — 25 November 2026
 
-The existing Dashboard/Optimization graph now supports outbound TX (Mbps) and
-RTT jitter (milliseconds) on separate axes. TX uses solid carrier-colored lines;
-jitter uses dashed lines and square points. Click either metric to see its own
-reading and timestamp. Keyboard selection, Latest, time ranges, carrier hiding,
-background updates and mobile layout remain available. The RTT jitter checkbox
-hides or shows the metric without changing measurement authorization.
+Dashboard and Optimization show separate live graphs: outbound TX in Mbps,
+and RTT jitter in milliseconds. Each graph has its own carrier filters, time
+range, Latest control, keyboard selection and pinned readout. Click anywhere
+along either plot's timeline to inspect that metric and actual timestamp.
+TX and jitter keep the same carrier colors across their separate graphs.
+The graphs consume the existing live data feeds and add no probe requests.
 
 What is measured
 ----------------

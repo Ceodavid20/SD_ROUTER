@@ -137,7 +137,6 @@ def bounded_pcc_distribution(weights, baseline, buckets, max_step):
         cursor += count
     return result
 
-
 def source_measurement(router, interface, inputs, windows, config, now):
     settings = inputs["automation_settings.json"]
     count = settings["averaging_window"]

@@ -1,24 +1,25 @@
-<section class="surface panel live-tx-panel" aria-labelledby="tx-title" data-live-tx data-endpoint="{{ url_for('api.live_tx_view') }}" data-samples-endpoint="{{ url_for('api.live_samples') }}" data-request-timeout-seconds="{{ config.BROWSER_REQUEST_TIMEOUT_SECONDS }}">
-  <div class="panel-heading tx-heading">
-    <h2 id="tx-title">Outbound TX &amp; jitter</h2>
-    <div class="tx-controls">
-      <span class="tx-connection" data-live-connection role="status">Live</span>
-      <label class="tx-jitter-control" title="Mean absolute change between consecutive ping round trips, measured on the configured carrier path."><input type="checkbox" data-jitter-toggle checked> RTT jitter (ms)</label>
-      <label class="visually-hidden" for="tx-range">Time range</label>
-      <select class="form-select form-select-sm" id="tx-range" data-tx-range aria-label="Time range">
-        <option value="1" selected>1 minute</option><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="60">1 hour</option><option value="360">6 hours</option><option value="all">All readings</option>
-      </select>
-      <button class="btn btn-sm btn-outline-secondary" type="button" data-tx-follow>Latest</button>
+<div class="live-metric-plots" data-live-tx data-endpoint="{{ url_for('api.live_tx_view') }}" data-samples-endpoint="{{ url_for('api.live_samples') }}" data-sample-refresh-seconds="{{ config.LIVE_SAMPLE_INTERVAL_SECONDS }}" data-request-timeout-seconds="{{ config.BROWSER_REQUEST_TIMEOUT_SECONDS }}">
+  {% for metric, title, unit in [('tx', 'Outbound TX', 'Mbps'), ('jitter', 'RTT jitter', 'ms')] %}
+  <section class="surface panel live-tx-panel" aria-labelledby="{{ metric }}-title" data-metric-panel="{{ metric }}">
+    <div class="panel-heading tx-heading">
+      <h2 id="{{ metric }}-title">{{ title }} <small>({{ unit }})</small></h2>
+      <div class="tx-controls">
+        <span class="tx-connection" data-live-connection role="status">Connecting</span>
+        <label class="visually-hidden" for="{{ metric }}-range">{{ title }} time range</label>
+        <select class="form-select form-select-sm" id="{{ metric }}-range" data-plot-range aria-label="{{ title }} time range">
+          <option value="1" selected>1 minute</option><option value="5">5 minutes</option><option value="15">15 minutes</option><option value="60">1 hour</option><option value="360">6 hours</option><option value="all">All readings</option>
+        </select>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-plot-follow>Latest</button>
+      </div>
     </div>
-  </div>
-  <div class="tx-series" data-tx-series>
-    {% for series in live.series %}<div class="tx-series-item"><span>{{ series.name }}</span><strong>{{ bandwidth_value(series.current_mbps) }} <small>Mbps</small></strong></div>{% endfor %}
-  </div>
-  <div id="tx-chart" class="live-tx-chart" data-tx-chart role="group" tabindex="0" aria-label="Interactive outbound TX and RTT jitter graph. Click anywhere along the timeline or use arrow keys to inspect readings."></div>
-  <section class="tx-reading" data-tx-reading aria-label="Selected TX reading" aria-live="polite">
-    <div class="tx-reading-heading"><span data-tx-reading-label>Latest reading</span><time data-tx-reading-time></time></div>
-    <div class="tx-reading-values" data-tx-reading-values></div>
+    <div class="tx-series" data-plot-series></div>
+    <div id="{{ metric }}-chart" class="live-tx-chart" data-plot-chart {% if metric == 'tx' %}data-tx-chart{% else %}data-jitter-chart{% endif %} role="group" tabindex="0" aria-label="Interactive {{ title }} graph in {{ unit }}. Click anywhere along the timeline or use arrow keys to inspect readings."></div>
+    <section class="tx-reading" aria-label="Selected {{ title }} reading" aria-live="polite">
+      <div class="tx-reading-heading"><span data-plot-reading-label>Latest reading</span><time data-plot-reading-time></time></div>
+      <div class="tx-reading-values" data-plot-reading-values></div>
+    </section>
+    <span class="tx-sample-note"><span data-plot-sampling></span> · <span data-plot-updated>Connecting</span><span data-plot-gaps hidden> · Dotted: missing measurements</span></span>
   </section>
-  <span class="tx-sample-note"><span data-tx-sampling>TX every {{ live.sample_interval_seconds }}s</span> · <span data-tx-updated>Connecting</span></span>
+  {% endfor %}
   <script type="application/json" data-tx-payload>{{ live | tojson }}</script>
-</section>
+</div>

@@ -38,6 +38,27 @@ def configure_admin(env_path: Path, username: str, password: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+    readiness = commands.add_parser("rev3-readiness", help="Read-only Rev3 planning assessment; never contacts routers or changes local settings.")
+    readiness.add_argument("--json", action="store_true", help="Print the sanitized assessment as JSON.")
+    readiness.add_argument("--decisions", type=Path, help="Planning-only decision register; defaults to docs/vdt-rev3-decisions.json.")
+    snapshot = commands.add_parser("prepare-rev3-migration", help="Create a private read-only JSON snapshot and inactive MySQL import bundle.")
+    snapshot.add_argument("--output-dir", type=Path, required=True)
+    snapshot.add_argument("--decisions", type=Path)
+    verify_snapshot = commands.add_parser("verify-rev3-migration", help="Verify private migration checksums, counts and SQL; no changes.")
+    verify_snapshot.add_argument("--bundle", type=Path, required=True)
+    restore_snapshot = commands.add_parser("rehearse-rev3-restore", help="Restore a verified snapshot into a new isolated directory only.")
+    restore_snapshot.add_argument("--bundle", type=Path, required=True)
+    restore_snapshot.add_argument("--output-dir", type=Path, required=True)
+    database_commands = ("init-rev3-database", "import-rev3-database", "verify-rev3-database", "rehearse-rev3-database-restore")
+    for name in database_commands:
+        command = commands.add_parser(name, help="Explicit private MySQL staging operation; never switches the runtime backend.")
+        command.add_argument("--client-binary", type=Path, required=True)
+        command.add_argument("--client-options", type=Path, required=True, help="Owner-only local socket/login options; never pass a password as an argument.")
+        command.add_argument("--database", required=True)
+        if name != "init-rev3-database":
+            command.add_argument("--bundle", type=Path, required=True)
+        if name == "rehearse-rev3-database-restore":
+            command.add_argument("--output-dir", type=Path, required=True)
     administrator = commands.add_parser("configure-admin", help="Set the browser administrator locally.")
     administrator.add_argument("--username", help="Administrator username; prompted if omitted.")
     api_setup = commands.add_parser("configure-router-api", help="Privately save an existing router's API login; no router connection or transport changes.")
@@ -98,6 +119,49 @@ def main() -> None:
     tls.add_argument("--allow-enrollment", action="store_true")
     tls.add_argument("--output-dir", required=True)
     args = parser.parse_args()
+    if args.command in database_commands + ("prepare-rev3-migration", "verify-rev3-migration", "rehearse-rev3-restore"):
+        import json
+        from config import load_config
+        from services.rev3_migration import prepare, verify, rehearse_restore, MigrationError, DEFAULT_REGISTER
+        try:
+            config = load_config()
+            if config["SIMULATION_MODE"] is not True or config["LIVE_ROUTING_ENABLED"] is not False:
+                raise MigrationError("Keep simulation enabled and routing execution disabled.")
+            if args.command == "prepare-rev3-migration":
+                value = prepare(config, args.output_dir, register_path=args.decisions or DEFAULT_REGISTER)
+                result = {"prepared": True, "counts": value["counts"], "runtime_cutover_authorized": False}
+            elif args.command == "verify-rev3-migration":
+                value = verify(args.bundle)
+                result = {"verified": True, "counts": value["counts"], "runtime_cutover_authorized": False}
+            elif args.command == "rehearse-rev3-restore":
+                result = rehearse_restore(config, args.bundle, args.output_dir)
+            else:
+                from services.rev3_database import MySQLStaging
+                from services.deployment_service import profile_path
+                profile_path(config, args.client_options)
+                database = MySQLStaging(args.client_binary, args.client_options, args.database)
+                if args.command == "init-rev3-database":
+                    result = database.initialize()
+                elif args.command == "import-rev3-database":
+                    result = database.import_bundle(args.bundle)
+                elif args.command == "verify-rev3-database":
+                    result = database.verify_import(args.bundle)
+                else:
+                    result = database.rehearse_restore(config, args.bundle, args.output_dir)
+        except (MigrationError, ValueError, OSError):
+            parser.exit(2, "Rev3 migration operation refused or failed. Active JSON storage was not changed; private details withheld.\n")
+        print(json.dumps(result, indent=2))
+        return
+    if args.command == "rev3-readiness":
+        from config import load_config
+        from services.rev3_readiness import report, format_report, ReadinessError, DEFAULT_REGISTER
+        import json
+        try:
+            result = report(load_config(), args.decisions or DEFAULT_REGISTER)
+        except (ReadinessError, ValueError, OSError):
+            parser.exit(2, "Rev3 assessment unavailable. Review the selected profile and register; private details withheld.\n")
+        print(json.dumps(result, indent=2) if args.json else format_report(result))
+        return
     if args.command != "configure-admin":
         from config import load_config
         from services.json_storage import StorageError, StorageService

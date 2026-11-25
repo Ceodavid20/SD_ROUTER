@@ -1572,3 +1572,82 @@ A bounded JSON cache retains 600 points per interface, up to 12,000 overall.
 Existing signed TX history, polling, acknowledgements, optimization averaging
 and routing locks remain intact. New paths keep this feature disabled until
 explicitly enabled. See docs/second-live-monitoring.txt for operation and limits.
+
+
+UPDATE — 25 November 2026: separate TX and jitter graphs
+------------------------------------------------------
+Dashboard and Optimization now show outbound TX (Mbps) and RTT jitter (ms) in
+two separate graphs. Each graph has independent filters, range, Latest button
+and clickable readings. Selected readings stay pinned while both graphs keep
+receiving one-second samples. Sampling, history, optimization settings and
+routing locks are unchanged by this display update.
+
+
+UPDATE — 25 November 2026: continuous chart presentation
+-------------------------------------------------------
+TX and jitter plots now use solid measured lines and faint dotted connectors
+through missing periods. These connectors contain no invented readings; a click
+on an unsampled second still reports that no sample is available. Repeated
+validation of unchanged history was accelerated, and the sampler no longer
+adds a whole extra idle tick after a slightly late batch. Real data, independent
+graph controls, monitoring permissions and disabled routing writes are retained.
+
+
+ARCHITECTURE CONFIRMED — 25 November 2026
+----------------------------------------
+Flask makes decisions; MikroTik fetches and executes them. Controller management
+access remains read-only for monitoring. Optimization algorithms publish
+declarative JSON costs/distributions and never send router writes or executable
+commands. Router-local logic must independently fetch, authenticate, validate and
+apply authorized decisions. The current advisory client fetches/validates and
+reports not_applied; router-side application and rollback remain unfinished.
+The boundary is recorded in AGENTS.md for current and future development.
+
+The proposed one-minute sampling change was cancelled. Active TX and jitter
+monitoring remains targeted at one second on both paths. Existing live history
+was preserved when restoring the previous cadence.
+
+
+STAGE 1 — VDT Plain Rev3 baseline, 25 November 2026
+-------------------------------------------------
+The official plan targets gradual OSPF cost adjustments between redundant links,
+using bandwidth utilization, latency and jitter, with two consecutive checks.
+You confirmed OSPF interface/template cost; the password-free production
+measurement method remains undecided. Existing CHR monitoring, history and
+one-second graphs are preserved. No router was contacted or configured in this
+stage. Flask remains unable to execute routing changes.
+
+The detailed plan, remaining choices, production input worksheet and acceptance
+checks are in docs/vdt-rev3-implementation-spec.txt. The planning register is
+docs/vdt-rev3-decisions.json. Run the read-only check with:
+  .venv/bin/python manage.py rev3-readiness
+It displays counts and pending choices, never credentials or execution approval.
+
+Rev3 requires no RouterOS login passwords on the production server. The current
+private API-SSL lab login is not the production collection solution. Production
+also needs database persistence, separate calculated/released/applied costs,
+Test/Manual/Automatic modes, router-local authorized application, named NOC
+accounts, four pages, alerts and staged operational review. Current lab
+recommendations and receipt acknowledgements are not proof of applied OSPF
+costs or customer traffic relief. Database design and safe migration preparation
+are the next build stage; active JSON storage is not replaced in Stage 1.
+
+
+STAGE 2 — MySQL foundation and verified staging, 25 November 2026
+--------------------------------------------------------------
+You selected MySQL and supplied the sdr database. XAMPP reports its engine as
+MariaDB 10.4.28. A compatible 24-table relational foundation is installed there.
+Private migration tools preserve all managed JSON documents and TX history,
+including authentication/replay state, and import a byte-verified inactive
+archive. Database restore is rehearsed into a new private directory only.
+
+The running application still uses JSON. The new business tables are scaffolding
+for later services; no production policy, release, fake measurement, staff login
+or router execution was enabled. No router was contacted. Current settings,
+one-second monitoring and existing history are preserved.
+
+Read docs/vdt-rev3-database.txt for commands, checks and the cutover boundary.
+Private bundles live under private/rev3-stage2-20261125. Do not share client
+options or SQL archive payloads. output/vdt-rev3-stage2-verification.json is the
+sanitized evidence report. Next is approved password-free measurement, normalized
+persistence and scheduled checks; production measurement is still undecided.
