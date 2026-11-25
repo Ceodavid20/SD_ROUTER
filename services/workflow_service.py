@@ -12,7 +12,7 @@ import re
 from typing import Any
 
 from services.json_storage import StorageService
-from services.path_config_service import analysis_path_ready
+from services.path_config_service import analysis_path_ready, routing_policy_config
 from services.router_protocol import parse_utc_timestamp, utc_text
 from services.traffic_service import project_traffic_status, stale_after_seconds
 
@@ -89,7 +89,7 @@ def policy_fingerprint(inputs: dict) -> str:
     settings = inputs["automation_settings.json"]
     return _digest({
         "routers": [{key: row.get(key) for key in _ROUTER_INPUTS} for row in inputs["routers.json"]],
-        "paths": inputs["routing_paths.json"],
+        "paths": routing_policy_config(inputs["routing_paths.json"]),
         "settings": {key: settings.get(key, True if key == "optimization_enabled" else None) for key in (
             "averaging_window", "monitoring_interval_seconds", "optimization_objective",
             "adaptive_optimization", "optimization_enabled",
@@ -469,7 +469,7 @@ class WorkflowService:
 
     def graph_data(self):
         from services.optimization_graphs import graph_data
-        return graph_data(self.storage)
+        return graph_data(self.storage, config=self.config)
 
     def save_settings(self, form: Mapping[str, Any]) -> None:
         objective = form.get("optimization_objective")

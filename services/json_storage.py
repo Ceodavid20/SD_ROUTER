@@ -83,6 +83,8 @@ class StorageService:
     DEFAULTS = {
         "routers.json": [],
         "router_onboarding.json": {"schema_version": 1, "routers": {}},
+        "link_quality.json": {"schema_version": 1, "links": {}},
+        "live_samples.json": {"schema_version": 1, "routers": {}},
         "optimization_communication.json": {
             "schema_version": 1, "routers": {}, "seen_requests": [], "rate_limits": {}, "deliveries": [],
         },
@@ -509,6 +511,30 @@ class StorageService:
             )
             return inputs, windows, self._read_unlocked("optimization_results.json")
 
+    def update_quality(self, update):
+        """Short claim/commit transactions; active network I/O happens outside."""
+        with self._locked():
+            inputs = {key: self._read_unlocked(key) for key in ("routers.json", "routing_paths.json")}
+            state = self._read_unlocked("link_quality.json")
+            before = deepcopy(state)
+            update(inputs, state)
+            if state != before:
+                self._write_unlocked("link_quality.json", state)
+
+    def live_snapshot(self):
+        with self._locked():
+            return {key: self._read_unlocked(key) for key in (
+                "routers.json", "routing_paths.json", "live_samples.json")}
+
+    def update_live_samples(self, update):
+        with self._locked():
+            inputs = {key: self._read_unlocked(key) for key in ("routers.json", "routing_paths.json")}
+            state = self._read_unlocked("live_samples.json")
+            before = deepcopy(state)
+            update(inputs, state)
+            if before != state:
+                self._write_unlocked("live_samples.json", state)
+
     @staticmethod
     def _registry_digest(row):
         return hashlib.sha256(_encode(row)).hexdigest() if row is not None else None
@@ -761,6 +787,12 @@ class StorageService:
         elif name == "router_onboarding.json":
             from services.onboarding_state import validate_onboarding
             validate_onboarding(value)
+        elif name == "link_quality.json":
+            from services.link_quality import validate_quality
+            validate_quality(value)
+        elif name == "live_samples.json":
+            from services.live_samples import validate_live_samples
+            validate_live_samples(value)
         elif name == "optimization_communication.json":
             from services.optimization_protocol import validate_state
             validate_state(value)

@@ -1,0 +1,45 @@
+{
+  "checked_at": "2026-11-25T09:32:57.638477+00:00",
+  "workflow_status": "hold_down",
+  "hold_until": "2026-11-25T09:34:36.196371Z",
+  "groups": [
+    {
+      "status": "optimization_on_hold",
+      "execution_authorized": false,
+      "next_eligible_at": "2026-11-25T09:34:36.196371Z",
+      "links": [
+        {
+          "carrier": "MTN",
+          "utilization_percent": 101.63560000000001,
+          "target_utilization_percent": 76.0261696969697,
+          "target_mbps": 0.30410467878787883,
+          "average_mbps": 0.4065424
+        },
+        {
+          "carrier": "GLO",
+          "utilization_percent": 7.734355555555557,
+          "target_utilization_percent": 76.0261696969697,
+          "target_mbps": 0.11403925454545455,
+          "average_mbps": 0.011601533333333334
+        }
+      ]
+    }
+  ],
+  "live_links": [
+    {
+      "carrier": "MTN",
+      "current_tx_mbps": 0.409056,
+      "jitter_ms": 0.16871428571428568,
+      "jitter_status": "measured"
+    },
+    {
+      "carrier": "GLO",
+      "current_tx_mbps": 0.012496,
+      "jitter_ms": 0.5894285714285713,
+      "jitter_status": "measured"
+    }
+  ],
+  "optimization_enabled": true,
+  "routing_changes_enabled": false,
+  "automatic_routing_shift_verified": false
+}

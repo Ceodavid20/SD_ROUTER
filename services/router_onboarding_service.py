@@ -54,7 +54,8 @@ def _binding(router, config):
 
 
 def _topology(inputs, router_id):
-    topology = inputs["routing_paths.json"]
+    from services.path_config_service import routing_policy_config
+    topology = routing_policy_config(inputs["routing_paths.json"])
     return _hash({"paths": [path for path in topology["paths"]
                             if router_id in (path["aggregation_router_id"], path["carrier_router_id"])],
                   "policy": topology["congestion_policy"], "settings": inputs["automation_settings.json"]})

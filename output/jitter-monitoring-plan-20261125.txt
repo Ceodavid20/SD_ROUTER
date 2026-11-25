@@ -1,0 +1,17 @@
+READ-ONLY RTT JITTER PLAN — 25 November 2026
+
+MTN: SDR-CHR-LAB-01 / sdr-to-mtn -> 172.31.250.2
+GLO: SDR-CHR-LAB-01 / sdr-to-glo -> 172.31.250.6
+
+Eight ICMP echo probes per path every 60 seconds, over the selected interface.
+The controller uses existing verified API-SSL management access. The recorded
+metric is mean absolute variation of adjacent ping RTTs, in milliseconds. It
+includes return-path delay and is not one-way jitter or RTP jitter.
+
+No RX traffic counters, route/OSPF/PCC/firewall/queue writes, scheduler edits,
+new router keys, private certificate changes or polling/ACK modifications.
+Existing carrier handoff addresses must be verified over API-SSL before the
+local jitter settings are explicitly enabled. Probe errors remain unavailable;
+missing packets do not become zero. Each path has its own opt-in and history.
+
+This plan has not enabled any probes or changed router configuration.

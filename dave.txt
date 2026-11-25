@@ -1534,3 +1534,25 @@ The complete automated suite passed: 724 tests, 63.49 seconds. Local pages were
 verified after reload. Existing router data was preserved except for the
 explicitly requested test capacities, and original history prefixes matched
 the private preservation snapshot.
+
+
+UPDATE — 25 November 2026: RTT jitter on the live TX graph
+-------------------------------------------------------
+The existing single graph now supports TX in Mbps and RTT jitter in milliseconds.
+Solid lines show TX; dashed lines and square points show jitter on a separate
+right axis. Click a point for the reading, timestamp, target and probe replies.
+Jitter is calculated from differences between consecutive successful ping RTTs,
+not from bandwidth fluctuations. Missing replies or stale samples show unavailable.
+
+Probes are disabled until explicitly enabled for each configured routing path.
+An independent serve_quality.py worker uses existing verified API-SSL management
+access to request eight pings per link every 60 seconds by default. No router
+configuration, routing, OSPF, queues, schedulers or RX counters are changed.
+The Optimization switch still controls advisory calculations independently.
+Monitoring history is stored in validated link_quality.json alongside TX history.
+See docs/rtt-jitter.txt for setup, formulas and measurement limits.
+
+The full automated suite passed: 769 tests. Browser checks passed for point
+clicks, live updates, metric visibility, keyboard selection and mobile layout.
+Those browser checks used isolated fixtures; real jitter needs authorized probes.
+SIMULATION_MODE=true and LIVE_ROUTING_ENABLED=false remain enforced.

@@ -131,6 +131,23 @@
         {{ path_fields(path, path.path_id) }}
         <button class="btn btn-primary section-gap" type="submit">Save path</button>
       </form>
+      <details class="section-gap">
+        <summary>Second-by-second readings · {{ 'Enabled' if path.get('live_sampling_enabled') else 'Disabled' }}</summary>
+        <form method="post" action="{{ url_for('routing_paths.save_live_sampling', path_id=path.path_id) }}" class="row g-3 section-gap">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="col-md-8"><label class="form-label" for="{{ path.path_id }}-live-sampling">Live TX and enabled jitter probes</label><select class="form-select" id="{{ path.path_id }}-live-sampling" name="live_sampling_enabled"><option value="false" {% if not path.get('live_sampling_enabled') %}selected{% endif %}>Disabled</option><option value="true" {% if path.get('live_sampling_enabled') %}selected{% endif %}>Enabled</option></select><div class="form-text">Uses the main router's verified API-SSL access. Jitter also needs its probe target enabled below.</div></div>
+          <div class="col-12"><button class="btn btn-outline-primary" type="submit">Save live sampling</button></div>
+        </form>
+      </details>
+      <details class="section-gap">
+        <summary>RTT jitter monitoring · {{ 'Enabled' if path.get('jitter_enabled') else 'Disabled' }}</summary>
+        <form method="post" action="{{ url_for('routing_paths.save_jitter', path_id=path.path_id) }}" class="row g-3 section-gap">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="col-md-7"><label class="form-label" for="{{ path.path_id }}-jitter-target">Probe target IP</label><input class="form-control" id="{{ path.path_id }}-jitter-target" name="jitter_target" value="{{ path.get('jitter_target') or '' }}" maxlength="45" autocomplete="off"><div class="form-text">Choose a reachable target through {{ path.aggregation_interface or 'the selected main-router interface' }}. Requires the main router's verified API-SSL account with ping permission.</div></div>
+          <div class="col-md-5"><label class="form-label" for="{{ path.path_id }}-jitter-enabled">RTT jitter probes</label><select class="form-select" id="{{ path.path_id }}-jitter-enabled" name="jitter_enabled"><option value="false" {% if not path.get('jitter_enabled') %}selected{% endif %}>Disabled</option><option value="true" {% if path.get('jitter_enabled') %}selected{% endif %}>Enabled</option></select></div>
+          <div class="col-12"><button class="btn btn-outline-primary" type="submit">Save jitter monitoring</button></div>
+        </form>
+      </details>
       <form method="post" action="{{ url_for('routing_paths.delete_path', path_id=path.path_id) }}" class="router-delete-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-check">

@@ -694,12 +694,16 @@ code { color: #244e86; }
 .tx-series-item strong { font-size: 1.1rem; font-variant-numeric: tabular-nums; }
 .tx-series-item .tx-series-name { font-size: .83rem; font-weight: 650; }
 .tx-series-state { color: var(--muted); font-size: .72rem; text-transform: capitalize; }
+.tx-jitter-control { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; white-space: nowrap; }
+.tx-jitter-value { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tx-jitter-value::before { content: ''; display: inline-block; width: 1rem; border-top: 2px dashed currentColor; margin-right: .4rem; vertical-align: middle; }
 .tx-series-item.is-hidden { opacity: .4; }
 .tx-swatch { display: inline-block; width: .6rem; height: .6rem; border-radius: 50%; margin-right: .5rem; }
 .live-tx-chart { min-height: 280px; margin: .8rem 0 0; outline-offset: 4px; border-radius: .35rem; }
 .live-tx-chart:focus-visible { outline: 2px solid var(--focus); }
 .live-tx-chart svg { width: 100%; height: auto; display: block; touch-action: manipulation; }
 .live-tx-chart svg circle { cursor: pointer; }
+.live-tx-chart svg [data-jitter-point] { cursor: pointer; }
 .live-tx-chart svg text { fill: var(--muted); font-family: inherit; }
 .tx-empty { min-height: 230px; display: grid; place-items: center; color: var(--muted); margin: 0; }
 .tx-reading { background: #f5f8fc; border: 1px solid #e2eaf3; border-radius: .6rem; padding: .9rem 1rem; }

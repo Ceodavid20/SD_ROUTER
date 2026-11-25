@@ -127,6 +127,8 @@ def test_all_required_storage_files_are_initialized(app):
     expected_data = {
         "routers.json",
         "router_onboarding.json",
+        "link_quality.json",
+        "live_samples.json",
         "traffic_history.json",
         "averages.json",
         "optimization_results.json",

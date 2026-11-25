@@ -55,3 +55,30 @@ def save_policy():
     else:
         flash("Congestion limits saved.", "success")
     return redirect(url_for("pages.routing_paths"))
+
+
+@routing_paths.post("/routing-paths/<path_id>/jitter")
+def save_jitter(path_id):
+    try:
+        if request.form.getlist("jitter_enabled") not in (["true"], ["false"]):
+            raise ValidationError("Select enable or disable jitter monitoring.")
+        _service().configure_jitter(path_id, request.form.get("jitter_target", ""),
+            request.form["jitter_enabled"] == "true", current_app.config)
+    except ValidationError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash("RTT jitter monitoring saved.", "success")
+    return redirect(url_for("pages.routing_paths"))
+
+
+@routing_paths.post("/routing-paths/<path_id>/live-sampling")
+def save_live_sampling(path_id):
+    try:
+        if request.form.getlist("live_sampling_enabled") not in (["true"], ["false"]):
+            raise ValidationError("Select enable or disable live sampling.")
+        _service().configure_live_sampling(path_id, request.form["live_sampling_enabled"] == "true")
+    except ValidationError as exc:
+        flash(str(exc), "danger")
+    else:
+        flash("Live sampling saved.", "success")
+    return redirect(url_for("pages.routing_paths"))

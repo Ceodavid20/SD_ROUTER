@@ -31,6 +31,13 @@ _PATH_FIELDS = {
 _ROLES = {"not_set", "primary", "alternate", "standby"}
 _STATES = {"operator_selected", "pending_confirmation", "disabled"}
 _POLICIES = {"prefer_lower_utilization", "manual_only"}
+QUALITY_FIELDS = {"jitter_enabled", "jitter_target", "live_sampling_enabled"}
+
+
+def routing_policy_config(config):
+    """Quality monitoring does not change routing decisions or their hold-down."""
+    return {**config, "paths": [{key: value for key, value in path.items() if key not in QUALITY_FIELDS}
+                                for path in config["paths"]]}
 
 
 def _text(value: Any, label: str, *, maximum: int = 128, required: bool = False) -> str | None:
@@ -79,8 +86,24 @@ def validate_routing_paths(value: Any) -> None:
     ids, links = set(), set()
     for path in value["paths"]:
         if (not isinstance(path, dict) or not _PATH_FIELDS <= set(path)
-                or set(path) - _PATH_FIELDS - {"monitor_router_id", "carrier_availability"}):
+                or set(path) - _PATH_FIELDS - {"monitor_router_id", "carrier_availability"} - QUALITY_FIELDS):
             raise ValidationError("Invalid path fields.")
+        if "jitter_enabled" in path and type(path["jitter_enabled"]) is not bool:
+            raise ValidationError("Jitter enablement must be true or false.")
+        if "live_sampling_enabled" in path and type(path["live_sampling_enabled"]) is not bool:
+            raise ValidationError("Live sampling enablement must be true or false.")
+        if path.get("live_sampling_enabled") is True and not path.get("aggregation_interface"):
+            raise ValidationError("Configure the main-router TX interface before enabling live sampling.")
+        target = path.get("jitter_target")
+        if target is not None:
+            from services.routeros_probe import probe_address
+            try:
+                if probe_address(target) != target:
+                    raise ValueError
+            except ValueError as exc:
+                raise ValidationError("Enter a literal unicast jitter target.") from exc
+        if path.get("jitter_enabled") is True and (not target or not path.get("aggregation_interface")):
+            raise ValidationError("Configure a jitter target and main-router interface before enabling probes.")
         for key in ("path_id", "aggregation_router_id", "carrier_router_id"):
             if not isinstance(path[key], str) or not _ID.fullmatch(path[key]):
                 raise ValidationError("Invalid path or router ID.")
@@ -220,6 +243,16 @@ class PathConfigService:
                         path["carrier_availability"] = current["carrier_availability"]
                     if "monitor_router_id" not in form:
                         path["monitor_router_id"] = current.get("monitor_router_id")
+                    # Jitter has a separate explicit opt-in form. Existing
+                    # topology forms must not erase or silently enable it.
+                    for field in QUALITY_FIELDS:
+                        if field in current:
+                            path[field] = current[field]
+                    if any(path.get(key) != current.get(key) for key in (
+                            "aggregation_router_id", "carrier_router_id", "aggregation_interface", "carrier_interface")):
+                        for field in ("jitter_enabled", "live_sampling_enabled"):
+                            if path.get(field):
+                                path[field] = False
                     config["paths"][index] = path
                     return config
             raise ValidationError("Routing path was not found.")
@@ -227,6 +260,39 @@ class PathConfigService:
         self.storage.update_json("routing_paths.json", replace)
         self.storage.append_activity("routing", f"Routing path {path_id} updated.")
         return deepcopy(path)
+
+    def configure_jitter(self, path_id, target, enabled, config):
+        from ipaddress import ip_address, ip_network
+        from services.routeros_probe import probe_address
+        if type(enabled) is not bool or not isinstance(target, str):
+            raise ValidationError("Select a valid jitter monitoring setting.")
+        try:
+            target = probe_address(target.strip()) if target.strip() else None
+            if enabled and (not target or not any(ip_address(target) in ip_network(network)
+                    for network in config.get("ROUTER_ALLOWED_NETWORKS", []))):
+                raise ValueError
+        except ValueError as exc:
+            raise ValidationError("Use a jitter target inside the controller's approved networks.") from exc
+        def update(settings):
+            path = next((path for path in settings["paths"] if path["path_id"] == path_id), None)
+            if path is None:
+                raise ValidationError("Routing path was not found.")
+            path.update(jitter_enabled=enabled, jitter_target=target)
+            return settings
+        self.storage.update_json("routing_paths.json", update)
+        self.storage.append_activity("monitoring", "RTT jitter enabled." if enabled else "RTT jitter disabled.", {"path_id": path_id})
+
+    def configure_live_sampling(self, path_id, enabled):
+        if type(enabled) is not bool:
+            raise ValidationError("Select a valid live sampling setting.")
+        def update(settings):
+            path = next((p for p in settings["paths"] if p["path_id"] == path_id), None)
+            if path is None:
+                raise ValidationError("Routing path was not found.")
+            path["live_sampling_enabled"] = enabled
+            return settings
+        self.storage.update_json("routing_paths.json", update)
+        self.storage.append_activity("monitoring", "Second-by-second sampling enabled." if enabled else "Second-by-second sampling disabled.", {"path_id": path_id})
 
     def delete_path(self, path_id: str) -> None:
         def remove(config: dict[str, Any]) -> dict[str, Any]:

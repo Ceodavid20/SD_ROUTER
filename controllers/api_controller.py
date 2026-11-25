@@ -83,6 +83,33 @@ def live_tx_view() -> Response:
     return response
 
 
+@api.get("/optimization/samples")
+def live_samples() -> Response:
+    from datetime import UTC, datetime, timedelta
+    from services.live_samples import live_delta
+    from services.router_protocol import parse_utc_timestamp, ProtocolError
+    now = datetime.now(UTC)
+    after = None
+    value = request.args.get("after")
+    if value:
+        try:
+            if len(value) > 40:
+                raise ValueError
+            after = parse_utc_timestamp(value)
+            if after > now + timedelta(seconds=30):
+                raise ValueError
+            # Overlap bounded in-flight batches; the browser deduplicates by time.
+            after -= timedelta(seconds=2 * current_app.config.get("LIVE_SAMPLE_TIMEOUT_SECONDS", 3) + 2)
+        except (ProtocolError, ValueError):
+            return jsonify(error="Invalid sample cursor."), 400
+    try:
+        response = jsonify(live_delta(current_app.extensions["json_storage"], current_app.config, after=after, now=now))
+    except (StorageError, OSError, ValueError):
+        return jsonify(error="Live readings are temporarily unavailable."), 503
+    response.cache_control.no_store = True
+    return response
+
+
 @router_config.get("/router-config/<router_id>")
 def current_router_config(router_id: str) -> Response:
     """Return only a validated router command, never an internal storage file."""

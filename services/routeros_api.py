@@ -142,6 +142,11 @@ class RouterOSReadOnlyClient:
                        and all(ord(c) >= 32 and ord(c) != 127 for c in words[2][6:]))
         if not (login or printing or selected_tx):
             raise RouterAPIError("Only allowlisted read-only discovery is supported.")
+        fields = set(words[1].removeprefix("=.proplist=").split(",")) if not login else set()
+        return self._exchange(words, fields)
+
+    def _exchange(self, words, fields):
+        """Bounded protocol framing after a caller's fixed command allowlist."""
         encoded = bytearray()
         for word in words:
             value = word.encode("utf-8")
@@ -178,7 +183,6 @@ class RouterOSReadOnlyClient:
             if sentence[0] == "!re":
                 # The API may return extra fields despite .proplist. Project
                 # immediately: secrets, RX and script sources never leave here.
-                fields = set(words[1].removeprefix("=.proplist=").split(",")) if not login else set()
                 rows.append({key: value[:256] for key, value in attributes.items() if key in fields})
             elif sentence[0] != "!empty":
                 raise RouterAPIError("Router returned an unexpected API reply.")

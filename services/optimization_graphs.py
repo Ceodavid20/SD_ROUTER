@@ -5,8 +5,15 @@ from services.traffic_service import monitored_interfaces
 from services.router_protocol import ProtocolError
 
 
-def graph_data(storage, *, include_context=True):
+def graph_data(storage, *, include_context=True, config=None, now=None):
+    from datetime import UTC, datetime
+    from services.link_quality import quality_view
+    config = config or {}
+    now = now or datetime.now(UTC)
     inputs, results = storage.read_workflow_snapshot()
+    quality_state = storage.read_json("link_quality.json")
+    from services.live_samples import path_view
+    live_inputs = storage.live_snapshot()
     routers={r['router_id']:r for r in inputs['routers.json']}
     paths=[p for p in inputs['routing_paths.json']['paths'] if p['relationship_status']=='operator_selected']
     counts=Counter((p['aggregation_router_id'],p['aggregation_interface']) for p in paths)
@@ -28,7 +35,15 @@ def graph_data(storage, *, include_context=True):
                  'series_id':row.get('series_id')}
                 for row in rows if row['interface']==iface][-500:]
         series.append({'id':path['path_id'],'name':path['carrier'],'router_id':rid,'interface':iface,
-                       'source':rid+' / '+iface,'points':points})
+                       'source':rid+' / '+iface,'points':points,
+                       'quality':quality_view(path, router, quality_state, config, now)})
+        if path.get('live_sampling_enabled') is True:
+            sampled = path_view(path, live_inputs, config, now)
+            first = sampled['points'][0]['at'] if sampled['points'] else None
+            qfirst = sampled['quality']['points'][0]['at'] if sampled['quality']['points'] else None
+            sampled['quality']['points'] = [p for p in series[-1]['quality']['points'] if qfirst is None or p['at'] < qfirst] + sampled['quality']['points']
+            series[-1].update({k: v for k, v in sampled.items() if k != 'points'})
+            series[-1]['points'] = [p for p in points if first is None or p['at'] < first] + sampled['points']
     if not include_context:
         return {'actual': series, 'max_gap_seconds': max(180, inputs['automation_settings.json']['monitoring_interval_seconds']*3)}
     # Carrier-side TX is deliberately separate: it is not main-router demand.
@@ -76,6 +91,10 @@ def recent_changes(storage, limit=10):
                     title, status = ('TX collection enabled' if enabled else 'TX collection paused'), 'Applied'
             elif message == 'Outbound TX monitoring interface configured.':
                 title = 'TX interface saved'
+            elif message in ('RTT jitter enabled.', 'RTT jitter disabled.'):
+                title, status = message[:-1], 'Saved'
+            elif message in ('Second-by-second sampling enabled.', 'Second-by-second sampling disabled.'):
+                title, status = message[:-1], 'Saved'
         elif category == 'routing':
             if message.startswith('Routing path ') and message.endswith((' added.', ' updated.', ' removed.')):
                 title = 'Path settings saved'
@@ -135,7 +154,7 @@ def live_view(storage, config, *, now=None):
     from services.workflow_service import WorkflowService, optimization_enabled
     current = now or datetime.now(UTC)
     preview = WorkflowService(storage, config).preview(now=current)
-    graph = graph_data(storage, include_context=False)
+    graph = graph_data(storage, include_context=False, config=config, now=current)
     inputs, _ = storage.read_workflow_snapshot()
     inventory = {row['router_id']: row for row in inputs['routers.json']}
     settings = inputs['automation_settings.json']
@@ -147,8 +166,9 @@ def live_view(storage, config, *, now=None):
         router = inventory.get(row['router_id'])
         status = project_traffic_status(inputs['router_traffic_v2.json'], settings, config,
             [{**router, 'interface_name': row['interface']}], now=current)[row['router_id']] if router else {}
-        row.update(state=status.get('state', 'awaiting'), current_mbps=status.get('tx_mbps'),
-                   sampled_at=status.get('last_sample_at'))
+        if 'sample_interval_seconds' not in row:
+            row.update(state=status.get('state', 'awaiting'), current_mbps=status.get('tx_mbps'),
+                       sampled_at=status.get('last_sample_at'), sample_interval_seconds=settings['monitoring_interval_seconds'])
         link = adaptive_links.get(row['id'])
         if link:
             measured = link['measurement']['average_bps']
@@ -176,7 +196,7 @@ def live_view(storage, config, *, now=None):
                               'state': router_states[rid]['state'], 'sampled_at': router_states[rid]['last_sample_at']})
     receiving = [row for row in series if row['state'] == 'measured' and row['current_mbps'] is not None]
     return {'updated_at': utc_text(current), 'refresh_seconds': config.get('DASHBOARD_REFRESH_SECONDS', 5),
-        'sample_interval_seconds': settings['monitoring_interval_seconds'],
+        'sample_interval_seconds': min((s['sample_interval_seconds'] for s in series), default=settings['monitoring_interval_seconds']),
         'max_gap_seconds': graph['max_gap_seconds'], 'series': series,
         'summary': {'total_mbps': sum(row['current_mbps'] for row in receiving) if series and len(receiving) == len(series) else None,
                     'reporting': len(receiving), 'links': len(series), 'optimization_status': preview['status'] if enabled else 'off', 'optimization_enabled': enabled,

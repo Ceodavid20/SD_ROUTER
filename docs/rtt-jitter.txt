@@ -1,0 +1,86 @@
+SD_ROUTER RTT JITTER — 25 November 2026
+
+The existing Dashboard/Optimization graph now supports outbound TX (Mbps) and
+RTT jitter (milliseconds) on separate axes. TX uses solid carrier-colored lines;
+jitter uses dashed lines and square points. Click either metric to see its own
+reading and timestamp. Keyboard selection, Latest, time ranges, carrier hiding,
+background updates and mobile layout remain available. The RTT jitter checkbox
+hides or shows the metric without changing measurement authorization.
+
+What is measured
+----------------
+The controller requests eight ICMP echo probes from the configured main router,
+through the configured outbound interface, toward one explicitly approved IP.
+It obtains individual round-trip durations over verified RouterOS API-SSL.
+Jitter is the mean absolute difference of adjacent successful RTTs within that
+batch. All values are converted to milliseconds with explicit duration units.
+Missing replies break adjacency. Insufficient replies, API failures and stale
+samples are unavailable, not zero. A genuinely constant measured RTT can produce
+zero jitter. A click shows the target and reply count so the scope is visible.
+
+This is RTT delay variation, including the return path. It is not one-way IP
+packet-delay variation, RTP inter-arrival jitter, or variation of TX Mbps.
+Probing a carrier's immediate gateway measures that hop, not the entire ISP.
+No RX interface counters or RX throughput are requested or stored. Echo replies
+are used only to obtain the round-trip probe timings.
+
+Configuration and operation
+---------------------------
+Jitter is disabled by default for existing and new paths. In Routing paths,
+open a path's RTT jitter monitoring section, enter a literal unicast target IP
+inside the controller's approved networks, and explicitly enable the probes.
+Use a target reachable through that path's main-router interface. A change of
+path endpoints/interfaces disables the existing opt-in until it is reviewed.
+The main router must be active, TX monitoring enabled and its selected outbound
+interface authorized. Its existing API-SSL account needs API, read and ping/test
+permission. API transport never falls back to plaintext for these probes.
+
+Start the independent controller-side worker with:
+  .venv/bin/python serve_quality.py
+One due cycle:
+  .venv/bin/python serve_quality.py --once
+Use the same SDR_ENV/SDR_PROFILE_DIR as the browser/device/optimization services.
+The worker does not install router scripts, change schedulers or execute routing
+commands. It continues independently of the Optimization On/Off control.
+
+Validated profile settings:
+  SDR_JITTER_INTERVAL_SECONDS: 60 by default, 10–3600 seconds.
+  SDR_JITTER_API_TIMEOUT_SECONDS: 10 by default, 3–30 seconds.
+Each batch is fixed at eight probes with a 200 ms requested interval. Network
+I/O is bounded by the total API deadline. Probe claims/leases prevent multiple
+workers from probing the same path simultaneously. Relevant configuration edits
+invalidate in-flight results. No network I/O occurs under the JSON storage lock.
+
+Storage and compatibility
+-------------------------
+A separate owner-only link_quality.json stores bounded per-path history, probe
+leases and source metadata. It uses the existing validated atomic JSON service.
+The current bound is 500 samples per path and 10,000 samples overall. Quality
+history is independent of the existing immutable TX history. No earlier jitter
+values are fabricated from old bandwidth counters.
+
+Read-only quality settings are excluded from routing-policy and routing-baseline
+fingerprints. Enabling or disabling jitter therefore does not reset optimization
+hold-down periods, change MLU/PCC/cost mathematics or grant routing authority.
+Existing V1/V2 poll, ACK, traffic, HMAC signatures, replay rules and TLS safeguards
+are unchanged. There is no new unauthenticated device telemetry endpoint.
+
+Validation
+----------
+The full automated suite passed: 769 tests in 69.82 seconds. New tests cover RTT
+units and malformed durations; loss/gap handling; true zero versus missing data;
+source/target validation; TLS-only probe access; fixed command bounds and write
+rejection; concurrency/cadence; in-flight configuration edits; schema injection;
+staleness; routing-fingerprint stability; CSRF and graph persistence.
+
+An isolated browser fixture verified a single graph, separate axes, jitter point
+clicks, pinned selections during updates, new samples, metric toggling, keyboard
+navigation and mobile layout. Fixture data was isolated from real lab history.
+Actual lab readings require the explicitly approved probes to be enabled.
+
+References
+----------
+MikroTik's Ping tool documents interface selection, intervals and probe counts:
+https://help.mikrotik.com/docs/spaces/ROS/pages/8323183/Ping
+The IPPM definition of one-way delay variation differs from this RTT proxy:
+https://www.rfc-editor.org/rfc/rfc3393.html
